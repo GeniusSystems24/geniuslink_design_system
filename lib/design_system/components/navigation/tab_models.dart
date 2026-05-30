@@ -1,55 +1,30 @@
+// ============================================================
+// BrowserStyleTabBar — models & maps.
+// Mirrors the tab data shape and icon set used in BrowserTabs.jsx.
+//   File: lib/design_system/components/navigation/tab_models.dart
+// ============================================================
+
 import 'package:flutter/material.dart';
 
-/// The semantic page type represented by a browser tab.
-///
-/// The value drives the tab icon, preview metadata, and demo page selected by
-/// [GLTabPage].
-enum GLTabKind {
-  /// Accounting ledger or account-list content.
-  ledger,
+/// Builds the content shown for a tab — both in the active content surface
+/// and (scaled down) inside the hover preview. Lets a host render
+/// style-appropriate pages (ERP doc, design canvas, web page …) while the
+/// component falls back to its built-in [GLTabPage] when this is null.
+typedef TabPageBuilder = Widget Function(BuildContext context, BrowserTab tab);
 
-  /// Document-like content such as a journal entry.
-  doc,
+/// The page-type of a workspace tab. Drives the leading icon, the
+/// mini-page preview layout and the full content surface — exactly like
+/// the `icon` string in the JSX (ledger · doc · store · chart · user · globe).
+enum GLTabKind { ledger, doc, store, chart, user, globe }
 
-  /// Branch, store, or location content.
-  store,
-
-  /// Analytics dashboard content.
-  chart,
-
-  /// People, team, or directory content.
-  user,
-
-  /// Generic workspace page content.
-  globe,
-}
-
-/// Mutable tab state consumed by [BrowserStyleTabBar].
-///
-/// The model is intentionally generic so applications can map domain entities
-/// to tabs without coupling the design-system package to business models.
+/// A single workspace tab. Generic / no business-model coupling.
 class BrowserTab {
-  /// Stable identifier used for selection, close, duplicate, and reorder logic.
   final int id;
-
-  /// Human-readable tab label shown in the strip, dropdown, and previews.
   String title;
-
-  /// Semantic content type used for icons and demo page rendering.
   final GLTabKind kind;
+  bool dirty; // unsaved-changes indicator
+  bool pinned; // icon-only, anchored on the start edge
 
-  /// Whether the tab has unsaved changes.
-  ///
-  /// Dirty tabs show an indicator and ask for confirmation before closing.
-  bool dirty;
-
-  /// Whether the tab is pinned to the leading edge of the strip.
-  ///
-  /// Pinned tabs render as compact icon-only tabs and do not scroll with the
-  /// unpinned region.
-  bool pinned;
-
-  /// Creates a browser tab model.
   BrowserTab({
     required this.id,
     required this.title,
@@ -58,14 +33,7 @@ class BrowserTab {
     this.pinned = false,
   });
 
-  /// Returns a copy of this tab with selected fields replaced.
-  BrowserTab copyWith({
-    int? id,
-    String? title,
-    GLTabKind? kind,
-    bool? dirty,
-    bool? pinned,
-  }) =>
+  BrowserTab copyWith({int? id, String? title, GLTabKind? kind, bool? dirty, bool? pinned}) =>
       BrowserTab(
         id: id ?? this.id,
         title: title ?? this.title,
@@ -75,7 +43,7 @@ class BrowserTab {
       );
 }
 
-/// Returns the Material icon that represents [kind] in tabs and previews.
+/// Material icon for each tab kind (closest match to the JSX line-icons).
 IconData glTabIcon(GLTabKind kind) {
   switch (kind) {
     case GLTabKind.ledger:
@@ -93,25 +61,25 @@ IconData glTabIcon(GLTabKind kind) {
   }
 }
 
-/// Returns the short type label shown in the hover-preview header.
+/// Type label shown in the hover-preview header (mirrors PREVIEW_META).
 String glPreviewMeta(GLTabKind kind) {
   switch (kind) {
     case GLTabKind.ledger:
-      return 'Accounting / Ledger';
+      return 'Accounting · Ledger';
     case GLTabKind.doc:
-      return 'Journal / Document';
+      return 'Journal · Document';
     case GLTabKind.store:
-      return 'Branch / Storefront';
+      return 'Branch · Storefront';
     case GLTabKind.chart:
-      return 'Analytics / Dashboard';
+      return 'Analytics · Dashboard';
     case GLTabKind.user:
-      return 'Directory / People';
+      return 'Directory · People';
     case GLTabKind.globe:
-      return 'Workspace / Page';
+      return 'Workspace · Page';
   }
 }
 
-/// Rotation used by the new-tab button to assign demo page kinds.
+/// Rotating kinds for the "New Tab" (+) button, matching the JSX cycle.
 const List<GLTabKind> kNewTabCycle = [
   GLTabKind.globe,
   GLTabKind.user,

@@ -1,6 +1,6 @@
 name: geniuslink_design_system
 description: A Flutter design-system package for GeniusLink browser-style workspace tabs, previews, menus, and RTL-ready navigation.
-version: 1.0.1
+version: 1.1.0
 repository: https://github.com/GeniusSystems24/geniuslink_design_system
 issue_tracker: https://github.com/GeniusSystems24/geniuslink_design_system/issues
 

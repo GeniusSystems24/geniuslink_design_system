@@ -10,6 +10,7 @@
 library geniuslink_design_system;
 
 export 'design_system/components/navigation/browser_style_tab_bar_theme.dart';
+export 'design_system/components/navigation/browser_style_tab_bar_controller.dart';
 export 'design_system/components/navigation/tab_models.dart';
 export 'design_system/components/navigation/tab_pages.dart';
 export 'design_system/components/navigation/browser_style_tab_bar.dart';

@@ -1,47 +1,54 @@
 // ============================================================
 // BrowserStyleTabBar — modern browser-style tab strip (full).
 // ------------------------------------------------------------
-// Faithful Flutter port of design_system/BrowserTabs.jsx. Self-contained
-// demo state. Features: active/inactive/hover/pressed · closable · add (+) ·
-// select · overflow scroll + chevrons · pinned tabs (icon-only, anchored) ·
+// Faithful Flutter port of design_system/BrowserTabs.jsx.
+//
+// State lives in a [BrowserStyleTabBarController] (ChangeNotifier). Pass one
+// in to drive it from outside / read it from pages via
+// `BrowserStyleTabBarController.of(context)`, or omit it and the widget owns
+// a private controller (seeded from [tabsState]).
+//
+// Features: active/inactive/hover/pressed · closable · add (+) · select ·
+// overflow scroll + chevrons · pinned tabs (icon-only, anchored) ·
 // right-click context menu (close / close others / close to the right /
 // duplicate / pin·unpin) · unsaved (dirty) indicator · dirty-close confirm
-// dialog · tab-list dropdown · hover/long-press mini-page preview ·
-// long-title truncation + tooltip · drag-to-reorder · keyboard
-// (←/→/Home/End) · dark/light · RTL.
+// dialog · tab-list dropdown · LIVE mini-page preview (a real captured frame
+// of the page with its current state/data) · long-title truncation +
+// tooltip · drag-to-reorder · keyboard (←/→/Home/End) · dark/light · RTL.
 //   File: lib/design_system/components/navigation/browser_style_tab_bar.dart
 // ============================================================
 
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'browser_style_tab_bar_theme.dart';
+import 'browser_style_tab_bar_controller.dart';
 import 'tab_models.dart';
 import 'tab_pages.dart';
 import 'tab_overlays.dart';
 
-/// Browser-style workspace tab strip with built-in tab interactions.
-///
-/// The widget owns its tab list after construction and is suitable for demos,
-/// prototypes, and application shells that do not need external tab state. Use
-/// [tabsState] to seed the initial tabs.
 class BrowserStyleTabBar extends StatefulWidget {
-  /// Optional initial tab list.
-  ///
-  /// When omitted, the widget starts with a realistic GeniusLink demo set.
+  /// Seed state used only when [controller] is null. Defaults to the JSX set.
   final List<BrowserTab>? tabsState;
 
-  /// Creates a self-contained browser-style tab strip.
-  const BrowserStyleTabBar({super.key, this.tabsState});
+  /// External state. When provided the widget does NOT own/dispose it, and
+  /// the same instance is what pages see via `BrowserStyleTabBarController.of`.
+  final BrowserStyleTabBarController? controller;
+
+  /// Optional custom content for each tab (active surface + hover preview).
+  /// Falls back to the built-in [GLTabPage] when null.
+  final TabPageBuilder? pageBuilder;
+  const BrowserStyleTabBar({super.key, this.tabsState, this.controller, this.pageBuilder});
 
   @override
   State<BrowserStyleTabBar> createState() => _BrowserStyleTabBarState();
 }
 
 class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
-  late List<BrowserTab> _tabs;
-  late int _active;
-  int _seed = 10;
+  late BrowserStyleTabBarController _ctrl;
+  bool _ownsCtrl = false;
 
   int? _dragId;
   int? _overId;
@@ -52,6 +59,8 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
   final _scroll = ScrollController();
   final _caretKey = GlobalKey();
   final _focusNode = FocusNode();
+  final _boundaryKey = GlobalKey(); // wraps the active page → captured to image
+  Timer? _captureTimer;
 
   // overlay handles
   OverlayEntry? _menuEntry;
@@ -63,43 +72,72 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
   @override
   void initState() {
     super.initState();
-    _tabs = widget.tabsState ??
-        [
-          BrowserTab(
-              id: 1,
-              title: 'Chart of Accounts',
-              kind: GLTabKind.ledger,
-              pinned: true),
-          BrowserTab(
-              id: 2,
-              title: 'Opening Journal Entry — JV-2024-0042',
-              kind: GLTabKind.doc,
-              dirty: true),
-          BrowserTab(
-              id: 3, title: 'Downtown Central Store', kind: GLTabKind.store),
-          BrowserTab(id: 4, title: 'Dashboard', kind: GLTabKind.chart),
-          BrowserTab(
-              id: 5,
-              title: 'Trial Balance — FY2024 Q3',
-              kind: GLTabKind.ledger),
-        ];
-    _active = _tabs.length > 1 ? _tabs[1].id : _tabs.first.id;
+    _ctrl = widget.controller ?? BrowserStyleTabBarController(tabs: widget.tabsState);
+    _ownsCtrl = widget.controller == null;
+    _ctrl.addListener(_onCtrl);
     _scroll.addListener(_measure);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _measure();
+      _scheduleCapture(); // first frame of the initial active page
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant BrowserStyleTabBar old) {
+    super.didUpdateWidget(old);
+    if (widget.controller != old.controller) {
+      _ctrl.removeListener(_onCtrl);
+      if (_ownsCtrl) _ctrl.dispose();
+      _ctrl = widget.controller ?? BrowserStyleTabBarController(tabs: widget.tabsState);
+      _ownsCtrl = widget.controller == null;
+      _ctrl.addListener(_onCtrl);
+    }
+  }
+
+  void _onCtrl() {
+    if (mounted) setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) => _measure());
+    _scheduleCapture(); // active tab changed / page edited → refresh its frame
   }
 
   @override
   void dispose() {
+    _captureTimer?.cancel();
     _hideAllOverlays();
+    _ctrl.removeListener(_onCtrl);
+    if (_ownsCtrl) _ctrl.dispose();
     _scroll.dispose();
     _focusNode.dispose();
     super.dispose();
   }
 
-  // ── derived ──
-  List<BrowserTab> get _pinned => _tabs.where((t) => t.pinned).toList();
-  List<BrowserTab> get _unpinned => _tabs.where((t) => !t.pinned).toList();
-  List<BrowserTab> get _ordered => [..._pinned, ..._unpinned];
+  // ── live thumbnail capture ──
+  // Captures the REAL rendered frame of the active page. Event-driven
+  // (debounced) so each visited tab keeps a fresh thumbnail without polling.
+  void _scheduleCapture() {
+    _captureTimer?.cancel();
+    _captureTimer = Timer(const Duration(milliseconds: 260), _captureActive);
+  }
+
+  Future<void> _captureActive() async {
+    final id = _ctrl.activeId;
+    if (id == null || !mounted) return;
+    final ro = _boundaryKey.currentContext?.findRenderObject();
+    if (ro is! RenderRepaintBoundary) return;
+    if (ro.debugNeedsPaint) {
+      _scheduleCapture(); // not painted yet — try again shortly
+      return;
+    }
+    try {
+      final img = await ro.toImage(pixelRatio: 0.6);
+      if (!mounted) {
+        img.dispose();
+        return;
+      }
+      _ctrl.setSnapshot(id, img);
+      if (_previewId == id) _previewEntry?.markNeedsBuild(); // refresh open preview
+    } catch (_) {/* boundary not ready; ignore */}
+  }
 
   // ── overflow chevrons ──
   void _measure() {
@@ -119,112 +157,31 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
 
   void _scrollByDir(bool towardEnd) {
     if (!_scroll.hasClients) return;
-    final target = (_scroll.offset + 220 * (towardEnd ? 1 : -1))
-        .clamp(0.0, _scroll.position.maxScrollExtent);
-    _scroll.animateTo(target,
-        duration: BrowserStyleTabBarThemeData.durSlow,
-        curve: BrowserStyleTabBarThemeData.curveStandard);
+    final target = (_scroll.offset + 220 * (towardEnd ? 1 : -1)).clamp(0.0, _scroll.position.maxScrollExtent);
+    _scroll.animateTo(target, duration: BrowserStyleTabBarThemeData.durSlow, curve: BrowserStyleTabBarThemeData.curveStandard);
   }
 
-  // ── tab ops ──
-  void _reorder(int fromId, int toId) {
-    if (fromId == toId) return;
-    final from = _tabs.indexWhere((t) => t.id == fromId);
-    final to = _tabs.indexWhere((t) => t.id == toId);
-    if (from < 0 || to < 0) return;
-    setState(() {
-      final moved = _tabs.removeAt(from);
-      _tabs.insert(to, moved);
-    });
-  }
-
-  void _select(int id) => setState(() => _active = id);
-
-  void _refocusAfterClose(int closedId, List<BrowserTab> next) {
-    if (_active != closedId || next.isEmpty) return;
-    final oi = _ordered.indexWhere((t) => t.id == closedId);
-    final candidates = _ordered
-        .where((t) => t.id != closedId && next.any((n) => n.id == t.id))
-        .toList();
-    if (candidates.isEmpty) {
-      _active = next.first.id;
-      return;
-    }
-    final idx = oi.clamp(0, candidates.length - 1);
-    _active = candidates[idx].id;
-  }
-
-  void _close(int id) {
-    setState(() {
-      final next = _tabs.where((t) => t.id != id).toList();
-      _refocusAfterClose(id, next);
-      _tabs = next;
-    });
-  }
-
+  // ── close (with dirty guard) ──
   Future<void> _requestClose(int id) async {
-    final t = _tabs.firstWhere((x) => x.id == id);
+    final t = _ctrl.tabById(id);
+    if (t == null) return;
     if (t.dirty) {
       final r = await showGLDirtyCloseDialog(context, t);
       if (r == 'discard') {
-        _close(id);
+        _ctrl.close(id);
       } else if (r == 'save') {
-        setState(() => t.dirty = false);
-        _close(id);
+        _ctrl.setDirty(id, false);
+        _ctrl.close(id);
       }
     } else {
-      _close(id);
+      _ctrl.close(id);
     }
   }
 
-  void _closeOthers(int id) {
-    setState(() {
-      _tabs = _tabs.where((t) => t.id == id || t.pinned).toList();
-      _active = id;
-    });
-  }
-
-  void _closeToRight(int id) {
-    final oi = _ordered.indexWhere((t) => t.id == id);
-    final killSet =
-        _ordered.skip(oi + 1).where((t) => !t.pinned).map((t) => t.id).toSet();
-    setState(() {
-      _tabs = _tabs.where((t) => !killSet.contains(t.id)).toList();
-      if (killSet.contains(_active)) _active = id;
-    });
-  }
-
-  void _duplicate(int id) {
-    final i = _tabs.indexWhere((t) => t.id == id);
-    if (i < 0) return;
-    final nid = ++_seed;
-    final clone = _tabs[i].copyWith(id: nid, dirty: false, pinned: false);
-    setState(() {
-      _tabs.insert(i + 1, clone);
-      _active = nid;
-    });
-  }
-
-  void _togglePin(int id) {
-    setState(() {
-      final t = _tabs.firstWhere((x) => x.id == id);
-      t.pinned = !t.pinned;
-    });
-  }
-
   void _add() {
-    final id = ++_seed;
-    setState(() {
-      _tabs.add(BrowserTab(
-          id: id,
-          title: 'New Tab',
-          kind: kNewTabCycle[id % kNewTabCycle.length]));
-      _active = id;
-    });
+    _ctrl.add();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        _scroll.jumpTo(_scroll.position.maxScrollExtent);
-      }
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
     });
   }
 
@@ -246,8 +203,9 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
       LogicalKeyboardKey.end,
     };
     if (!keys.contains(e.logicalKey)) return KeyEventResult.ignored;
-    final ord = _ordered;
-    final i = ord.indexWhere((t) => t.id == _active);
+    final ord = _ctrl.ordered;
+    if (ord.isEmpty) return KeyEventResult.handled;
+    final i = ord.indexWhere((t) => t.id == _ctrl.activeId);
     var ni = i;
     if (e.logicalKey == LogicalKeyboardKey.arrowRight) {
       ni = (i + 1).clamp(0, ord.length - 1);
@@ -258,7 +216,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     } else if (e.logicalKey == LogicalKeyboardKey.end) {
       ni = ord.length - 1;
     }
-    if (ni >= 0 && ni < ord.length) _select(ord[ni].id);
+    if (ni >= 0 && ni < ord.length) _ctrl.select(ord[ni].id);
     return KeyEventResult.handled;
   }
 
@@ -277,7 +235,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
   void _hideList() {
     _listEntry?.remove();
     _listEntry = null;
-    if (mounted) setState(() {}); // refresh caret highlight
+    if (mounted) setState(() {});
   }
 
   void _hidePreview() {
@@ -290,35 +248,15 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
   void _openMenu(Offset at, int id) {
     _hidePreview();
     _hideMenu();
-    final t = _tabs.firstWhere((x) => x.id == id);
-    final oi = _ordered.indexWhere((x) => x.id == id);
-    final rightAllPinned = _ordered.skip(oi + 1).every((x) => x.pinned);
+    final t = _ctrl.tabById(id);
+    if (t == null) return;
     final items = <TabMenuItem>[
-      TabMenuItem(
-          icon: Icons.close,
-          label: 'Close tab',
-          hint: 'Del',
-          danger: true,
-          run: () => _requestClose(id)),
-      TabMenuItem(
-          icon: Icons.clear_all,
-          label: 'Close other tabs',
-          disabled: _unpinned.length <= 1,
-          run: () => _closeOthers(id)),
-      TabMenuItem(
-          icon: Icons.east,
-          label: 'Close tabs to the right',
-          disabled: rightAllPinned,
-          run: () => _closeToRight(id)),
+      TabMenuItem(icon: Icons.close, label: 'Close tab', hint: 'Del', danger: true, run: () => _requestClose(id)),
+      TabMenuItem(icon: Icons.clear_all, label: 'Close other tabs', disabled: !_ctrl.canCloseOthers(id), run: () => _ctrl.closeOthers(id)),
+      TabMenuItem(icon: Icons.east, label: 'Close tabs to the right', disabled: !_ctrl.canCloseRight(id), run: () => _ctrl.closeToRight(id)),
       const TabMenuItem.divider(),
-      TabMenuItem(
-          icon: Icons.content_copy_outlined,
-          label: 'Duplicate tab',
-          run: () => _duplicate(id)),
-      TabMenuItem(
-          icon: Icons.push_pin_outlined,
-          label: t.pinned ? 'Unpin tab' : 'Pin tab',
-          run: () => _togglePin(id)),
+      TabMenuItem(icon: Icons.content_copy_outlined, label: 'Duplicate tab', run: () => _ctrl.duplicate(id)),
+      TabMenuItem(icon: Icons.push_pin_outlined, label: t.pinned ? 'Unpin tab' : 'Pin tab', run: () => _ctrl.togglePin(id)),
     ];
     _menuEntry = OverlayEntry(
       builder: (ctx) => _DismissLayer(
@@ -338,33 +276,43 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     }
     final box = _caretKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
-    final origin = box.localToGlobal(Offset.zero);
-    final anchor = origin & box.size;
+    final anchor = box.localToGlobal(Offset.zero) & box.size;
     _listEntry = OverlayEntry(
       builder: (ctx) => _DismissLayer(
         onDismiss: _hideList,
         child: TabListDropdown(
           anchor: anchor,
-          tabs: _ordered,
-          activeId: _active,
-          onPick: _select,
+          tabs: _ctrl.ordered,
+          activeId: _ctrl.activeId ?? -1,
+          onPick: _ctrl.select,
           onClose: _hideList,
         ),
       ),
     );
     Overlay.of(context).insert(_listEntry!);
-    setState(() {}); // highlight caret
+    setState(() {});
   }
 
-  // hover mini-page preview
+  // hover LIVE mini-page preview
   void _requestPreview(int id, Rect anchor) {
     if (_dragId != null || _menuEntry != null || _listEntry != null) return;
     if (_previewId == id) return;
     _hidePreview();
-    final tab = _tabs.firstWhere((t) => t.id == id);
+    final tab = _ctrl.tabById(id);
+    if (tab == null) return;
     _previewId = id;
+    // Active tab → grab a fresh frame right now so the preview is exact.
+    if (id == _ctrl.activeId) _captureActive();
     _previewEntry = OverlayEntry(
-      builder: (ctx) => MiniPagePreview(tab: tab, anchor: anchor),
+      // Reads the latest snapshot each build; markNeedsBuild() refreshes it
+      // when a fresh frame lands.
+      builder: (ctx) => MiniPagePreview(
+        tab: _ctrl.tabById(id) ?? tab,
+        anchor: anchor,
+        snapshot: _ctrl.snapshot(id),
+        pageBuilder: widget.pageBuilder,
+        scope: _scopeFor,
+      ),
     );
     Overlay.of(context).insert(_previewEntry!);
   }
@@ -373,37 +321,37 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     if (_previewId == id) _hidePreview();
   }
 
+  /// Wraps [child] so a page built inside the overlay can still reach the
+  /// controller via `BrowserStyleTabBarController.of(context)`.
+  Widget _scopeFor(Widget child) => BrowserStyleTabBarScope(controller: _ctrl, child: child);
+
   // ════════ BUILD ════════
   @override
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
-    BrowserTab? activeTab;
-    for (final t in _tabs) {
-      if (t.id == _active) {
-        activeTab = t;
-        break;
-      }
-    }
+    final activeTab = _ctrl.activeTab;
 
-    return Focus(
-      focusNode: _focusNode,
-      onKeyEvent: _onKey,
-      child: GestureDetector(
-        onTap: () => _focusNode.requestFocus(),
-        child: Container(
-          decoration: BoxDecoration(
-            color: s.bg,
-            border: Border.all(color: s.border),
-            borderRadius:
-                BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildStrip(s),
-              _buildContent(s, activeTab),
-            ],
+    return BrowserStyleTabBarScope(
+      controller: _ctrl,
+      child: Focus(
+        focusNode: _focusNode,
+        onKeyEvent: _onKey,
+        child: GestureDetector(
+          onTap: () => _focusNode.requestFocus(),
+          child: Container(
+            decoration: BoxDecoration(
+              color: s.bg,
+              border: Border.all(color: s.border),
+              borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildStrip(s),
+                _buildContent(s, activeTab),
+              ],
+            ),
           ),
         ),
       ),
@@ -411,6 +359,8 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
   }
 
   Widget _buildStrip(BrowserStyleTabBarThemeData s) {
+    final pinned = _ctrl.pinned;
+    final unpinned = _ctrl.unpinned;
     return Container(
       constraints: const BoxConstraints(minHeight: 44),
       color: s.bg,
@@ -419,10 +369,10 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // pinned region — anchored, does not scroll
-          if (_pinned.isNotEmpty) ...[
-            for (int i = 0; i < _pinned.length; i++) ...[
+          if (pinned.isNotEmpty) ...[
+            for (int i = 0; i < pinned.length; i++) ...[
               if (i > 0) const SizedBox(width: 2),
-              _tabChip(_pinned[i], compact: true, first: i == 0),
+              _tabChip(pinned[i], compact: true, first: i == 0),
             ],
             Container(
               width: 1,
@@ -431,7 +381,6 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
               color: s.borderStrong,
             ),
           ],
-          // start chevron
           _chevron(false, _chevStart, s),
           // scrolling region
           Expanded(
@@ -441,36 +390,27 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  for (int i = 0; i < _unpinned.length; i++) ...[
+                  for (int i = 0; i < unpinned.length; i++) ...[
                     if (i > 0) const SizedBox(width: 2),
-                    _draggableTab(_unpinned[i], i == 0 && _pinned.isEmpty),
+                    _draggableTab(unpinned[i], i == 0 && pinned.isEmpty),
                   ],
                 ],
               ),
             ),
           ),
-          // end chevron
           _chevron(true, _chevEnd, s),
           const SizedBox(width: 4),
-          // new tab (+)
           _IconBtn(icon: Icons.add, tooltip: 'New tab', onTap: _add),
           const SizedBox(width: 2),
-          // tab-list (▾)
-          _IconBtn(
-            key: _caretKey,
-            icon: Icons.expand_more,
-            tooltip: 'Show all tabs',
-            active: _listOpen,
-            onTap: _toggleList,
-          ),
+          _IconBtn(key: _caretKey, icon: Icons.expand_more, tooltip: 'Show all tabs', active: _listOpen, onTap: _toggleList),
         ],
       ),
     );
   }
 
   Widget _draggableTab(BrowserTab tab, bool first) {
+    final active = _ctrl.isActive(tab.id);
     final isOver = _overId == tab.id && _dragId != tab.id;
-    final chip = _tabChip(tab, compact: false, first: first, isOver: isOver);
     return DragTarget<int>(
       onWillAcceptWithDetails: (d) => d.data != tab.id,
       onMove: (_) {
@@ -480,7 +420,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
         if (_overId == tab.id) setState(() => _overId = null);
       },
       onAcceptWithDetails: (d) {
-        _reorder(d.data, tab.id);
+        _ctrl.reorder(d.data, tab.id);
         setState(() {
           _dragId = null;
           _overId = null;
@@ -501,29 +441,24 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
           _dragId = null;
           _overId = null;
         }),
-        feedback:
-            _StaticTab(tab: tab, active: tab.id == _active, feedback: true),
-        childWhenDragging: Opacity(
-            opacity: 0.4,
-            child: IgnorePointer(
-                child: _StaticTab(tab: tab, active: tab.id == _active))),
-        child: chip,
+        feedback: _StaticTab(tab: tab, active: active, feedback: true),
+        childWhenDragging: Opacity(opacity: 0.4, child: IgnorePointer(child: _StaticTab(tab: tab, active: active))),
+        child: _tabChip(tab, compact: false, first: first, isOver: isOver),
       ),
     );
   }
 
-  Widget _tabChip(BrowserTab tab,
-      {required bool compact, required bool first, bool isOver = false}) {
+  Widget _tabChip(BrowserTab tab, {required bool compact, required bool first, bool isOver = false}) {
     return _TabChip(
       key: ValueKey('tab-${tab.id}'),
       tab: tab,
-      active: tab.id == _active,
+      active: _ctrl.isActive(tab.id),
       compact: compact,
       first: first,
       isOver: isOver,
       onSelect: () {
         _hidePreview();
-        _select(tab.id);
+        _ctrl.select(tab.id);
       },
       onClose: () => _requestClose(tab.id),
       onContextMenu: (offset) => _openMenu(offset, tab.id),
@@ -560,16 +495,23 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
           ? Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
               child: Text('No open tabs — press + to start.',
-                  style: TextStyle(
-                      fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                      fontSize: 13,
-                      color: s.fg3)),
+                  style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, color: s.fg3)),
             )
-          : ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 440),
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: GLTabPage(tab: activeTab),
+          // RepaintBoundary lets us capture the REAL rendered page (with its
+          // live state/data) into the hover thumbnail. KeyedSubtree keeps each
+          // tab's page state distinct across switches.
+          : RepaintBoundary(
+              key: _boundaryKey,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 440),
+                child: SingleChildScrollView(
+                  key: PageStorageKey('tabpage-${activeTab.id}'),
+                  padding: const EdgeInsets.all(24),
+                  child: KeyedSubtree(
+                    key: ValueKey('tabpage-content-${activeTab.id}'),
+                    child: widget.pageBuilder?.call(context, activeTab) ?? GLTabPage(tab: activeTab),
+                  ),
+                ),
               ),
             ),
     );
@@ -634,8 +576,7 @@ class _TabChipState extends State<_TabChip> {
     _previewTimer = Timer(const Duration(milliseconds: 480), () {
       final box = context.findRenderObject() as RenderBox?;
       if (box != null && box.attached) {
-        final origin = box.localToGlobal(Offset.zero);
-        widget.onPreviewRequest(origin & box.size);
+        widget.onPreviewRequest(box.localToGlobal(Offset.zero) & box.size);
       }
     });
   }
@@ -688,12 +629,8 @@ class _TabChipState extends State<_TabChip> {
           curve: BrowserStyleTabBarThemeData.curveStandard,
           height: 36,
           width: widget.compact ? 40 : null,
-          constraints: widget.compact
-              ? null
-              : const BoxConstraints(minWidth: 120, maxWidth: 200),
-          padding: widget.compact
-              ? EdgeInsets.zero
-              : const EdgeInsetsDirectional.only(start: 12, end: 8),
+          constraints: widget.compact ? null : const BoxConstraints(minWidth: 120, maxWidth: 200),
+          padding: widget.compact ? EdgeInsets.zero : const EdgeInsetsDirectional.only(start: 12, end: 8),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(9)),
@@ -701,26 +638,15 @@ class _TabChipState extends State<_TabChip> {
           child: Stack(
             clipBehavior: Clip.none,
             children: [
-              // drop-insertion indicator
               if (widget.isOver)
                 PositionedDirectional(
                   start: -1,
                   top: 6,
                   bottom: 6,
-                  child: Container(
-                      width: 2,
-                      decoration: BoxDecoration(
-                          color: BrowserStyleTabBarThemeData.accent,
-                          borderRadius: BorderRadius.circular(2))),
+                  child: Container(width: 2, decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.accent, borderRadius: BorderRadius.circular(2))),
                 ),
-              // hairline separator before inactive (non-first) tabs
               if (!active && !widget.first && !widget.isOver)
-                PositionedDirectional(
-                  start: 0,
-                  top: 9,
-                  bottom: 9,
-                  child: Container(width: 1, color: s.border),
-                ),
+                PositionedDirectional(start: 0, top: 9, bottom: 9, child: Container(width: 1, color: s.border)),
               _content(s, tab, active, fg),
             ],
           ),
@@ -729,34 +655,23 @@ class _TabChipState extends State<_TabChip> {
     );
   }
 
-  Widget _content(
-      BrowserStyleTabBarThemeData s, BrowserTab tab, bool active, Color fg) {
+  Widget _content(BrowserStyleTabBarThemeData s, BrowserTab tab, bool active, Color fg) {
     if (widget.compact) {
       return Stack(
         children: [
-          Center(
-              child: Icon(glTabIcon(tab.kind),
-                  size: 14,
-                  color: active ? BrowserStyleTabBarThemeData.accent : s.fg3)),
+          Center(child: Icon(glTabIcon(tab.kind), size: 14, color: active ? BrowserStyleTabBarThemeData.accent : s.fg3)),
           if (tab.dirty)
             PositionedDirectional(
               top: 7,
               end: 7,
-              child: Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                      color: BrowserStyleTabBarThemeData.warning,
-                      shape: BoxShape.circle)),
+              child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle)),
             ),
         ],
       );
     }
     return Row(
       children: [
-        Icon(glTabIcon(tab.kind),
-            size: 14,
-            color: active ? BrowserStyleTabBarThemeData.accent : s.fg3),
+        Icon(glTabIcon(tab.kind), size: 14, color: active ? BrowserStyleTabBarThemeData.accent : s.fg3),
         const SizedBox(width: 8),
         Expanded(
           child: Tooltip(
@@ -787,8 +702,7 @@ class _TabChipState extends State<_TabChip> {
         width: 8,
         height: 8,
         margin: const EdgeInsetsDirectional.only(end: 4),
-        decoration: const BoxDecoration(
-            color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle),
+        decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle),
       );
     }
     final visible = _hover || active;
@@ -813,8 +727,7 @@ class _TabChipState extends State<_TabChip> {
               color: _closeHover ? s.inputBg : Colors.transparent,
               borderRadius: BorderRadius.circular(5),
             ),
-            child:
-                Icon(Icons.close, size: 12, color: _closeHover ? s.fg1 : s.fg3),
+            child: Icon(Icons.close, size: 12, color: _closeHover ? s.fg1 : s.fg3),
           ),
         ),
       ),
@@ -827,8 +740,7 @@ class _StaticTab extends StatelessWidget {
   final BrowserTab tab;
   final bool active;
   final bool feedback;
-  const _StaticTab(
-      {required this.tab, required this.active, this.feedback = false});
+  const _StaticTab({required this.tab, required this.active, this.feedback = false});
   @override
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
@@ -843,9 +755,7 @@ class _StaticTab extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(glTabIcon(tab.kind),
-              size: 14,
-              color: active ? BrowserStyleTabBarThemeData.accent : s.fg3),
+          Icon(glTabIcon(tab.kind), size: 14, color: active ? BrowserStyleTabBarThemeData.accent : s.fg3),
           const SizedBox(width: 8),
           Flexible(
             child: Text(tab.title,
@@ -861,8 +771,7 @@ class _StaticTab extends StatelessWidget {
       ),
     );
     if (!feedback) return chip;
-    return Material(
-        color: Colors.transparent, child: Opacity(opacity: 0.9, child: chip));
+    return Material(color: Colors.transparent, child: Opacity(opacity: 0.9, child: chip));
   }
 }
 
@@ -873,13 +782,7 @@ class _IconBtn extends StatefulWidget {
   final bool active;
   final double size;
   final VoidCallback onTap;
-  const _IconBtn(
-      {super.key,
-      required this.icon,
-      required this.tooltip,
-      this.active = false,
-      this.size = 32,
-      required this.onTap});
+  const _IconBtn({super.key, required this.icon, required this.tooltip, this.active = false, this.size = 32, required this.onTap});
   @override
   State<_IconBtn> createState() => _IconBtnState();
 }

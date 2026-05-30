@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 // ============================================================
 // BrowserStyleTabBar — gallery / documentation screen.
 // Flutter mirror of design_system/components-browsertabs.html:
@@ -26,7 +24,7 @@ class BrowserTabsDemo extends StatelessWidget {
         const _Section(
           title: 'Workspace Tabs',
           desc:
-              'Modern browser-style tab strip: the rounded active tab merges with the surface below; inactive tabs are muted with hairline separators. Pinned tabs (icon-only) anchor on the start edge; right-click any tab for close / duplicate / pin actions; drag to reorder; overflow chevrons appear when tabs run off the edge. The ▾ button lists every open tab; closing an unsaved tab prompts before discarding. Resting the pointer on any tab (≈0.5s) raises a mini-page preview — an actual scaled-down render of that page. Add (+), close (×), unsaved dot, truncation, and ←/→/Home/End keyboard nav. Dark/light + RTL.',
+              'Modern browser-style tab strip: the rounded active tab merges with the surface below; inactive tabs are muted with hairline separators. Pinned tabs (icon-only) anchor on the start edge; right-click any tab for close / duplicate / pin actions; drag to reorder; overflow chevrons appear when tabs run off the edge. The ▾ button lists every open tab; closing an unsaved tab prompts before discarding. Resting the pointer on any tab (≈0.5s) raises a mini-page preview — the page’s REAL captured frame, with its current state and data. Add (+), close (×), unsaved dot, truncation, and ←/→/Home/End keyboard nav. Dark/light + RTL.',
           child: BrowserStyleTabBar(),
         ),
         _Section(
@@ -37,21 +35,10 @@ class BrowserTabsDemo extends StatelessWidget {
             textDirection: TextDirection.rtl,
             child: BrowserStyleTabBar(
               tabsState: [
-                BrowserTab(
-                    id: 11,
-                    title: 'دليل الحسابات',
-                    kind: GLTabKind.ledger,
-                    pinned: true),
-                BrowserTab(
-                    id: 12,
-                    title: 'قيد افتتاحي — JV-2024-0042',
-                    kind: GLTabKind.doc,
-                    dirty: true),
+                BrowserTab(id: 11, title: 'دليل الحسابات', kind: GLTabKind.ledger, pinned: true),
+                BrowserTab(id: 12, title: 'قيد افتتاحي — JV-2024-0042', kind: GLTabKind.doc, dirty: true),
                 BrowserTab(id: 13, title: 'لوحة التحكم', kind: GLTabKind.chart),
-                BrowserTab(
-                    id: 14,
-                    title: 'ميزان المراجعة — الربع الثالث',
-                    kind: GLTabKind.ledger),
+                BrowserTab(id: 14, title: 'ميزان المراجعة — الربع الثالث', kind: GLTabKind.ledger),
               ],
             ),
           ),
@@ -72,12 +59,7 @@ class _Shell extends StatelessWidget {
   final List<Widget> children;
   final bool light;
   final ValueChanged<bool>? onToggleTheme;
-  const _Shell(
-      {required this.title,
-      required this.subtitle,
-      required this.children,
-      required this.light,
-      this.onToggleTheme});
+  const _Shell({required this.title, required this.subtitle, required this.children, required this.light, this.onToggleTheme});
   @override
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
@@ -99,28 +81,12 @@ class _Shell extends StatelessWidget {
                         children: [
                           const Text('GENIUSLINK DESIGN SYSTEM',
                               style: TextStyle(
-                                  fontFamily:
-                                      BrowserStyleTabBarThemeData.bodyFont,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.65,
-                                  color: BrowserStyleTabBarThemeData.accent)),
+                                  fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.65, color: BrowserStyleTabBarThemeData.accent)),
                           const SizedBox(height: 10),
                           Text(title,
-                              style: TextStyle(
-                                  fontFamily:
-                                      BrowserStyleTabBarThemeData.displayFont,
-                                  fontSize: 30,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.7,
-                                  color: s.fg1)),
+                              style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.7, color: s.fg1)),
                           const SizedBox(height: 6),
-                          Text(subtitle,
-                              style: TextStyle(
-                                  fontFamily:
-                                      BrowserStyleTabBarThemeData.bodyFont,
-                                  fontSize: 14,
-                                  color: s.fg3)),
+                          Text(subtitle, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, color: s.fg3)),
                         ],
                       ),
                     ),
@@ -156,20 +122,14 @@ class _ThemeToggle extends StatelessWidget {
           decoration: BoxDecoration(
             color: s.surface,
             border: Border.all(color: s.borderStrong),
-            borderRadius:
-                BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
+            borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
           ),
           child: Row(
             children: [
-              Icon(light ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                  size: 15, color: s.fg2),
+              Icon(light ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 15, color: s.fg2),
               const SizedBox(width: 8),
               Text(light ? 'Light' : 'Dark',
-                  style: TextStyle(
-                      fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: s.fg1)),
+                  style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
             ],
           ),
         ),
@@ -182,8 +142,7 @@ class _ThemeToggle extends StatelessWidget {
 class _Section extends StatelessWidget {
   final String title, desc;
   final Widget child;
-  const _Section(
-      {required this.title, required this.desc, required this.child});
+  const _Section({required this.title, required this.desc, required this.child});
   @override
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
@@ -191,25 +150,11 @@ class _Section extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Container(
-              width: 4,
-              height: 22,
-              color: BrowserStyleTabBarThemeData.accent,
-              margin: const EdgeInsets.only(right: 12)),
-          Text(title,
-              style: TextStyle(
-                  fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: s.fg1)),
+          Container(width: 4, height: 22, color: BrowserStyleTabBarThemeData.accent, margin: const EdgeInsets.only(right: 12)),
+          Text(title, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 16, fontWeight: FontWeight.w700, color: s.fg1)),
         ]),
         const SizedBox(height: 8),
-        Text(desc,
-            style: TextStyle(
-                fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                fontSize: 13,
-                height: 1.55,
-                color: s.fg3)),
+        Text(desc, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, height: 1.55, color: s.fg3)),
         const SizedBox(height: 18),
         child,
       ],
@@ -230,19 +175,13 @@ class _Spec extends StatelessWidget {
       decoration: BoxDecoration(
         color: s.surface,
         border: Border.all(color: s.border),
-        borderRadius:
-            BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
+        borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label.toUpperCase(),
-              style: const TextStyle(
-                  fontFamily: BrowserStyleTabBarThemeData.monoFont,
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
-                  color: BrowserStyleTabBarThemeData.accent)),
+              style: const TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: BrowserStyleTabBarThemeData.accent)),
           const SizedBox(height: 12),
           child,
         ],
@@ -258,23 +197,11 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
-    final c = {
-          'info': BrowserStyleTabBarThemeData.accent,
-          'warning': BrowserStyleTabBarThemeData.warning,
-          'success': BrowserStyleTabBarThemeData.success,
-          'neutral': s.fg3
-        }[tone] ??
-        s.fg3;
+    final c = {'info': BrowserStyleTabBarThemeData.accent, 'warning': BrowserStyleTabBarThemeData.warning, 'success': BrowserStyleTabBarThemeData.success, 'neutral': s.fg3}[tone] ?? s.fg3;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-          color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(999)),
-      child: Text(text,
-          style: TextStyle(
-              fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: c)),
+      decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(999)),
+      child: Text(text, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, color: c)),
     );
   }
 }
@@ -290,16 +217,8 @@ Widget _bullets(BuildContext context, List<String> items, {Color? color}) {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('•  ',
-                  style: TextStyle(
-                      fontSize: 13, color: color ?? s.fg3, height: 1.55)),
-              Expanded(
-                  child: Text(i,
-                      style: TextStyle(
-                          fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                          fontSize: 13,
-                          height: 1.55,
-                          color: color ?? s.fg2))),
+              Text('•  ', style: TextStyle(fontSize: 13, color: color ?? s.fg3, height: 1.55)),
+              Expanded(child: Text(i, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, height: 1.55, color: color ?? s.fg2))),
             ],
           ),
         ),
@@ -314,18 +233,16 @@ class _DocsGrid extends StatelessWidget {
     return LayoutBuilder(builder: (context, c) {
       final cols = (c.maxWidth / 300).floor().clamp(1, 3);
       final cards = <Widget>[
-        _Spec(
-            label: 'Anatomy',
-            child: _bullets(context, const [
-              'Strip container (sits on --gl-bg)',
-              'Pinned region · icon-only · anchored',
-              'Scrolling tab region + overflow chevrons',
-              'Tab = leading icon · label · dirty dot / close ×',
-              'New-tab (+) · tab-list (▾) buttons',
-              'Content surface that merges with the active tab',
-              'Right-click context menu',
-              'Dirty-close confirmation dialog',
-            ])),
+        _Spec(label: 'Anatomy', child: _bullets(context, const [
+          'Strip container (sits on --gl-bg)',
+          'Pinned region · icon-only · anchored',
+          'Scrolling tab region + overflow chevrons',
+          'Tab = leading icon · label · dirty dot / close ×',
+          'New-tab (+) · tab-list (▾) buttons',
+          'Content surface that merges with the active tab',
+          'Right-click context menu',
+          'Dirty-close confirmation dialog',
+        ])),
         const _Spec(
           label: 'States',
           child: Wrap(spacing: 8, runSpacing: 8, children: [
@@ -340,85 +257,66 @@ class _DocsGrid extends StatelessWidget {
             _Pill('Preview', tone: 'info'),
           ]),
         ),
-        _Spec(
-            label: 'Mini-page preview',
-            child: _bullets(context, const [
-              'Hover-intent: appears after the pointer rests ~480ms',
-              'Anchored popover with a caret to the tab; flips above when low',
-              'Header = icon · title · type · pinned / dirty marks',
-              'Thumbnail is a real, scaled-down render of the live page',
-              'Non-interactive · dismisses on move-away, click, drag',
-            ])),
-        _Spec(
-            label: 'Context menu',
-            child: _bullets(context, const [
-              'Close tab',
-              'Close other tabs',
-              'Close tabs to the right',
-              'Duplicate tab',
-              'Pin / Unpin tab',
-            ])),
-        _Spec(
-            label: 'Overflow & jump',
-            child: _bullets(context, const [
-              '‹ › chevrons fade in only when the strip overflows',
-              '▾ tab-list dropdown lists every open tab',
-              'Active row highlighted · pinned / dirty marked',
-              'Pick jumps to the tab · Esc / outside-click closes',
-            ])),
-        _Spec(
-            label: 'Unsaved guard',
-            child: _bullets(context, const [
-              'Closing a dirty tab opens a confirm dialog',
-              'Discard & close — danger, drops edits',
-              'Save & close — clears dirty, then closes',
-              'Cancel / Esc / backdrop — keep the tab',
-            ])),
-        _Spec(
-            label: 'Keyboard',
-            child: _bullets(context, const [
-              '← / → — previous / next tab',
-              'Home / End — first / last tab',
-              'Right-click / long-press — context menu · Esc closes it',
-            ])),
+        _Spec(label: 'Live mini-page preview', child: _bullets(context, const [
+          'Hover-intent: appears after the pointer rests ~480ms',
+          'Thumbnail is the page’s REAL captured frame (RepaintBoundary)',
+          'Reflects its live state, data & scroll — not a stub',
+          'Active tab is recaptured on hover; others show last frame',
+          'Caret points to the tab; flips above when low; non-interactive',
+        ])),
+        _Spec(label: 'Context menu', child: _bullets(context, const [
+          'Close tab',
+          'Close other tabs',
+          'Close tabs to the right',
+          'Duplicate tab',
+          'Pin / Unpin tab',
+        ])),
+        _Spec(label: 'Overflow & jump', child: _bullets(context, const [
+          '‹ › chevrons fade in only when the strip overflows',
+          '▾ tab-list dropdown lists every open tab',
+          'Active row highlighted · pinned / dirty marked',
+          'Pick jumps to the tab · Esc / outside-click closes',
+        ])),
+        _Spec(label: 'Unsaved guard', child: _bullets(context, const [
+          'Closing a dirty tab opens a confirm dialog',
+          'Discard & close — danger, drops edits',
+          'Save & close — clears dirty, then closes',
+          'Cancel / Esc / backdrop — keep the tab',
+        ])),
+        _Spec(label: 'Keyboard', child: _bullets(context, const [
+          '← / → — previous / next tab',
+          'Home / End — first / last tab',
+          'Right-click / long-press — context menu · Esc closes it',
+        ])),
         Builder(builder: (context) {
           final s = BrowserStyleTabBarThemeData.of(context);
           return _Spec(
             label: 'Props',
             child: Text(
               'tabsState?: List<BrowserTab>\n'
+              'controller?: BrowserStyleTab\n'
+              '  BarController  (ChangeNotifier)\n'
+              'pageBuilder?: (ctx, tab) => W\n'
               'BrowserTab(id, title, kind,\n'
-              '  dirty?, pinned?)\n'
-              'kind ∈ ledger · doc · store ·\n'
-              '  chart · user · globe',
-              style: TextStyle(
-                  fontFamily: BrowserStyleTabBarThemeData.monoFont,
-                  fontSize: 12.5,
-                  height: 1.7,
-                  color: s.fg2),
+              '  dirty?, pinned?)',
+              style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 12.5, height: 1.7, color: s.fg2),
             ),
           );
         }),
+        _Spec(label: 'Controller', child: _bullets(context, const [
+          'State is a BrowserStyleTabBarController (ChangeNotifier)',
+          'Pages reach it: BrowserStyleTabBarController.of(context)',
+          'of(...) may return null (reused outside a tab bar)',
+          'select · add · close · duplicate · pin · reorder · setDirty',
+        ])),
         _Spec(
           label: "Do & Don't",
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _bullets(
-                  context,
-                  const [
-                    '✓ Pin long-lived references (chart of accounts).',
-                    '✓ Warn on closing a dirty tab.'
-                  ],
-                  color: BrowserStyleTabBarThemeData.success),
+              _bullets(context, const ['✓ Pin long-lived references (chart of accounts).', '✓ Warn on closing a dirty tab.'], color: BrowserStyleTabBarThemeData.success),
               const SizedBox(height: 8),
-              _bullets(
-                  context,
-                  const [
-                    '✗ More than ~3 pinned tabs.',
-                    '✗ Hiding the active tab off-screen on open.'
-                  ],
-                  color: BrowserStyleTabBarThemeData.danger),
+              _bullets(context, const ['✗ More than ~3 pinned tabs.', '✗ Hiding the active tab off-screen on open.'], color: BrowserStyleTabBarThemeData.danger),
             ],
           ),
         ),

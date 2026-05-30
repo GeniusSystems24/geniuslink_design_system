@@ -1,4 +1,24 @@
-# 1.0.1
+# Changelog
+
+## 1.1.0
+
+> 2026-05-30
+
+- Added `BrowserStyleTabBarController` as the public `ChangeNotifier` state
+  API for externally controlled tab selection, creation, closing, pinning,
+  reordering, dirty flags, renaming, and arbitrary tab mutations.
+- Added `pageBuilder` support so hosts can render custom per-tab content in the
+  active surface and hover previews while keeping the built-in `GLTabPage`
+  fallback.
+- Added live page thumbnail support backed by captured page frames, so hover
+  previews can reflect current page state instead of static placeholder content.
+- Expanded the example app into a launcher with ERP, Figma-style editor,
+  Chrome-style browser, and documentation demos that all host the same tab
+  component.
+- Updated the public barrel exports and README documentation for the controller,
+  custom page builders, live thumbnails, feature parity, and implementation map.
+
+## 1.0.1
 
 > 2026-05-30
 
@@ -10,7 +30,7 @@
   public API.
 - Removed direct references to source web files from the public README.
 
-# 1.0.0
+## 1.0.0
 
 > 2026-05-30
 
