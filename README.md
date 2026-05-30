@@ -3,10 +3,9 @@
 A Flutter design-system package for browser-style workspace tabs, themed
 previews, contextual menus, dirty-state guards, and RTL-ready navigation.
 
-This package currently publishes to no public registry (`publish_to: none`).
-It is prepared in the same layout and documentation style expected by
-pub.dev packages so it can be reviewed, documented, and promoted later with
-minimal churn.
+It is prepared in the same layout and documentation style expected by pub.dev
+packages, including package metadata, example documentation, changelog, license,
+and public API comments.
 
 ## Features
 
@@ -176,16 +175,12 @@ complete browser-tab interaction model on desktop and web.
 
 ## Publishing Checklist
 
-Before publishing this package publicly, decide and apply the final publication
-metadata:
+Before publishing this package publicly, verify the final release metadata:
 
-- Replace `publish_to: none` when the package is ready for pub.dev.
-- Add a real `repository`, `homepage`, or `issue_tracker` URL to `pubspec.yaml`.
 - Replace the private `LICENSE` file if the package should be distributed under
   an open-source license.
 - Run `flutter analyze` and `dart pub publish --dry-run` from the package root.
 
 ## License
 
-This checkout is private by default. See `LICENSE` for the current redistribution
-terms.
+See `LICENSE` for the current redistribution terms.

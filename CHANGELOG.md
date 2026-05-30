@@ -1,8 +1,8 @@
-# 0.1.0
+# 1.0.0
 
 > 2026-05-30
 
-- Initial private release of the GeniusLink browser-style tab strip package.
+- Initial release of the GeniusLink browser-style tab strip package.
 - Added `BrowserStyleTabBar` with pinned tabs, dirty-state guards, context
   menus, tab-list dropdowns, hover previews, drag-to-reorder, keyboard
   navigation, light and dark themes, and RTL support.
