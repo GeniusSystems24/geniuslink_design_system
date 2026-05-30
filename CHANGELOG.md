@@ -5,6 +5,10 @@
 - Updated README snapshot links to use absolute GitHub raw URLs so they render
   on pub.dev.
 - Added pub.dev `screenshots` metadata for the package gallery.
+- Expanded README documentation for the example launcher, controller-driven
+  state, custom page builders, live page thumbnails, implementation map, and
+  public API.
+- Removed direct references to source web files from the public README.
 
 # 1.0.0
 

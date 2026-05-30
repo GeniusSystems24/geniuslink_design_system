@@ -3,6 +3,10 @@
 A Flutter design-system package for browser-style workspace tabs, themed
 previews, contextual menus, dirty-state guards, and RTL-ready navigation.
 
+It is a Flutter implementation of the GeniusLink browser-style workspace tab
+experience, preserving the same visual structure, interaction model, and GL
+design tokens.
+
 It is prepared in the same layout and documentation style expected by pub.dev
 packages, including package metadata, example documentation, changelog, license,
 and public API comments.
@@ -20,6 +24,9 @@ and public API comments.
   page.
 - Drag-to-reorder, keyboard navigation, dark and light themes, and RTL layout.
 - Self-contained theme tokens through `BrowserStyleTabBarThemeData`.
+- Optional `BrowserStyleTabBarController` for externally driven tab state.
+- Optional `pageBuilder` for custom per-tab pages in both the active content
+  surface and hover previews.
 
 ## Feature Snapshots
 
@@ -117,6 +124,25 @@ ThemeData(
 Use `BrowserStyleTabBarThemeData.light` for light mode, or switch between both
 with `ThemeMode`.
 
+## Example Launcher
+
+The package is a library, so it has no `lib/main.dart`. Run the example app:
+
+```bash
+cd example
+flutter pub get
+flutter run -d chrome
+```
+
+The example opens a launcher with four demos that host the same component:
+
+| Demo | Shell | Content |
+|------|-------|---------|
+| ERP System | Light SaaS shell with module sidebar and app bar | Built-in accounting pages, pinned reference tab, unsaved journal tab, close guard, and dark/light toggle |
+| Figma-Style Editor | Dark design-tool shell with tools rail, layers, and inspector | Custom canvas pages. The "Add frame" action mutates page state and marks the tab dirty, so its live thumbnail updates |
+| Chrome-Style Browser | Browser-like shell with omnibox toolbar | Custom document pages where in-page links open new tabs through the controller |
+| Documentation | Component documentation shell | Anatomy, states, props, and LTR/RTL specimens from `example/lib/browser_tabs_demo.dart` |
+
 ## Usage
 
 Create a tab strip with the built-in sample state:
@@ -151,6 +177,33 @@ BrowserStyleTabBar(
 );
 ```
 
+Use an external controller when the host app needs to own tab state:
+
+```dart
+final controller = BrowserStyleTabBarController(
+  tabs: [
+    BrowserTab(
+      id: 1,
+      title: 'Chart of Accounts',
+      kind: GLTabKind.ledger,
+      pinned: true,
+    ),
+    BrowserTab(
+      id: 2,
+      title: 'Opening Journal Entry',
+      kind: GLTabKind.doc,
+      dirty: true,
+    ),
+  ],
+  activeId: 2,
+);
+
+BrowserStyleTabBar(
+  controller: controller,
+  pageBuilder: (context, tab) => MyWorkspacePage(tab: tab),
+);
+```
+
 Render a content page for a single tab when you need the same demo surface
 outside the tab strip:
 
@@ -163,6 +216,43 @@ GLTabPage(
   ),
 );
 ```
+
+## State Controller
+
+`BrowserStyleTabBarController` is a `ChangeNotifier` that stores the open tabs,
+active tab, pin and dirty flags, ordering, and live page snapshots.
+
+Pass a controller to drive the strip from outside, or omit it and
+`BrowserStyleTabBar` creates a private controller seeded from `tabsState`.
+Descendant pages can access the hosting controller:
+
+```dart
+final tabs = BrowserStyleTabBarController.of(context);
+
+tabs?.add(title: 'New report', kind: GLTabKind.chart);
+tabs?.setDirty(myTabId, true);
+tabs?.select(otherTabId);
+```
+
+`BrowserStyleTabBarController.of(context)` returns `null` when the widget is not
+hosted inside a `BrowserStyleTabBar`, so custom pages can still be rendered
+stand-alone. Use `BrowserStyleTabBarController.read(context)` in callbacks when
+you do not need to subscribe to controller changes.
+
+Controller operations include `select`, `add`, `close`, `closeOthers`,
+`closeToRight`, `duplicate`, `togglePin`, `setPinned`, `reorder`, `setDirty`,
+`rename`, and `mutate`.
+
+## Live Page Thumbnails
+
+Hover previews are live page thumbnails, not static placeholders. The component
+captures the active page through a `RepaintBoundary` and stores the rendered
+frame in the controller. The active tab is recaptured on hover, while inactive
+tabs show their last captured frame. If a tab has not been rendered yet, the
+preview falls back to building the page at thumbnail scale.
+
+This model keeps previews accurate for custom pages, including controller-driven
+state changes, dirty-page mutations, and pages that open additional tabs.
 
 ## Theming
 
@@ -187,19 +277,28 @@ If your app does not register those fonts, Flutter falls back to the platform
 font. The example keeps the font declarations commented in `pubspec.yaml` so
 you can add the `.ttf` files when available.
 
-## Example
+## Implementation Map
 
-Run the included example app:
+| Source or concept | Flutter implementation |
+|-------------------|------------------------|
+| Browser-style tab component | `lib/design_system/components/navigation/browser_style_tab_bar.dart` |
+| State controller | `lib/design_system/components/navigation/browser_style_tab_bar_controller.dart` |
+| Context menu, tab list, dirty dialog, and preview overlays | `lib/design_system/components/navigation/tab_overlays.dart` |
+| Tab content pages | `lib/design_system/components/navigation/tab_pages.dart` |
+| Tab model and icon maps | `lib/design_system/components/navigation/tab_models.dart` |
+| GL color, type, radius, shadow, and motion tokens | `lib/design_system/components/navigation/browser_style_tab_bar_theme.dart` |
+| Documentation gallery | `example/lib/browser_tabs_demo.dart` |
 
-```bash
-cd example
-flutter pub get
-flutter run -d chrome
-```
+## Feature Parity
 
-The example opens a product-like workspace shell with a left navigation rail,
-window chrome, the browser tab strip, a dark and light toggle, an RTL specimen,
-and a documentation gallery.
+The Flutter component covers active, inactive, hover, pressed, and focused
+states; closable tabs; add and select actions; pinned icon-only tabs; overflow
+scrolling with animated chevrons; right-click and long-press context menus;
+unsaved indicators; dirty-close confirmation; tab-list dropdowns; live
+mini-page previews; long-title truncation and tooltips; drag-to-reorder;
+keyboard navigation with Left, Right, Home, End, and Escape; external
+`ChangeNotifier` state; custom `pageBuilder` content; dark and light themes;
+and RTL mirroring through `Directionality` and directional padding.
 
 ## Public API
 
@@ -212,17 +311,20 @@ import 'package:geniuslink_design_system/geniuslink_design_system.dart';
 It exports:
 
 - `BrowserStyleTabBar`
+- `BrowserStyleTabBarController`
+- `BrowserStyleTabBarScope`
 - `BrowserStyleTabBarThemeData`
 - `BrowserTab`
 - `GLTabKind`
 - `GLTabPage`
+- `TabPageBuilder`
 - `glTabIcon`
 - `glPreviewMeta`
 - `kNewTabCycle`
 
-The tab strip owns its internal tab list and active-tab state after creation.
-To lift state into an application controller, keep the public model shape and
-move the operations from the widget state into your own controller layer.
+When no controller is supplied, the tab strip owns its internal tab list and
+active-tab state after creation. To lift state into an application controller,
+create and pass a `BrowserStyleTabBarController`.
 
 ## Accessibility and Interaction
 
