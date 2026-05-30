@@ -1,87 +1,191 @@
-# GeniusLink — BrowserStyleTabBar (Flutter)
+# GeniusLink Design System
 
-A 1:1 Flutter port of the design-system component `BrowserTabs.jsx` and its
-gallery `components-browsertabs.html`. Same design, theme, logic and
-interactions — driven by the same GL* tokens.
+A Flutter design-system package for browser-style workspace tabs, themed
+previews, contextual menus, dirty-state guards, and RTL-ready navigation.
 
-## Run
+This package currently publishes to no public registry (`publish_to: none`).
+It is prepared in the same layout and documentation style expected by
+pub.dev packages so it can be reviewed, documented, and promoted later with
+minimal churn.
 
-The package is a library (no `lib/main.dart`). Run the example app:
+## Features
 
-```bash
-cd flutter/example
-flutter pub get
-flutter run -d chrome        # or any device/emulator
+- Browser-style tab strip with active, inactive, hover, pressed, and focused
+  states.
+- Pinned tabs, closable tabs, dirty-state indicators, and guarded dirty-close
+  confirmation.
+- Right-click and long-press context menu with close, close others, close to
+  the right, duplicate, and pin or unpin actions.
+- Overflow chevrons plus a tab-list dropdown for jumping to any open tab.
+- Hover-intent mini-page previews that render a scaled version of the real tab
+  page.
+- Drag-to-reorder, keyboard navigation, dark and light themes, and RTL layout.
+- Self-contained theme tokens through `BrowserStyleTabBarThemeData`.
+
+## Getting Started
+
+Add the package to a Flutter app. For the current local checkout, use a path
+dependency:
+
+```yaml
+dependencies:
+  geniuslink_design_system:
+    path: ../flutter
 ```
 
-It opens on a realistic product shell — a left navigation rail + window chrome
-hosting the tab strip — with a dark/light toggle and a button to open the
-documentation gallery (`example/lib/browser_tabs_demo.dart`). Everything imports
-the package through the single barrel:
-`package:geniuslink_design_system/geniuslink_design_system.dart`.
-
-Top-right toggle switches dark/light. The second specimen is forced RTL.
-(Optional: drop the brand fonts into `assets/fonts/` and uncomment the
-`fonts:` block in `pubspec.yaml` — see comments there. Without them the
-component falls back to the platform UI font; metrics/layout are unaffected.)
-
-## What maps to what
-
-| Source (web)                     | Flutter |
-|----------------------------------|---------|
-| `BrowserTabs.jsx` → component    | `lib/design_system/components/navigation/browser_style_tab_bar.dart` |
-| `BrowserTabs.jsx` → overlays     | `lib/design_system/components/navigation/tab_overlays.dart` |
-| `TabPages.jsx`                   | `lib/design_system/components/navigation/tab_pages.dart` |
-| tab data / icon set              | `lib/design_system/components/navigation/tab_models.dart` |
-| `tokens.css` / `colors_and_type.css` / theme aliases | `lib/design_system/components/navigation/browser_style_tab_bar_theme.dart` |
-| `components-browsertabs.html`    | `example/lib/browser_tabs_demo.dart` |
-
-The component is **self-contained**: everything it paints with lives in one
-`BrowserStyleTabBarThemeData extends ThemeExtension`. Its instance fields are
-the surfaces that swap between dark & light (`bg / surface / hover / border /
-fg1..fg4` — mirroring the CSS aliases `--gl-bg / --gl-surface / …`, lerped on
-theme change); its static consts are the theme-independent brand constants
-(`accent` + semantic palette, font families, radii, shadows, motion).
-
-Register it on your app theme and read it anywhere:
+Then import the public barrel:
 
 ```dart
-ThemeData(extensions: [BrowserStyleTabBarThemeData.dark]); // or .light
-
-final s = BrowserStyleTabBarThemeData.of(context); // falls back to .dark
+import 'package:geniuslink_design_system/geniuslink_design_system.dart';
 ```
 
-There are no remaining dependencies on a global design-system token/theme file.
+Register the theme extension on your app theme:
 
-## Feature parity
+```dart
+ThemeData(
+  useMaterial3: true,
+  extensions: const [
+    BrowserStyleTabBarThemeData.dark,
+  ],
+);
+```
 
-Active / inactive / hover / pressed · closable (×) · add (+) · select ·
-overflow scroll **+ animated chevrons** · **pinned** tabs (icon-only, anchored,
-corner dirty-dot) · **right-click / long-press context menu** (close · close
-others · close to the right · duplicate · pin·unpin, with disabled states) ·
-**unsaved (dirty) indicator** · **dirty-close confirm dialog** (Discard / Save /
-Cancel · Esc · backdrop) · **tab-list dropdown** (▾ — jump to any open tab) ·
-**hover-intent mini-page preview** (~480 ms, a real scaled-down render of the
-page, caret + flip-above) · long-title **truncation + tooltip** ·
-**drag-to-reorder** with drop indicator · **keyboard** ←/→/Home/End + Esc ·
-dark/light · **RTL** (everything mirrors via `Directionality` +
-`EdgeInsetsDirectional`).
+Use `BrowserStyleTabBarThemeData.light` for light mode, or switch between both
+with `ThemeMode`.
 
 ## Usage
 
-```dart
-// self-contained demo state (matches the JSX default set):
-const BrowserStyleTabBar();
+Create a tab strip with the built-in sample state:
 
-// or seed your own:
-BrowserStyleTabBar(tabsState: [
-  BrowserTab(id: 1, title: 'Chart of Accounts', kind: GLTabKind.ledger, pinned: true),
-  BrowserTab(id: 2, title: 'Opening Journal Entry', kind: GLTabKind.doc, dirty: true),
-  BrowserTab(id: 3, title: 'Dashboard', kind: GLTabKind.chart),
-]);
+```dart
+const BrowserStyleTabBar();
 ```
 
-`BrowserStyleTabBar` is self-contained (owns its tab list / active id, like the
-JSX). To lift state out, move the ops in `_BrowserStyleTabBarState` up and pass
-`tabs` + callbacks down — the chip/overlay widgets are already stateless on
-that axis.
+Seed it with your own tabs:
+
+```dart
+BrowserStyleTabBar(
+  tabsState: [
+    BrowserTab(
+      id: 1,
+      title: 'Chart of Accounts',
+      kind: GLTabKind.ledger,
+      pinned: true,
+    ),
+    BrowserTab(
+      id: 2,
+      title: 'Opening Journal Entry',
+      kind: GLTabKind.doc,
+      dirty: true,
+    ),
+    BrowserTab(
+      id: 3,
+      title: 'Dashboard',
+      kind: GLTabKind.chart,
+    ),
+  ],
+);
+```
+
+Render a content page for a single tab when you need the same demo surface
+outside the tab strip:
+
+```dart
+GLTabPage(
+  tab: BrowserTab(
+    id: 4,
+    title: 'Downtown Central Store',
+    kind: GLTabKind.store,
+  ),
+);
+```
+
+## Theming
+
+`BrowserStyleTabBarThemeData` is a `ThemeExtension` that contains the colors,
+font family names, radii, elevation shadows, and motion tokens used by the tab
+strip and its overlays.
+
+```dart
+final tabsTheme = BrowserStyleTabBarThemeData.of(context);
+```
+
+If no extension is registered, `BrowserStyleTabBarThemeData.of(context)` falls
+back to the dark preset so the widget can still paint.
+
+The package references these optional font families:
+
+- `Manrope` for display text.
+- `Inter` for body text.
+- `JetBrainsMono` for tab metadata and numeric text.
+
+If your app does not register those fonts, Flutter falls back to the platform
+font. The example keeps the font declarations commented in `pubspec.yaml` so
+you can add the `.ttf` files when available.
+
+## Example
+
+Run the included example app:
+
+```bash
+cd example
+flutter pub get
+flutter run -d chrome
+```
+
+The example opens a product-like workspace shell with a left navigation rail,
+window chrome, the browser tab strip, a dark and light toggle, an RTL specimen,
+and a documentation gallery.
+
+## Public API
+
+The primary import is:
+
+```dart
+import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+```
+
+It exports:
+
+- `BrowserStyleTabBar`
+- `BrowserStyleTabBarThemeData`
+- `BrowserTab`
+- `GLTabKind`
+- `GLTabPage`
+- `glTabIcon`
+- `glPreviewMeta`
+- `kNewTabCycle`
+
+The tab strip owns its internal tab list and active-tab state after creation.
+To lift state into an application controller, keep the public model shape and
+move the operations from the widget state into your own controller layer.
+
+## Accessibility and Interaction
+
+- Mouse: hover, close, context menu, drag-to-reorder, and preview-on-hover.
+- Touch: tap, long-press context menu, and scrollable overflow.
+- Keyboard: Left, Right, Home, End, and Escape for overlay dismissal.
+- Directionality: all tab edges, paddings, menus, and dropdown placement honor
+  `Directionality`.
+
+## Platform Support
+
+The package uses Flutter framework widgets only and has no native plugin code.
+It is suitable for Android, iOS, Linux, macOS, web, and Windows, with the most
+complete browser-tab interaction model on desktop and web.
+
+## Publishing Checklist
+
+Before publishing this package publicly, decide and apply the final publication
+metadata:
+
+- Replace `publish_to: none` when the package is ready for pub.dev.
+- Add a real `repository`, `homepage`, or `issue_tracker` URL to `pubspec.yaml`.
+- Replace the private `LICENSE` file if the package should be distributed under
+  an open-source license.
+- Run `flutter analyze` and `dart pub publish --dry-run` from the package root.
+
+## License
+
+This checkout is private by default. See `LICENSE` for the current redistribution
+terms.

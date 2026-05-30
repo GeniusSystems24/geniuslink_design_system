@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 // ============================================================
 // GeniusLink — BrowserStyleTabBar example app.
 // A realistic embed: a workspace shell (nav rail + window chrome) hosting
@@ -18,7 +20,9 @@ void main() => runApp(const ExampleApp());
 /// Builds an app ThemeData that registers the component's ThemeExtension.
 /// That single extension carries everything BrowserStyleTabBar paints with.
 ThemeData _appTheme(Brightness b) {
-  final ext = b == Brightness.dark ? BrowserStyleTabBarThemeData.dark : BrowserStyleTabBarThemeData.light;
+  final ext = b == Brightness.dark
+      ? BrowserStyleTabBarThemeData.dark
+      : BrowserStyleTabBarThemeData.light;
   return ThemeData(
     brightness: b,
     useMaterial3: true,
@@ -49,7 +53,8 @@ class _ExampleAppState extends State<ExampleApp> {
       supportedLocales: const [Locale('en'), Locale('ar')],
       home: _screen == 1
           // The documentation gallery (moved into this example).
-          ? BrowserTabsDemo(light: _light, onToggleTheme: (v) => setState(() => _light = v))
+          ? BrowserTabsDemo(
+              light: _light, onToggleTheme: (v) => setState(() => _light = v))
           // A realistic product shell embedding the component.
           : WorkspaceScreen(
               light: _light,
@@ -67,7 +72,11 @@ class WorkspaceScreen extends StatefulWidget {
   final bool light;
   final ValueChanged<bool> onToggleTheme;
   final VoidCallback onOpenGallery;
-  const WorkspaceScreen({super.key, required this.light, required this.onToggleTheme, required this.onOpenGallery});
+  const WorkspaceScreen(
+      {super.key,
+      required this.light,
+      required this.onToggleTheme,
+      required this.onOpenGallery});
   @override
   State<WorkspaceScreen> createState() => _WorkspaceScreenState();
 }
@@ -101,7 +110,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       children: [
                         Text('Workspace',
                             style: TextStyle(
-                                fontFamily: BrowserStyleTabBarThemeData.displayFont,
+                                fontFamily:
+                                    BrowserStyleTabBarThemeData.displayFont,
                                 fontSize: 24,
                                 fontWeight: FontWeight.w800,
                                 letterSpacing: -0.6,
@@ -109,7 +119,8 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                         const SizedBox(width: 12),
                         const _Pill('GeniusLink Co.'),
                         const Spacer(),
-                        const _AvatarChip(name: 'Mohammed Nasser', role: 'Accountant'),
+                        const _AvatarChip(
+                            name: 'Mohammed Nasser', role: 'Accountant'),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -166,15 +177,30 @@ class _NavRail extends StatelessWidget {
             width: 38,
             height: 38,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.accent, borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd)),
+            decoration: BoxDecoration(
+                color: BrowserStyleTabBarThemeData.accent,
+                borderRadius: BorderRadius.circular(
+                    BrowserStyleTabBarThemeData.radiusMd)),
             child: const Text('G',
-                style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+                style: TextStyle(
+                    fontFamily: BrowserStyleTabBarThemeData.displayFont,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white)),
           ),
           const SizedBox(height: 22),
           for (int i = 0; i < _items.length; i++)
-            _RailItem(icon: _items[i].$1, label: _items[i].$2, selected: i == selected, onTap: () => onSelect(i)),
+            _RailItem(
+                icon: _items[i].$1,
+                label: _items[i].$2,
+                selected: i == selected,
+                onTap: () => onSelect(i)),
           const Spacer(),
-          _RailItem(icon: Icons.widgets_outlined, label: 'Gallery', selected: false, onTap: onOpenGallery),
+          _RailItem(
+              icon: Icons.widgets_outlined,
+              label: 'Gallery',
+              selected: false,
+              onTap: onOpenGallery),
           _RailItem(
             icon: light ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
             label: light ? 'Dark' : 'Light',
@@ -193,7 +219,11 @@ class _RailItem extends StatefulWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _RailItem({required this.icon, required this.label, required this.selected, required this.onTap});
+  const _RailItem(
+      {required this.icon,
+      required this.label,
+      required this.selected,
+      required this.onTap});
   @override
   State<_RailItem> createState() => _RailItemState();
 }
@@ -204,7 +234,8 @@ class _RailItemState extends State<_RailItem> {
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
     final on = widget.selected;
-    final color = on ? BrowserStyleTabBarThemeData.accent : (_hover ? s.fg1 : s.fg3);
+    final color =
+        on ? BrowserStyleTabBarThemeData.accent : (_hover ? s.fg1 : s.fg3);
     return Tooltip(
       message: widget.label,
       waitDuration: const Duration(milliseconds: 400),
@@ -219,8 +250,11 @@ class _RailItemState extends State<_RailItem> {
             height: 44,
             margin: const EdgeInsets.symmetric(vertical: 4),
             decoration: BoxDecoration(
-              color: on ? BrowserStyleTabBarThemeData.accent.withOpacity(0.12) : (_hover ? s.hover : Colors.transparent),
-              borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
+              color: on
+                  ? BrowserStyleTabBarThemeData.accent.withOpacity(0.12)
+                  : (_hover ? s.hover : Colors.transparent),
+              borderRadius:
+                  BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
             ),
             child: Icon(widget.icon, size: 21, color: color),
           ),
@@ -241,7 +275,8 @@ class _Window extends StatelessWidget {
       decoration: BoxDecoration(
         color: s.bg,
         border: Border.all(color: s.border),
-        borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusXl),
+        borderRadius:
+            BorderRadius.circular(BrowserStyleTabBarThemeData.radiusXl),
         boxShadow: BrowserStyleTabBarThemeData.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
@@ -252,7 +287,8 @@ class _Window extends StatelessWidget {
           Container(
             height: 40,
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: s.border))),
+            decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: s.border))),
             child: Row(
               children: [
                 _dot(const Color(0xFFEF4444)),
@@ -265,9 +301,15 @@ class _Window extends StatelessWidget {
                   child: Container(
                     height: 24,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: s.surface, borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusSm)),
+                    decoration: BoxDecoration(
+                        color: s.surface,
+                        borderRadius: BorderRadius.circular(
+                            BrowserStyleTabBarThemeData.radiusSm)),
                     child: Text('app.geniuslink.co / workspace',
-                        style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11.5, color: s.fg3)),
+                        style: TextStyle(
+                            fontFamily: BrowserStyleTabBarThemeData.monoFont,
+                            fontSize: 11.5,
+                            color: s.fg3)),
                   ),
                 ),
                 const SizedBox(width: 60),
@@ -286,7 +328,10 @@ class _Window extends StatelessWidget {
     );
   }
 
-  Widget _dot(Color c) => Container(width: 11, height: 11, decoration: BoxDecoration(color: c, shape: BoxShape.circle));
+  Widget _dot(Color c) => Container(
+      width: 11,
+      height: 11,
+      decoration: BoxDecoration(color: c, shape: BoxShape.circle));
 }
 
 // ── small shared bits ──
@@ -297,10 +342,15 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.accent.withOpacity(0.14), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+          color: BrowserStyleTabBarThemeData.accent.withOpacity(0.14),
+          borderRadius: BorderRadius.circular(999)),
       child: Text(text,
           style: const TextStyle(
-              fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: BrowserStyleTabBarThemeData.accent)),
+              fontFamily: BrowserStyleTabBarThemeData.bodyFont,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: BrowserStyleTabBarThemeData.accent)),
     );
   }
 }
@@ -311,14 +361,28 @@ class _AvatarChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
-    final initials = name.split(' ').where((w) => w.isNotEmpty).take(2).map((w) => w[0]).join();
+    final initials = name
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .take(2)
+        .map((w) => w[0])
+        .join();
     return Row(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(name, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
-            Text(role, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11.5, color: s.fg3)),
+            Text(name,
+                style: TextStyle(
+                    fontFamily: BrowserStyleTabBarThemeData.bodyFont,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: s.fg1)),
+            Text(role,
+                style: TextStyle(
+                    fontFamily: BrowserStyleTabBarThemeData.bodyFont,
+                    fontSize: 11.5,
+                    color: s.fg3)),
           ],
         ),
         const SizedBox(width: 10),
@@ -326,9 +390,15 @@ class _AvatarChip extends StatelessWidget {
           width: 36,
           height: 36,
           alignment: Alignment.center,
-          decoration: BoxDecoration(color: HSLColor.fromAHSL(1, 250, 0.42, 0.40).toColor(), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+              color: const HSLColor.fromAHSL(1, 250, 0.42, 0.40).toColor(),
+              shape: BoxShape.circle),
           child: Text(initials,
-              style: const TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+              style: const TextStyle(
+                  fontFamily: BrowserStyleTabBarThemeData.displayFont,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white)),
         ),
       ],
     );

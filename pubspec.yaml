@@ -1,11 +1,27 @@
 name: geniuslink_design_system
-description: GeniusLink Design System — BrowserStyleTabBar (Flutter port of BrowserTabs.jsx).
+description: A Flutter design-system package for GeniusLink browser-style workspace tabs, previews, menus, and RTL-ready navigation.
 publish_to: "none"
-version: 1.0.0
+version: 0.1.0
+repository: https://github.com/GeniusSystems24/geniuslink_design_system
+issue_tracker: https://github.com/GeniusSystems24/geniuslink_design_system/issues
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.10.0"
+
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
+topics:
+  - design-system
+  - flutter-widget
+  - navigation
+  - tabs
 
 dependencies:
   flutter:
@@ -16,11 +32,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  # ── Fonts ──
   # Drop the .ttf files under flutter/assets/fonts/ to match the design
   # system exactly. Until then the families fall back to the platform UI
-  # font (the layout/metrics still hold). Families used:
-  #   Manrope (display) · Inter (body) · JetBrainsMono (mono) · NotoNaskhArabic
+  # font and the layout still holds. Families used:
+  #   Manrope (display), Inter (body), JetBrainsMono (mono), NotoNaskhArabic.
   #
   # fonts:
   #   - family: Manrope

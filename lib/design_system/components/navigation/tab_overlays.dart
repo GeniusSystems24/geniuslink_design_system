@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 // ============================================================
 // BrowserStyleTabBar — overlays.
 // Context menu · tab-list dropdown · dirty-close confirm dialog ·
@@ -23,16 +25,40 @@ BoxDecoration _popDecoration(BrowserStyleTabBarThemeData s) => BoxDecoration(
 // ════════════════════════════════════════════════════════════
 // CONTEXT MENU
 // ════════════════════════════════════════════════════════════
+/// Item descriptor used by [TabContextMenu].
 class TabMenuItem {
+  /// Leading icon shown before [label].
   final IconData? icon;
+
+  /// Text label shown in the menu row.
   final String? label;
+
+  /// Optional trailing hint such as a shortcut label.
   final String? hint;
+
+  /// Whether the menu row should use the danger color.
   final bool danger;
+
+  /// Whether the menu row is visible but cannot be activated.
   final bool disabled;
+
+  /// Whether this item is a divider rather than an action row.
   final bool divider;
+
+  /// Callback executed when the menu item is selected.
   final VoidCallback? run;
-  const TabMenuItem({this.icon, this.label, this.hint, this.danger = false, this.disabled = false, this.run})
+
+  /// Creates an actionable context-menu row.
+  const TabMenuItem(
+      {this.icon,
+      this.label,
+      this.hint,
+      this.danger = false,
+      this.disabled = false,
+      this.run})
       : divider = false;
+
+  /// Creates a visual divider between context-menu groups.
   const TabMenuItem.divider()
       : icon = null,
         label = null,
@@ -46,10 +72,21 @@ class TabMenuItem {
 /// Right-click menu, opened at the cursor [at] (global). Clamps inside the
 /// screen, dismisses on outside tap / Esc (handled by the host overlay).
 class TabContextMenu extends StatelessWidget {
+  /// Global cursor position where the menu should open.
   final Offset at;
+
+  /// Menu rows to render.
   final List<TabMenuItem> items;
+
+  /// Called after an item is selected or the host dismisses the menu.
   final VoidCallback onClose;
-  const TabContextMenu({super.key, required this.at, required this.items, required this.onClose});
+
+  /// Creates a tab context menu.
+  const TabContextMenu(
+      {super.key,
+      required this.at,
+      required this.items,
+      required this.onClose});
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +111,11 @@ class TabContextMenu extends StatelessWidget {
               children: [
                 for (final it in items)
                   if (it.divider)
-                    Container(height: 1, margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4), color: s.border)
+                    Container(
+                        height: 1,
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 4),
+                        color: s.border)
                   else
                     _MenuRow(item: it, onClose: onClose),
               ],
@@ -102,7 +143,8 @@ class _MenuRowState extends State<_MenuRow> {
     final it = widget.item;
     final color = it.danger ? BrowserStyleTabBarThemeData.danger : s.fg1;
     return MouseRegion(
-      cursor: it.disabled ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
+      cursor:
+          it.disabled ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
       onExit: (_) => setState(() => _hover = false),
       child: GestureDetector(
@@ -127,10 +169,17 @@ class _MenuRowState extends State<_MenuRow> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(it.label ?? '',
-                      style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, color: color)),
+                      style: TextStyle(
+                          fontFamily: BrowserStyleTabBarThemeData.bodyFont,
+                          fontSize: 13,
+                          color: color)),
                 ),
                 if (it.hint != null)
-                  Text(it.hint!, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11, color: s.fg3)),
+                  Text(it.hint!,
+                      style: TextStyle(
+                          fontFamily: BrowserStyleTabBarThemeData.monoFont,
+                          fontSize: 11,
+                          color: s.fg3)),
               ],
             ),
           ),
@@ -143,12 +192,24 @@ class _MenuRowState extends State<_MenuRow> {
 // ════════════════════════════════════════════════════════════
 // TAB-LIST DROPDOWN  (jump to any open tab)
 // ════════════════════════════════════════════════════════════
+/// Dropdown that lists all open tabs and lets users jump to one.
 class TabListDropdown extends StatelessWidget {
-  final Rect anchor; // global rect of the ▾ trigger button
+  /// Global rectangle of the trigger button.
+  final Rect anchor;
+
+  /// Tabs shown in the dropdown.
   final List<BrowserTab> tabs;
+
+  /// Identifier of the currently active tab.
   final int activeId;
+
+  /// Called when the user chooses a tab.
   final ValueChanged<int> onPick;
+
+  /// Called after the dropdown should close.
   final VoidCallback onClose;
+
+  /// Creates a dropdown that lists all open tabs.
   const TabListDropdown({
     super.key,
     required this.anchor,
@@ -164,7 +225,8 @@ class TabListDropdown extends StatelessWidget {
     final screen = MediaQuery.of(context).size;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     const w = 280.0;
-    final left = (rtl ? anchor.left : anchor.right - w).clamp(8.0, screen.width - w - 8);
+    final left =
+        (rtl ? anchor.left : anchor.right - w).clamp(8.0, screen.width - w - 8);
     final top = (anchor.bottom + 6).clamp(8.0, screen.height - 8);
     final maxH = (screen.height - top - 16).clamp(160.0, screen.height);
     return Positioned(
@@ -186,13 +248,24 @@ class TabListDropdown extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(10, 4, 10, 6),
                   child: Text('OPEN TABS · ${tabs.length}',
                       style: TextStyle(
-                          fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: s.fg3)),
+                          fontFamily: BrowserStyleTabBarThemeData.monoFont,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.8,
+                          color: s.fg3)),
                 ),
                 Flexible(
                   child: SingleChildScrollView(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: [for (final t in tabs) _ListRow(tab: t, active: t.id == activeId, onPick: onPick, onClose: onClose)],
+                      children: [
+                        for (final t in tabs)
+                          _ListRow(
+                              tab: t,
+                              active: t.id == activeId,
+                              onPick: onPick,
+                              onClose: onClose)
+                      ],
                     ),
                   ),
                 ),
@@ -210,7 +283,11 @@ class _ListRow extends StatefulWidget {
   final bool active;
   final ValueChanged<int> onPick;
   final VoidCallback onClose;
-  const _ListRow({required this.tab, required this.active, required this.onPick, required this.onClose});
+  const _ListRow(
+      {required this.tab,
+      required this.active,
+      required this.onPick,
+      required this.onClose});
   @override
   State<_ListRow> createState() => _ListRowState();
 }
@@ -221,7 +298,8 @@ class _ListRowState extends State<_ListRow> {
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
     final t = widget.tab;
-    final bg = widget.active ? s.inputBg : (_hover ? s.hover : Colors.transparent);
+    final bg =
+        widget.active ? s.inputBg : (_hover ? s.hover : Colors.transparent);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -234,10 +312,15 @@ class _ListRowState extends State<_ListRow> {
         child: Container(
           constraints: const BoxConstraints(minHeight: 34),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
+          decoration:
+              BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
           child: Row(
             children: [
-              Icon(glTabIcon(t.kind), size: 15, color: widget.active ? BrowserStyleTabBarThemeData.accent : s.fg3),
+              Icon(glTabIcon(t.kind),
+                  size: 15,
+                  color: widget.active
+                      ? BrowserStyleTabBarThemeData.accent
+                      : s.fg3),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(t.title,
@@ -246,7 +329,8 @@ class _ListRowState extends State<_ListRow> {
                     style: TextStyle(
                         fontFamily: BrowserStyleTabBarThemeData.bodyFont,
                         fontSize: 13,
-                        fontWeight: widget.active ? FontWeight.w600 : FontWeight.w500,
+                        fontWeight:
+                            widget.active ? FontWeight.w600 : FontWeight.w500,
                         color: widget.active ? s.fg1 : s.fg2)),
               ),
               if (t.pinned) ...[
@@ -255,7 +339,12 @@ class _ListRowState extends State<_ListRow> {
               ],
               if (t.dirty) ...[
                 const SizedBox(width: 8),
-                Container(width: 7, height: 7, decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle)),
+                Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                        color: BrowserStyleTabBarThemeData.warning,
+                        shape: BoxShape.circle)),
               ],
             ],
           ),
@@ -268,9 +357,15 @@ class _ListRowState extends State<_ListRow> {
 // ════════════════════════════════════════════════════════════
 // MINI-PAGE PREVIEW  (hover-intent popover)
 // ════════════════════════════════════════════════════════════
+/// Hover-intent preview that renders a scaled version of a tab page.
 class MiniPagePreview extends StatefulWidget {
+  /// Tab whose page is rendered into the preview.
   final BrowserTab tab;
-  final Rect anchor; // global rect of the hovered tab
+
+  /// Global rectangle of the hovered tab.
+  final Rect anchor;
+
+  /// Creates a non-interactive mini page preview for [tab].
   const MiniPagePreview({super.key, required this.tab, required this.anchor});
   @override
   State<MiniPagePreview> createState() => _MiniPagePreviewState();
@@ -334,39 +429,69 @@ class _MiniPagePreviewState extends State<MiniPagePreview> {
                         children: [
                           // header
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-                            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: s.border))),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 11, vertical: 9),
+                            decoration: BoxDecoration(
+                                border: Border(
+                                    bottom: BorderSide(color: s.border))),
                             child: Row(
                               children: [
-                                Icon(glTabIcon(tab.kind), size: 15, color: BrowserStyleTabBarThemeData.accent),
+                                Icon(glTabIcon(tab.kind),
+                                    size: 15,
+                                    color: BrowserStyleTabBarThemeData.accent),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(tab.title,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
-                                              fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: s.fg1)),
+                                              fontFamily:
+                                                  BrowserStyleTabBarThemeData
+                                                      .bodyFont,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: s.fg1)),
                                       const SizedBox(height: 1),
                                       Text(glPreviewMeta(tab.kind),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, color: s.fg3)),
+                                          style: TextStyle(
+                                              fontFamily:
+                                                  BrowserStyleTabBarThemeData
+                                                      .monoFont,
+                                              fontSize: 10.5,
+                                              color: s.fg3)),
                                     ],
                                   ),
                                 ),
-                                if (tab.pinned) ...[const SizedBox(width: 6), Icon(Icons.push_pin, size: 12, color: s.fg3)],
+                                if (tab.pinned) ...[
+                                  const SizedBox(width: 6),
+                                  Icon(Icons.push_pin, size: 12, color: s.fg3)
+                                ],
                                 if (tab.dirty) ...[
                                   const SizedBox(width: 6),
-                                  Container(width: 7, height: 7, decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle)),
+                                  Container(
+                                      width: 7,
+                                      height: 7,
+                                      decoration: const BoxDecoration(
+                                          color: BrowserStyleTabBarThemeData
+                                              .warning,
+                                          shape: BoxShape.circle)),
                                 ],
                               ],
                             ),
                           ),
                           // live miniature — a real, scaled-down render of the page
-                          _Thumbnail(tab: tab, rtl: rtl, width: _w, height: _thumbH, surface: s.surface),
+                          _Thumbnail(
+                              tab: tab,
+                              rtl: rtl,
+                              width: _w,
+                              height: _thumbH,
+                              surface: s.surface),
                         ],
                       ),
                     ),
@@ -384,10 +509,18 @@ class _MiniPagePreviewState extends State<MiniPagePreview> {
                         decoration: BoxDecoration(
                           color: s.surface,
                           border: Border(
-                            top: above ? BorderSide.none : BorderSide(color: s.borderStrong),
-                            left: above ? BorderSide.none : BorderSide(color: s.borderStrong),
-                            right: above ? BorderSide(color: s.borderStrong) : BorderSide.none,
-                            bottom: above ? BorderSide(color: s.borderStrong) : BorderSide.none,
+                            top: above
+                                ? BorderSide.none
+                                : BorderSide(color: s.borderStrong),
+                            left: above
+                                ? BorderSide.none
+                                : BorderSide(color: s.borderStrong),
+                            right: above
+                                ? BorderSide(color: s.borderStrong)
+                                : BorderSide.none,
+                            bottom: above
+                                ? BorderSide(color: s.borderStrong)
+                                : BorderSide.none,
                           ),
                         ),
                       ),
@@ -408,7 +541,12 @@ class _Thumbnail extends StatelessWidget {
   final bool rtl;
   final double width, height;
   final Color surface;
-  const _Thumbnail({required this.tab, required this.rtl, required this.width, required this.height, required this.surface});
+  const _Thumbnail(
+      {required this.tab,
+      required this.rtl,
+      required this.width,
+      required this.height,
+      required this.surface});
 
   @override
   Widget build(BuildContext context) {
@@ -475,7 +613,8 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
     pageBuilder: (ctx, a1, a2) => const SizedBox.shrink(),
     transitionBuilder: (ctx, anim, _, __) {
       final s = BrowserStyleTabBarThemeData.of(ctx);
-      final curved = CurvedAnimation(parent: anim, curve: BrowserStyleTabBarThemeData.curveEmphasized);
+      final curved = CurvedAnimation(
+          parent: anim, curve: BrowserStyleTabBarThemeData.curveEmphasized);
       return FadeTransition(
         opacity: curved,
         child: Transform.scale(
@@ -491,7 +630,8 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
                   decoration: BoxDecoration(
                     color: s.surface,
                     border: Border.all(color: s.borderStrong),
-                    borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusXl),
+                    borderRadius: BorderRadius.circular(
+                        BrowserStyleTabBarThemeData.radiusXl),
                     boxShadow: BrowserStyleTabBarThemeData.popShadow,
                   ),
                   child: Column(
@@ -505,8 +645,13 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
                             width: 36,
                             height: 36,
                             alignment: Alignment.center,
-                            decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.warning.withOpacity(0.14), shape: BoxShape.circle),
-                            child: const Icon(Icons.warning_amber_rounded, size: 18, color: BrowserStyleTabBarThemeData.warning),
+                            decoration: BoxDecoration(
+                                color: BrowserStyleTabBarThemeData.warning
+                                    .withOpacity(0.14),
+                                shape: BoxShape.circle),
+                            child: const Icon(Icons.warning_amber_rounded,
+                                size: 18,
+                                color: BrowserStyleTabBarThemeData.warning),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -515,10 +660,20 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
                               children: [
                                 Text('Discard unsaved changes?',
                                     style: TextStyle(
-                                        fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 16, fontWeight: FontWeight.w700, color: s.fg1)),
+                                        fontFamily: BrowserStyleTabBarThemeData
+                                            .displayFont,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: s.fg1)),
                                 const SizedBox(height: 6),
-                                Text('“${tab.title}” has edits that haven’t been saved. Closing it now will lose them.',
-                                    style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, height: 1.5, color: s.fg3)),
+                                Text(
+                                    '“${tab.title}” has edits that haven’t been saved. Closing it now will lose them.',
+                                    style: TextStyle(
+                                        fontFamily: BrowserStyleTabBarThemeData
+                                            .bodyFont,
+                                        fontSize: 13,
+                                        height: 1.5,
+                                        color: s.fg3)),
                               ],
                             ),
                           ),
@@ -530,9 +685,17 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          _DialogBtn(label: 'Cancel', onTap: () => Navigator.of(ctx).pop()),
-                          _DialogBtn(label: 'Save & close', icon: Icons.save_outlined, onTap: () => Navigator.of(ctx).pop('save')),
-                          _DialogBtn(label: 'Discard & close', danger: true, onTap: () => Navigator.of(ctx).pop('discard')),
+                          _DialogBtn(
+                              label: 'Cancel',
+                              onTap: () => Navigator.of(ctx).pop()),
+                          _DialogBtn(
+                              label: 'Save & close',
+                              icon: Icons.save_outlined,
+                              onTap: () => Navigator.of(ctx).pop('save')),
+                          _DialogBtn(
+                              label: 'Discard & close',
+                              danger: true,
+                              onTap: () => Navigator.of(ctx).pop('discard')),
                         ],
                       ),
                     ],
@@ -552,7 +715,11 @@ class _DialogBtn extends StatelessWidget {
   final IconData? icon;
   final bool danger;
   final VoidCallback onTap;
-  const _DialogBtn({required this.label, this.icon, this.danger = false, required this.onTap});
+  const _DialogBtn(
+      {required this.label,
+      this.icon,
+      this.danger = false,
+      required this.onTap});
   @override
   Widget build(BuildContext context) {
     final s = BrowserStyleTabBarThemeData.of(context);
@@ -565,14 +732,21 @@ class _DialogBtn extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: danger ? BrowserStyleTabBarThemeData.danger : Colors.transparent,
-            border: Border.all(color: danger ? Colors.transparent : s.borderStrong),
-            borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
+            color: danger
+                ? BrowserStyleTabBarThemeData.danger
+                : Colors.transparent,
+            border:
+                Border.all(color: danger ? Colors.transparent : s.borderStrong),
+            borderRadius:
+                BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[Icon(icon, size: 14, color: s.fg1), const SizedBox(width: 6)],
+              if (icon != null) ...[
+                Icon(icon, size: 14, color: s.fg1),
+                const SizedBox(width: 6)
+              ],
               Text(label,
                   style: TextStyle(
                       fontFamily: BrowserStyleTabBarThemeData.bodyFont,
