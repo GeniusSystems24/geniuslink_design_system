@@ -7,24 +7,23 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../../tokens/tokens.dart';
-import '../../tokens/gl_surfaces.dart';
+import 'browser_style_tab_bar_theme.dart';
 import 'tab_models.dart';
 
-const _blue = GLColors.blue500;
+const _blue = BrowserStyleTabBarThemeData.accent;
 
 // ── tone → color (status pills / amounts) ──
 Color _tone(BuildContext c, String tone) {
-  final s = GLSurfaces.of(c);
+  final s = BrowserStyleTabBarThemeData.of(c);
   switch (tone) {
     case 'success':
-      return GLColors.success;
+      return BrowserStyleTabBarThemeData.success;
     case 'warning':
-      return GLColors.warning;
+      return BrowserStyleTabBarThemeData.warning;
     case 'info':
       return _blue;
     case 'danger':
-      return GLColors.danger;
+      return BrowserStyleTabBarThemeData.danger;
     default:
       return s.fg3;
   }
@@ -46,7 +45,7 @@ class _Pill extends StatelessWidget {
       ),
       child: Text(text,
           style: TextStyle(
-              fontFamily: GLFonts.body,
+              fontFamily: BrowserStyleTabBarThemeData.bodyFont,
               fontSize: 11,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.44,
@@ -61,19 +60,19 @@ class _Btn extends StatelessWidget {
   const _Btn(this.label, {this.primary = false});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: primary ? _blue : Colors.transparent,
-        borderRadius: BorderRadius.circular(GLRadius.md),
+        borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
         border: Border.all(color: primary ? Colors.transparent : s.borderStrong),
       ),
       child: Text(label,
           style: TextStyle(
-              fontFamily: GLFonts.body,
+              fontFamily: BrowserStyleTabBarThemeData.bodyFont,
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: primary ? Colors.white : s.fg1)),
@@ -100,7 +99,7 @@ class _Avatar extends StatelessWidget {
       ),
       child: Text(initials,
           style: TextStyle(
-              fontFamily: GLFonts.display,
+              fontFamily: BrowserStyleTabBarThemeData.displayFont,
               fontSize: size * 0.38,
               fontWeight: FontWeight.w700,
               color: Colors.white)),
@@ -118,13 +117,13 @@ class _Card extends StatelessWidget {
   const _Card({required this.child, this.pad = 0});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Container(
       padding: EdgeInsets.all(pad),
       decoration: BoxDecoration(
         color: s.bg,
         border: Border.all(color: s.border),
-        borderRadius: BorderRadius.circular(GLRadius.lg),
+        borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
       ),
       child: child,
     );
@@ -138,7 +137,7 @@ class _Header extends StatelessWidget {
   const _Header({required this.crumb, required this.title, this.desc, this.actions = const []});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -147,11 +146,11 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(crumb,
-                  style: TextStyle(fontFamily: GLFonts.mono, fontSize: 11, letterSpacing: 0.44, color: s.fg3)),
+                  style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11, letterSpacing: 0.44, color: s.fg3)),
               const SizedBox(height: 7),
               Text(title,
                   style: TextStyle(
-                      fontFamily: GLFonts.display,
+                      fontFamily: BrowserStyleTabBarThemeData.displayFont,
                       fontSize: 26,
                       fontWeight: FontWeight.w700,
                       height: 1.15,
@@ -161,7 +160,7 @@ class _Header extends StatelessWidget {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 560),
                   child: Text(desc!,
-                      style: TextStyle(fontFamily: GLFonts.body, fontSize: 13.5, height: 1.5, color: s.fg3)),
+                      style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13.5, height: 1.5, color: s.fg3)),
                 ),
               ],
             ],
@@ -183,7 +182,7 @@ class _Stat extends StatelessWidget {
   const _Stat({required this.label, required this.value, this.delta, this.up = true});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Expanded(
       child: _Card(
         pad: 16,
@@ -193,18 +192,18 @@ class _Stat extends StatelessWidget {
             Text(label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontFamily: GLFonts.body, fontSize: 11.5, fontWeight: FontWeight.w600, color: s.fg3)),
+                style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11.5, fontWeight: FontWeight.w600, color: s.fg3)),
             const SizedBox(height: 8),
             Text(value,
-                style: TextStyle(fontFamily: GLFonts.display, fontSize: 23, fontWeight: FontWeight.w700, color: s.fg1)),
+                style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 23, fontWeight: FontWeight.w700, color: s.fg1)),
             if (delta != null) ...[
               const SizedBox(height: 6),
               Text('${up ? '▲' : '▼'} $delta',
                   style: TextStyle(
-                      fontFamily: GLFonts.body,
+                      fontFamily: BrowserStyleTabBarThemeData.bodyFont,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: up ? GLColors.success : GLColors.danger)),
+                      color: up ? BrowserStyleTabBarThemeData.success : BrowserStyleTabBarThemeData.danger)),
             ],
           ],
         ),
@@ -246,7 +245,7 @@ class _Table extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return _Card(
       child: Column(
         children: [
@@ -260,7 +259,7 @@ class _Table extends StatelessWidget {
                         c,
                         Text(c.label.toUpperCase(),
                             style: TextStyle(
-                                fontFamily: GLFonts.mono,
+                                fontFamily: BrowserStyleTabBarThemeData.monoFont,
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 0.6,
@@ -289,7 +288,7 @@ class _Table extends StatelessWidget {
   }
 
   Widget _buildCell(BuildContext context, _Cell cell) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     if (cell.node != null) return cell.node!;
     if (cell.pill) return _Pill(cell.v ?? '', tone: cell.tone ?? 'neutral');
     final color = cell.tone != null ? _tone(context, cell.tone!) : (cell.strong ? s.fg1 : s.fg2);
@@ -297,7 +296,7 @@ class _Table extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
-            fontFamily: cell.mono ? GLFonts.mono : GLFonts.body,
+            fontFamily: cell.mono ? BrowserStyleTabBarThemeData.monoFont : BrowserStyleTabBarThemeData.bodyFont,
             fontSize: 13,
             fontWeight: cell.strong ? FontWeight.w600 : FontWeight.w500,
             color: color));
@@ -312,7 +311,7 @@ class _PageLedger extends StatelessWidget {
   const _PageLedger(this.tab);
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final rows = [
       ['1000', 'Cash on Hand', 'Asset', '24,500.00'],
       ['1010', 'Bank — NCB Current', 'Asset', '318,920.45'],
@@ -339,9 +338,9 @@ class _PageLedger extends StatelessWidget {
         decoration: BoxDecoration(
           color: grow ? s.inputBg : Colors.transparent,
           border: Border.all(color: s.borderStrong),
-          borderRadius: BorderRadius.circular(GLRadius.md),
+          borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
         ),
-        child: Text(t, style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, color: grow ? s.fg3 : s.fg2)),
+        child: Text(t, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, color: grow ? s.fg3 : s.fg2)),
       );
       return grow ? Expanded(child: chip) : chip;
     }
@@ -392,7 +391,7 @@ class _PageDoc extends StatelessWidget {
   const _PageDoc(this.tab);
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final lines = [
       ['1000', 'Cash on Hand', '120,000.00', ''],
       ['1010', 'Bank — NCB Current', '280,000.00', ''],
@@ -409,11 +408,11 @@ class _PageDoc extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(label.toUpperCase(),
-                style: TextStyle(fontFamily: GLFonts.mono, fontSize: 10.5, letterSpacing: 0.5, color: s.fg3)),
+                style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, letterSpacing: 0.5, color: s.fg3)),
             const SizedBox(height: 4),
             Text(value,
                 style: TextStyle(
-                    fontFamily: GLFonts.mono, fontSize: 16, fontWeight: FontWeight.w700, color: color ?? s.fg1)),
+                    fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 16, fontWeight: FontWeight.w700, color: color ?? s.fg1)),
           ],
         );
     return Column(
@@ -436,11 +435,11 @@ class _PageDoc extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(meta[i][0].toUpperCase(),
-                          style: TextStyle(fontFamily: GLFonts.mono, fontSize: 10.5, letterSpacing: 0.5, color: s.fg3)),
+                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, letterSpacing: 0.5, color: s.fg3)),
                       const SizedBox(height: 6),
                       Text(meta[i][1],
                           style: TextStyle(
-                              fontFamily: GLFonts.body, fontSize: 14, fontWeight: FontWeight.w600, color: s.fg1)),
+                              fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, fontWeight: FontWeight.w600, color: s.fg1)),
                     ],
                   ),
                 ),
@@ -474,7 +473,7 @@ class _PageDoc extends StatelessWidget {
             const SizedBox(width: 40),
             total('Total credit', 'SAR 556,200.00'),
             const SizedBox(width: 40),
-            total('Difference', 'SAR 0.00', color: GLColors.success),
+            total('Difference', 'SAR 0.00', color: BrowserStyleTabBarThemeData.success),
           ],
         ),
       ],
@@ -487,7 +486,7 @@ class _PageStore extends StatelessWidget {
   const _PageStore(this.tab);
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final details = [
       ['Address', 'King Fahd Rd, Al Olaya, Riyadh'],
       ['Manager', 'Sara Al-Otaibi'],
@@ -508,7 +507,7 @@ class _PageStore extends StatelessWidget {
           height: 96,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(GLRadius.lg),
+            borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -524,10 +523,10 @@ class _PageStore extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('BRANCH · RYD-01',
-                        style: TextStyle(fontFamily: GLFonts.mono, fontSize: 11, letterSpacing: 0.5, color: Colors.white.withOpacity(0.7))),
+                        style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11, letterSpacing: 0.5, color: Colors.white.withOpacity(0.7))),
                     const SizedBox(height: 4),
                     Text(tab.title,
-                        style: const TextStyle(fontFamily: GLFonts.display, fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
+                        style: const TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 24, fontWeight: FontWeight.w700, color: Colors.white)),
                   ],
                 ),
               ),
@@ -556,7 +555,7 @@ class _PageStore extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Store details',
-                          style: TextStyle(fontFamily: GLFonts.body, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
+                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
                       const SizedBox(height: 12),
                       for (int i = 0; i < details.length; i++)
                         Container(
@@ -565,13 +564,13 @@ class _PageStore extends StatelessWidget {
                               border: i < details.length - 1 ? Border(bottom: BorderSide(color: s.border)) : null),
                           child: Row(
                             children: [
-                              Text(details[i][0], style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, color: s.fg3)),
+                              Text(details[i][0], style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, color: s.fg3)),
                               const Spacer(),
                               Flexible(
                                 child: Text(details[i][1],
                                     textAlign: TextAlign.right,
                                     style: TextStyle(
-                                        fontFamily: GLFonts.body, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
+                                        fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
                               ),
                             ],
                           ),
@@ -589,7 +588,7 @@ class _PageStore extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('On shift',
-                          style: TextStyle(fontFamily: GLFonts.body, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
+                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
                       const SizedBox(height: 12),
                       for (final p in shift)
                         Padding(
@@ -603,8 +602,8 @@ class _PageStore extends StatelessWidget {
                                 children: [
                                   Text(p[0],
                                       style: TextStyle(
-                                          fontFamily: GLFonts.body, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
-                                  Text(p[1], style: TextStyle(fontFamily: GLFonts.body, fontSize: 11.5, color: s.fg3)),
+                                          fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
+                                  Text(p[1], style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11.5, color: s.fg3)),
                                 ],
                               ),
                             ],
@@ -627,7 +626,7 @@ class _PageDashboard extends StatelessWidget {
   const _PageDashboard(this.tab);
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final bars = [['Jan', 58], ['Feb', 72], ['Mar', 49], ['Apr', 81], ['May', 66], ['Jun', 94], ['Jul', 77]];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -658,7 +657,7 @@ class _PageDashboard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('Monthly revenue',
-                      style: TextStyle(fontFamily: GLFonts.body, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
+                      style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
                   const _Pill('▲ 8.4% YoY', tone: 'success'),
                 ],
               ),
@@ -687,7 +686,7 @@ class _PageDashboard extends StatelessWidget {
                             ),
                             const SizedBox(height: 8),
                             Text(bars[i][0] as String,
-                                style: TextStyle(fontFamily: GLFonts.mono, fontSize: 11, color: s.fg3)),
+                                style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11, color: s.fg3)),
                           ],
                         ),
                       ),
@@ -708,7 +707,7 @@ class _PagePeople extends StatelessWidget {
   const _PagePeople(this.tab);
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final people = [
       ['Sara Al-Otaibi', 'Branch Manager', 'Riyadh', 'Active', 'success', '200'],
       ['Mohammed Nasser', 'Accountant', 'Head Office', 'Active', 'success', '250'],
@@ -744,7 +743,7 @@ class _PagePeople extends StatelessWidget {
                       child: Text(p[0],
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
+                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
                     ),
                   ]),
                 ),
@@ -764,7 +763,7 @@ class _PageGeneric extends StatelessWidget {
   const _PageGeneric(this.tab);
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final activity = [
       ['Posted JV-2024-0042', '2m ago'],
       ['Reconciled NCB account', '1h ago'],
@@ -793,7 +792,7 @@ class _PageGeneric extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Recent activity',
-                          style: TextStyle(fontFamily: GLFonts.body, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
+                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
                       const SizedBox(height: 12),
                       for (int i = 0; i < activity.length; i++)
                         Container(
@@ -806,10 +805,10 @@ class _PageGeneric extends StatelessWidget {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(activity[i][0],
-                                    style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, color: s.fg1)),
+                                    style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, color: s.fg1)),
                               ),
                               Text(activity[i][1],
-                                  style: TextStyle(fontFamily: GLFonts.mono, fontSize: 11.5, color: s.fg3)),
+                                  style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11.5, color: s.fg3)),
                             ],
                           ),
                         ),
@@ -825,7 +824,7 @@ class _PageGeneric extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Connected platforms',
-                          style: TextStyle(fontFamily: GLFonts.body, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
+                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, fontWeight: FontWeight.w700, color: s.fg1)),
                       const SizedBox(height: 12),
                       for (int i = 0; i < platforms.length; i++)
                         Container(
@@ -837,7 +836,7 @@ class _PageGeneric extends StatelessWidget {
                               Expanded(
                                 child: Text(platforms[i][0] as String,
                                     style: TextStyle(
-                                        fontFamily: GLFonts.body, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
+                                        fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
                               ),
                               if (platforms[i][1] as bool) const _Pill('Connected', tone: 'success') else const _Btn('Connect'),
                             ],

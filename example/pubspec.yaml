@@ -1,4 +1,4 @@
-name: browser_style_tabs_example
+name: geniuslink_design_system_example
 description: Example app embedding GeniusLink BrowserStyleTabBar in a realistic workspace shell.
 publish_to: "none"
 version: 1.0.0
@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  browser_style_tabs:
+  geniuslink_design_system:
     path: ../
 
 dev_dependencies:

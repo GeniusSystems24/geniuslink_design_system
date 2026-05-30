@@ -2,13 +2,31 @@
 // GeniusLink — BrowserStyleTabBar example app.
 // A realistic embed: a workspace shell (nav rail + window chrome) hosting
 // the tab strip, plus the full component gallery. Toggle dark/light.
+//
+// The component is self-contained — it only needs its own
+// `BrowserStyleTabBarThemeData` registered on the app theme (see _appTheme).
+//
 //   Run:  cd flutter/example && flutter pub get && flutter run -d chrome
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:browser_style_tabs/browser_style_tabs.dart';
+import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+import 'browser_tabs_demo.dart';
 
 void main() => runApp(const ExampleApp());
+
+/// Builds an app ThemeData that registers the component's ThemeExtension.
+/// That single extension carries everything BrowserStyleTabBar paints with.
+ThemeData _appTheme(Brightness b) {
+  final ext = b == Brightness.dark ? BrowserStyleTabBarThemeData.dark : BrowserStyleTabBarThemeData.light;
+  return ThemeData(
+    brightness: b,
+    useMaterial3: true,
+    scaffoldBackgroundColor: ext.bg,
+    fontFamily: BrowserStyleTabBarThemeData.bodyFont,
+    extensions: [ext],
+  );
+}
 
 class ExampleApp extends StatefulWidget {
   const ExampleApp({super.key});
@@ -25,12 +43,12 @@ class _ExampleAppState extends State<ExampleApp> {
     return MaterialApp(
       title: 'GeniusLink · Example',
       debugShowCheckedModeBanner: false,
-      theme: GLTheme.light,
-      darkTheme: GLTheme.dark,
+      theme: _appTheme(Brightness.light),
+      darkTheme: _appTheme(Brightness.dark),
       themeMode: _light ? ThemeMode.light : ThemeMode.dark,
       supportedLocales: const [Locale('en'), Locale('ar')],
       home: _screen == 1
-          // The documentation gallery shipped with the package.
+          // The documentation gallery (moved into this example).
           ? BrowserTabsDemo(light: _light, onToggleTheme: (v) => setState(() => _light = v))
           // A realistic product shell embedding the component.
           : WorkspaceScreen(
@@ -59,7 +77,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Scaffold(
       backgroundColor: s.bg,
       body: SafeArea(
@@ -83,20 +101,20 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       children: [
                         Text('Workspace',
                             style: TextStyle(
-                                fontFamily: GLFonts.display, fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.6, color: s.fg1)),
+                                fontFamily: BrowserStyleTabBarThemeData.displayFont,
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.6,
+                                color: s.fg1)),
                         const SizedBox(width: 12),
                         const _Pill('GeniusLink Co.'),
                         const Spacer(),
-                        _AvatarChip(name: 'Mohammed Nasser', role: 'Accountant'),
+                        const _AvatarChip(name: 'Mohammed Nasser', role: 'Accountant'),
                       ],
                     ),
                     const SizedBox(height: 20),
                     // window chrome hosting the component
-                    Expanded(
-                      child: _Window(
-                        child: const BrowserStyleTabBar(),
-                      ),
-                    ),
+                    const Expanded(child: _Window(child: BrowserStyleTabBar())),
                   ],
                 ),
               ),
@@ -133,7 +151,7 @@ class _NavRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Container(
       width: 76,
       decoration: BoxDecoration(
@@ -148,8 +166,9 @@ class _NavRail extends StatelessWidget {
             width: 38,
             height: 38,
             alignment: Alignment.center,
-            decoration: BoxDecoration(color: GLColors.blue500, borderRadius: BorderRadius.circular(GLRadius.md)),
-            child: const Text('G', style: TextStyle(fontFamily: GLFonts.display, fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
+            decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.accent, borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd)),
+            child: const Text('G',
+                style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white)),
           ),
           const SizedBox(height: 22),
           for (int i = 0; i < _items.length; i++)
@@ -183,9 +202,9 @@ class _RailItemState extends State<_RailItem> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final on = widget.selected;
-    final color = on ? GLColors.blue500 : (_hover ? s.fg1 : s.fg3);
+    final color = on ? BrowserStyleTabBarThemeData.accent : (_hover ? s.fg1 : s.fg3);
     return Tooltip(
       message: widget.label,
       waitDuration: const Duration(milliseconds: 400),
@@ -200,8 +219,8 @@ class _RailItemState extends State<_RailItem> {
             height: 44,
             margin: const EdgeInsets.symmetric(vertical: 4),
             decoration: BoxDecoration(
-              color: on ? GLColors.blue500.withOpacity(0.12) : (_hover ? s.hover : Colors.transparent),
-              borderRadius: BorderRadius.circular(GLRadius.md),
+              color: on ? BrowserStyleTabBarThemeData.accent.withOpacity(0.12) : (_hover ? s.hover : Colors.transparent),
+              borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
             ),
             child: Icon(widget.icon, size: 21, color: color),
           ),
@@ -217,13 +236,13 @@ class _Window extends StatelessWidget {
   const _Window({required this.child});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Container(
       decoration: BoxDecoration(
         color: s.bg,
         border: Border.all(color: s.border),
-        borderRadius: BorderRadius.circular(GLRadius.xl),
-        boxShadow: GLShadows.card,
+        borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusXl),
+        boxShadow: BrowserStyleTabBarThemeData.cardShadow,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -246,9 +265,9 @@ class _Window extends StatelessWidget {
                   child: Container(
                     height: 24,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: s.surface, borderRadius: BorderRadius.circular(GLRadius.sm)),
+                    decoration: BoxDecoration(color: s.surface, borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusSm)),
                     child: Text('app.geniuslink.co / workspace',
-                        style: TextStyle(fontFamily: GLFonts.mono, fontSize: 11.5, color: s.fg3)),
+                        style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11.5, color: s.fg3)),
                   ),
                 ),
                 const SizedBox(width: 60),
@@ -278,9 +297,10 @@ class _Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: GLColors.blue500.withOpacity(0.14), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.accent.withOpacity(0.14), borderRadius: BorderRadius.circular(999)),
       child: Text(text,
-          style: const TextStyle(fontFamily: GLFonts.body, fontSize: 11.5, fontWeight: FontWeight.w700, color: GLColors.blue500)),
+          style: const TextStyle(
+              fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: BrowserStyleTabBarThemeData.accent)),
     );
   }
 }
@@ -290,15 +310,15 @@ class _AvatarChip extends StatelessWidget {
   const _AvatarChip({required this.name, required this.role});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final initials = name.split(' ').where((w) => w.isNotEmpty).take(2).map((w) => w[0]).join();
     return Row(
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(name, style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
-            Text(role, style: TextStyle(fontFamily: GLFonts.body, fontSize: 11.5, color: s.fg3)),
+            Text(name, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
+            Text(role, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11.5, color: s.fg3)),
           ],
         ),
         const SizedBox(width: 10),
@@ -307,7 +327,8 @@ class _AvatarChip extends StatelessWidget {
           height: 36,
           alignment: Alignment.center,
           decoration: BoxDecoration(color: HSLColor.fromAHSL(1, 250, 0.42, 0.40).toColor(), shape: BoxShape.circle),
-          child: Text(initials, style: const TextStyle(fontFamily: GLFonts.display, fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          child: Text(initials,
+              style: const TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
         ),
       ],
     );

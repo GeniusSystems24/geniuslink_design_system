@@ -3,22 +3,21 @@
 // Context menu · tab-list dropdown · dirty-close confirm dialog ·
 // hover/long-press mini-page preview. Mirrors the matching pieces of
 // BrowserTabs.jsx. Each is positioned against a global anchor Rect and
-// reads GL* tokens via Theme / GLSurfaces.
+// reads GL* tokens via Theme / BrowserStyleTabBarThemeData.
 //   File: lib/design_system/components/navigation/tab_overlays.dart
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../../tokens/tokens.dart';
-import '../../tokens/gl_surfaces.dart';
+import 'browser_style_tab_bar_theme.dart';
 import 'tab_models.dart';
 import 'tab_pages.dart';
 
 // ── shared pop-card decoration ──────────────────────────────
-BoxDecoration _popDecoration(GLSurfaces s) => BoxDecoration(
+BoxDecoration _popDecoration(BrowserStyleTabBarThemeData s) => BoxDecoration(
       color: s.surface,
       border: Border.all(color: s.borderStrong),
-      borderRadius: BorderRadius.circular(GLRadius.md),
-      boxShadow: GLShadows.pop,
+      borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
+      boxShadow: BrowserStyleTabBarThemeData.popShadow,
     );
 
 // ════════════════════════════════════════════════════════════
@@ -54,7 +53,7 @@ class TabContextMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final screen = MediaQuery.of(context).size;
     const w = 220.0;
     final h = items.length * 36 + 12;
@@ -99,9 +98,9 @@ class _MenuRowState extends State<_MenuRow> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final it = widget.item;
-    final color = it.danger ? GLColors.danger : s.fg1;
+    final color = it.danger ? BrowserStyleTabBarThemeData.danger : s.fg1;
     return MouseRegion(
       cursor: it.disabled ? SystemMouseCursors.forbidden : SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -128,10 +127,10 @@ class _MenuRowState extends State<_MenuRow> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(it.label ?? '',
-                      style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, color: color)),
+                      style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, color: color)),
                 ),
                 if (it.hint != null)
-                  Text(it.hint!, style: TextStyle(fontFamily: GLFonts.mono, fontSize: 11, color: s.fg3)),
+                  Text(it.hint!, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 11, color: s.fg3)),
               ],
             ),
           ),
@@ -161,7 +160,7 @@ class TabListDropdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final screen = MediaQuery.of(context).size;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     const w = 280.0;
@@ -187,7 +186,7 @@ class TabListDropdown extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(10, 4, 10, 6),
                   child: Text('OPEN TABS · ${tabs.length}',
                       style: TextStyle(
-                          fontFamily: GLFonts.mono, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: s.fg3)),
+                          fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: s.fg3)),
                 ),
                 Flexible(
                   child: SingleChildScrollView(
@@ -220,7 +219,7 @@ class _ListRowState extends State<_ListRow> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final t = widget.tab;
     final bg = widget.active ? s.inputBg : (_hover ? s.hover : Colors.transparent);
     return MouseRegion(
@@ -238,14 +237,14 @@ class _ListRowState extends State<_ListRow> {
           decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
           child: Row(
             children: [
-              Icon(glTabIcon(t.kind), size: 15, color: widget.active ? GLColors.blue500 : s.fg3),
+              Icon(glTabIcon(t.kind), size: 15, color: widget.active ? BrowserStyleTabBarThemeData.accent : s.fg3),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(t.title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                        fontFamily: GLFonts.body,
+                        fontFamily: BrowserStyleTabBarThemeData.bodyFont,
                         fontSize: 13,
                         fontWeight: widget.active ? FontWeight.w600 : FontWeight.w500,
                         color: widget.active ? s.fg1 : s.fg2)),
@@ -256,7 +255,7 @@ class _ListRowState extends State<_ListRow> {
               ],
               if (t.dirty) ...[
                 const SizedBox(width: 8),
-                Container(width: 7, height: 7, decoration: const BoxDecoration(color: GLColors.warning, shape: BoxShape.circle)),
+                Container(width: 7, height: 7, decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle)),
               ],
             ],
           ),
@@ -292,7 +291,7 @@ class _MiniPagePreviewState extends State<MiniPagePreview> {
 
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final tab = widget.tab;
     final screen = MediaQuery.of(context).size;
     final rtl = Directionality.of(context) == TextDirection.rtl;
@@ -314,12 +313,12 @@ class _MiniPagePreviewState extends State<MiniPagePreview> {
       child: IgnorePointer(
         child: AnimatedOpacity(
           opacity: _show ? 1 : 0,
-          duration: GLDur.base,
-          curve: GLCurves.decelerate,
+          duration: BrowserStyleTabBarThemeData.durBase,
+          curve: BrowserStyleTabBarThemeData.curveDecelerate,
           child: AnimatedSlide(
             offset: _show ? Offset.zero : Offset(0, above ? 0.03 : -0.03),
-            duration: GLDur.base,
-            curve: GLCurves.decelerate,
+            duration: BrowserStyleTabBarThemeData.durBase,
+            curve: BrowserStyleTabBarThemeData.curveDecelerate,
             child: SizedBox(
               width: _w,
               child: Stack(
@@ -339,7 +338,7 @@ class _MiniPagePreviewState extends State<MiniPagePreview> {
                             decoration: BoxDecoration(border: Border(bottom: BorderSide(color: s.border))),
                             child: Row(
                               children: [
-                                Icon(glTabIcon(tab.kind), size: 15, color: GLColors.blue500),
+                                Icon(glTabIcon(tab.kind), size: 15, color: BrowserStyleTabBarThemeData.accent),
                                 const SizedBox(width: 8),
                                 Expanded(
                                   child: Column(
@@ -349,19 +348,19 @@ class _MiniPagePreviewState extends State<MiniPagePreview> {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
-                                              fontFamily: GLFonts.body, fontSize: 12.5, fontWeight: FontWeight.w600, color: s.fg1)),
+                                              fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: s.fg1)),
                                       const SizedBox(height: 1),
                                       Text(glPreviewMeta(tab.kind),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(fontFamily: GLFonts.mono, fontSize: 10.5, color: s.fg3)),
+                                          style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, color: s.fg3)),
                                     ],
                                   ),
                                 ),
                                 if (tab.pinned) ...[const SizedBox(width: 6), Icon(Icons.push_pin, size: 12, color: s.fg3)],
                                 if (tab.dirty) ...[
                                   const SizedBox(width: 6),
-                                  Container(width: 7, height: 7, decoration: const BoxDecoration(color: GLColors.warning, shape: BoxShape.circle)),
+                                  Container(width: 7, height: 7, decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle)),
                                 ],
                               ],
                             ),
@@ -472,11 +471,11 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
     barrierDismissible: true,
     barrierLabel: 'Dismiss',
     barrierColor: const Color(0x61000000),
-    transitionDuration: GLDur.slow,
+    transitionDuration: BrowserStyleTabBarThemeData.durSlow,
     pageBuilder: (ctx, a1, a2) => const SizedBox.shrink(),
     transitionBuilder: (ctx, anim, _, __) {
-      final s = GLSurfaces.of(ctx);
-      final curved = CurvedAnimation(parent: anim, curve: GLCurves.emphasized);
+      final s = BrowserStyleTabBarThemeData.of(ctx);
+      final curved = CurvedAnimation(parent: anim, curve: BrowserStyleTabBarThemeData.curveEmphasized);
       return FadeTransition(
         opacity: curved,
         child: Transform.scale(
@@ -492,8 +491,8 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
                   decoration: BoxDecoration(
                     color: s.surface,
                     border: Border.all(color: s.borderStrong),
-                    borderRadius: BorderRadius.circular(GLRadius.xl),
-                    boxShadow: GLShadows.pop,
+                    borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusXl),
+                    boxShadow: BrowserStyleTabBarThemeData.popShadow,
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -506,8 +505,8 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
                             width: 36,
                             height: 36,
                             alignment: Alignment.center,
-                            decoration: BoxDecoration(color: GLColors.warning.withOpacity(0.14), shape: BoxShape.circle),
-                            child: const Icon(Icons.warning_amber_rounded, size: 18, color: GLColors.warning),
+                            decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.warning.withOpacity(0.14), shape: BoxShape.circle),
+                            child: const Icon(Icons.warning_amber_rounded, size: 18, color: BrowserStyleTabBarThemeData.warning),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -516,10 +515,10 @@ Future<String?> showGLDirtyCloseDialog(BuildContext context, BrowserTab tab) {
                               children: [
                                 Text('Discard unsaved changes?',
                                     style: TextStyle(
-                                        fontFamily: GLFonts.display, fontSize: 16, fontWeight: FontWeight.w700, color: s.fg1)),
+                                        fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 16, fontWeight: FontWeight.w700, color: s.fg1)),
                                 const SizedBox(height: 6),
                                 Text('“${tab.title}” has edits that haven’t been saved. Closing it now will lose them.',
-                                    style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, height: 1.5, color: s.fg3)),
+                                    style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, height: 1.5, color: s.fg3)),
                               ],
                             ),
                           ),
@@ -556,7 +555,7 @@ class _DialogBtn extends StatelessWidget {
   const _DialogBtn({required this.label, this.icon, this.danger = false, required this.onTap});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return GestureDetector(
       onTap: onTap,
       child: MouseRegion(
@@ -566,9 +565,9 @@ class _DialogBtn extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: danger ? GLColors.danger : Colors.transparent,
+            color: danger ? BrowserStyleTabBarThemeData.danger : Colors.transparent,
             border: Border.all(color: danger ? Colors.transparent : s.borderStrong),
-            borderRadius: BorderRadius.circular(GLRadius.md),
+            borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -576,7 +575,7 @@ class _DialogBtn extends StatelessWidget {
               if (icon != null) ...[Icon(icon, size: 14, color: s.fg1), const SizedBox(width: 6)],
               Text(label,
                   style: TextStyle(
-                      fontFamily: GLFonts.body,
+                      fontFamily: BrowserStyleTabBarThemeData.bodyFont,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: danger ? Colors.white : s.fg1)),
@@ -610,11 +609,11 @@ class _AppearState extends State<_Appear> {
   Widget build(BuildContext context) {
     return AnimatedOpacity(
       opacity: _o,
-      duration: GLDur.fast,
+      duration: BrowserStyleTabBarThemeData.durFast,
       child: AnimatedSlide(
         offset: _o == 1 ? Offset.zero : const Offset(0, -0.02),
-        duration: GLDur.fast,
-        curve: GLCurves.decelerate,
+        duration: BrowserStyleTabBarThemeData.durFast,
+        curve: BrowserStyleTabBarThemeData.curveDecelerate,
         child: widget.child,
       ),
     );

@@ -15,8 +15,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../tokens/tokens.dart';
-import '../../tokens/gl_surfaces.dart';
+import 'browser_style_tab_bar_theme.dart';
 import 'tab_models.dart';
 import 'tab_pages.dart';
 import 'tab_overlays.dart';
@@ -100,7 +99,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
   void _scrollByDir(bool towardEnd) {
     if (!_scroll.hasClients) return;
     final target = (_scroll.offset + 220 * (towardEnd ? 1 : -1)).clamp(0.0, _scroll.position.maxScrollExtent);
-    _scroll.animateTo(target, duration: GLDur.slow, curve: GLCurves.standard);
+    _scroll.animateTo(target, duration: BrowserStyleTabBarThemeData.durSlow, curve: BrowserStyleTabBarThemeData.curveStandard);
   }
 
   // ── tab ops ──
@@ -328,7 +327,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
   // ════════ BUILD ════════
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     BrowserTab? activeTab;
     for (final t in _tabs) {
       if (t.id == _active) {
@@ -346,7 +345,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
           decoration: BoxDecoration(
             color: s.bg,
             border: Border.all(color: s.border),
-            borderRadius: BorderRadius.circular(GLRadius.lg),
+            borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
           ),
           clipBehavior: Clip.antiAlias,
           child: Column(
@@ -361,7 +360,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     );
   }
 
-  Widget _buildStrip(GLSurfaces s) {
+  Widget _buildStrip(BrowserStyleTabBarThemeData s) {
     return Container(
       constraints: const BoxConstraints(minHeight: 44),
       color: s.bg,
@@ -478,10 +477,10 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     );
   }
 
-  Widget _chevron(bool towardEnd, bool show, GLSurfaces s) {
+  Widget _chevron(bool towardEnd, bool show, BrowserStyleTabBarThemeData s) {
     return AnimatedContainer(
-      duration: GLDur.base,
-      curve: GLCurves.standard,
+      duration: BrowserStyleTabBarThemeData.durBase,
+      curve: BrowserStyleTabBarThemeData.curveStandard,
       width: show ? 26 : 0,
       height: 32,
       margin: const EdgeInsets.only(bottom: 2),
@@ -496,7 +495,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     );
   }
 
-  Widget _buildContent(GLSurfaces s, BrowserTab? activeTab) {
+  Widget _buildContent(BrowserStyleTabBarThemeData s, BrowserTab? activeTab) {
     return Container(
       decoration: BoxDecoration(
         color: s.surface,
@@ -506,7 +505,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
           ? Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
               child: Text('No open tabs — press + to start.',
-                  style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, color: s.fg3)),
+                  style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, color: s.fg3)),
             )
           : ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 440),
@@ -597,7 +596,7 @@ class _TabChipState extends State<_TabChip> {
 
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final tab = widget.tab;
     final active = widget.active;
     final bg = active ? s.surface : (_hover ? s.hover : Colors.transparent);
@@ -627,8 +626,8 @@ class _TabChipState extends State<_TabChip> {
           widget.onContextMenu(d.globalPosition);
         },
         child: AnimatedContainer(
-          duration: GLDur.base,
-          curve: GLCurves.standard,
+          duration: BrowserStyleTabBarThemeData.durBase,
+          curve: BrowserStyleTabBarThemeData.curveStandard,
           height: 36,
           width: widget.compact ? 40 : null,
           constraints: widget.compact ? null : const BoxConstraints(minWidth: 120, maxWidth: 200),
@@ -646,7 +645,7 @@ class _TabChipState extends State<_TabChip> {
                   start: -1,
                   top: 6,
                   bottom: 6,
-                  child: Container(width: 2, decoration: BoxDecoration(color: GLColors.blue500, borderRadius: BorderRadius.circular(2))),
+                  child: Container(width: 2, decoration: BoxDecoration(color: BrowserStyleTabBarThemeData.accent, borderRadius: BorderRadius.circular(2))),
                 ),
               // hairline separator before inactive (non-first) tabs
               if (!active && !widget.first && !widget.isOver)
@@ -664,23 +663,23 @@ class _TabChipState extends State<_TabChip> {
     );
   }
 
-  Widget _content(GLSurfaces s, BrowserTab tab, bool active, Color fg) {
+  Widget _content(BrowserStyleTabBarThemeData s, BrowserTab tab, bool active, Color fg) {
     if (widget.compact) {
       return Stack(
         children: [
-          Center(child: Icon(glTabIcon(tab.kind), size: 14, color: active ? GLColors.blue500 : s.fg3)),
+          Center(child: Icon(glTabIcon(tab.kind), size: 14, color: active ? BrowserStyleTabBarThemeData.accent : s.fg3)),
           if (tab.dirty)
             PositionedDirectional(
               top: 7,
               end: 7,
-              child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: GLColors.warning, shape: BoxShape.circle)),
+              child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle)),
             ),
         ],
       );
     }
     return Row(
       children: [
-        Icon(glTabIcon(tab.kind), size: 14, color: active ? GLColors.blue500 : s.fg3),
+        Icon(glTabIcon(tab.kind), size: 14, color: active ? BrowserStyleTabBarThemeData.accent : s.fg3),
         const SizedBox(width: 8),
         Expanded(
           child: Tooltip(
@@ -691,7 +690,7 @@ class _TabChipState extends State<_TabChip> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: GLFonts.body,
+                fontFamily: BrowserStyleTabBarThemeData.bodyFont,
                 fontSize: 13,
                 fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                 color: fg,
@@ -705,13 +704,13 @@ class _TabChipState extends State<_TabChip> {
     );
   }
 
-  Widget _trailing(GLSurfaces s, BrowserTab tab, bool active) {
+  Widget _trailing(BrowserStyleTabBarThemeData s, BrowserTab tab, bool active) {
     if (tab.dirty && !_hover) {
       return Container(
         width: 8,
         height: 8,
         margin: const EdgeInsetsDirectional.only(end: 4),
-        decoration: const BoxDecoration(color: GLColors.warning, shape: BoxShape.circle),
+        decoration: const BoxDecoration(color: BrowserStyleTabBarThemeData.warning, shape: BoxShape.circle),
       );
     }
     final visible = _hover || active;
@@ -752,7 +751,7 @@ class _StaticTab extends StatelessWidget {
   const _StaticTab({required this.tab, required this.active, this.feedback = false});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final chip = Container(
       height: 36,
       constraints: const BoxConstraints(minWidth: 120, maxWidth: 200),
@@ -764,14 +763,14 @@ class _StaticTab extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(glTabIcon(tab.kind), size: 14, color: active ? GLColors.blue500 : s.fg3),
+          Icon(glTabIcon(tab.kind), size: 14, color: active ? BrowserStyleTabBarThemeData.accent : s.fg3),
           const SizedBox(width: 8),
           Flexible(
             child: Text(tab.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                    fontFamily: GLFonts.body,
+                    fontFamily: BrowserStyleTabBarThemeData.bodyFont,
                     fontSize: 13,
                     fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                     color: active ? s.fg1 : s.fg2)),
@@ -800,7 +799,7 @@ class _IconBtnState extends State<_IconBtn> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     final on = widget.active || _hover;
     return Tooltip(
       message: widget.tooltip,

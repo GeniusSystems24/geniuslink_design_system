@@ -6,24 +6,19 @@ interactions — driven by the same GL* tokens.
 
 ## Run
 
-```bash
-cd flutter
-flutter pub get
-flutter run -d chrome        # or any device/emulator  — opens the gallery
-```
-
-### Example app (realistic embed)
+The package is a library (no `lib/main.dart`). Run the example app:
 
 ```bash
 cd flutter/example
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome        # or any device/emulator
 ```
 
-`example/lib/main.dart` shows the component inside a real product shell — a
-left navigation rail + window chrome hosting the tab strip — with a
-dark/light toggle and a button to open the documentation gallery. It imports
-the package through the single barrel: `package:browser_style_tabs/browser_style_tabs.dart`.
+It opens on a realistic product shell — a left navigation rail + window chrome
+hosting the tab strip — with a dark/light toggle and a button to open the
+documentation gallery (`example/lib/browser_tabs_demo.dart`). Everything imports
+the package through the single barrel:
+`package:geniuslink_design_system/geniuslink_design_system.dart`.
 
 Top-right toggle switches dark/light. The second specimen is forced RTL.
 (Optional: drop the brand fonts into `assets/fonts/` and uncomment the
@@ -38,14 +33,25 @@ component falls back to the platform UI font; metrics/layout are unaffected.)
 | `BrowserTabs.jsx` → overlays     | `lib/design_system/components/navigation/tab_overlays.dart` |
 | `TabPages.jsx`                   | `lib/design_system/components/navigation/tab_pages.dart` |
 | tab data / icon set              | `lib/design_system/components/navigation/tab_models.dart` |
-| `components-browsertabs.html`    | `lib/design_system/documentation_examples/browser_tabs_demo.dart` |
-| `tokens.css` / `colors_and_type.css` | `lib/design_system/tokens/tokens.dart` + `tokens/gl_surfaces.dart` |
-| theme aliases (`[data-theme]`)   | `lib/design_system/themes/app_theme.dart` (registers `GLSurfaces`) |
+| `tokens.css` / `colors_and_type.css` / theme aliases | `lib/design_system/components/navigation/browser_style_tab_bar_theme.dart` |
+| `components-browsertabs.html`    | `example/lib/browser_tabs_demo.dart` |
 
-`GLSurfaces` is a `ThemeExtension` that carries the semantic roles the CSS
-aliases (`--gl-bg / --gl-surface / --gl-hover / --gl-input-bg / --gl-border /
---gl-border-strong / --gl-fg-1..4`) and swaps wholesale between dark & light —
-read it with `GLSurfaces.of(context)`.
+The component is **self-contained**: everything it paints with lives in one
+`BrowserStyleTabBarThemeData extends ThemeExtension`. Its instance fields are
+the surfaces that swap between dark & light (`bg / surface / hover / border /
+fg1..fg4` — mirroring the CSS aliases `--gl-bg / --gl-surface / …`, lerped on
+theme change); its static consts are the theme-independent brand constants
+(`accent` + semantic palette, font families, radii, shadows, motion).
+
+Register it on your app theme and read it anywhere:
+
+```dart
+ThemeData(extensions: [BrowserStyleTabBarThemeData.dark]); // or .light
+
+final s = BrowserStyleTabBarThemeData.of(context); // falls back to .dark
+```
+
+There are no remaining dependencies on a global design-system token/theme file.
 
 ## Feature parity
 

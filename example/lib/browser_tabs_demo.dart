@@ -2,14 +2,11 @@
 // BrowserStyleTabBar — gallery / documentation screen.
 // Flutter mirror of design_system/components-browsertabs.html:
 // the live LTR + RTL specimens and the anatomy / states / props docs.
-//   File: lib/design_system/documentation_examples/browser_tabs_demo.dart
+//   File: example/lib/browser_tabs_demo.dart
 // ============================================================
 
 import 'package:flutter/material.dart';
-import '../tokens/tokens.dart';
-import '../tokens/gl_surfaces.dart';
-import '../components/navigation/browser_style_tab_bar.dart';
-import '../components/navigation/tab_models.dart';
+import 'package:geniuslink_design_system/geniuslink_design_system.dart';
 
 class BrowserTabsDemo extends StatelessWidget {
   final ValueChanged<bool>? onToggleTheme; // true => light
@@ -65,7 +62,7 @@ class _Shell extends StatelessWidget {
   const _Shell({required this.title, required this.subtitle, required this.children, required this.light, this.onToggleTheme});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Scaffold(
       backgroundColor: s.bg,
       body: SafeArea(
@@ -84,12 +81,12 @@ class _Shell extends StatelessWidget {
                         children: [
                           Text('GENIUSLINK DESIGN SYSTEM',
                               style: TextStyle(
-                                  fontFamily: GLFonts.body, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.65, color: GLColors.blue500)),
+                                  fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.65, color: BrowserStyleTabBarThemeData.accent)),
                           const SizedBox(height: 10),
                           Text(title,
-                              style: TextStyle(fontFamily: GLFonts.display, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.7, color: s.fg1)),
+                              style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.7, color: s.fg1)),
                           const SizedBox(height: 6),
-                          Text(subtitle, style: TextStyle(fontFamily: GLFonts.body, fontSize: 14, color: s.fg3)),
+                          Text(subtitle, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14, color: s.fg3)),
                         ],
                       ),
                     ),
@@ -114,7 +111,7 @@ class _ThemeToggle extends StatelessWidget {
   const _ThemeToggle({required this.light, required this.onChanged});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return GestureDetector(
       onTap: () => onChanged(!light),
       child: MouseRegion(
@@ -125,14 +122,14 @@ class _ThemeToggle extends StatelessWidget {
           decoration: BoxDecoration(
             color: s.surface,
             border: Border.all(color: s.borderStrong),
-            borderRadius: BorderRadius.circular(GLRadius.md),
+            borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusMd),
           ),
           child: Row(
             children: [
               Icon(light ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 15, color: s.fg2),
               const SizedBox(width: 8),
               Text(light ? 'Light' : 'Dark',
-                  style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
+                  style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
             ],
           ),
         ),
@@ -148,16 +145,16 @@ class _Section extends StatelessWidget {
   const _Section({required this.title, required this.desc, required this.child});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Container(width: 4, height: 22, color: GLColors.blue500, margin: const EdgeInsets.only(right: 12)),
-          Text(title, style: TextStyle(fontFamily: GLFonts.body, fontSize: 16, fontWeight: FontWeight.w700, color: s.fg1)),
+          Container(width: 4, height: 22, color: BrowserStyleTabBarThemeData.accent, margin: const EdgeInsets.only(right: 12)),
+          Text(title, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 16, fontWeight: FontWeight.w700, color: s.fg1)),
         ]),
         const SizedBox(height: 8),
-        Text(desc, style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, height: 1.55, color: s.fg3)),
+        Text(desc, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, height: 1.55, color: s.fg3)),
         const SizedBox(height: 18),
         child,
       ],
@@ -172,19 +169,19 @@ class _Spec extends StatelessWidget {
   const _Spec({required this.label, required this.child});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
+    final s = BrowserStyleTabBarThemeData.of(context);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: s.surface,
         border: Border.all(color: s.border),
-        borderRadius: BorderRadius.circular(GLRadius.lg),
+        borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusLg),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label.toUpperCase(),
-              style: TextStyle(fontFamily: GLFonts.mono, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: GLColors.blue500)),
+              style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: BrowserStyleTabBarThemeData.accent)),
           const SizedBox(height: 12),
           child,
         ],
@@ -199,18 +196,18 @@ class _Pill extends StatelessWidget {
   const _Pill(this.text, {this.tone = 'neutral'});
   @override
   Widget build(BuildContext context) {
-    final s = GLSurfaces.of(context);
-    final c = {'info': GLColors.blue500, 'warning': GLColors.warning, 'success': GLColors.success, 'neutral': s.fg3}[tone] ?? s.fg3;
+    final s = BrowserStyleTabBarThemeData.of(context);
+    final c = {'info': BrowserStyleTabBarThemeData.accent, 'warning': BrowserStyleTabBarThemeData.warning, 'success': BrowserStyleTabBarThemeData.success, 'neutral': s.fg3}[tone] ?? s.fg3;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(color: c.withOpacity(0.15), borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: TextStyle(fontFamily: GLFonts.body, fontSize: 11, fontWeight: FontWeight.w700, color: c)),
+      child: Text(text, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, color: c)),
     );
   }
 }
 
 Widget _bullets(BuildContext context, List<String> items, {Color? color}) {
-  final s = GLSurfaces.of(context);
+  final s = BrowserStyleTabBarThemeData.of(context);
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -221,7 +218,7 @@ Widget _bullets(BuildContext context, List<String> items, {Color? color}) {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('•  ', style: TextStyle(fontSize: 13, color: color ?? s.fg3, height: 1.55)),
-              Expanded(child: Text(i, style: TextStyle(fontFamily: GLFonts.body, fontSize: 13, height: 1.55, color: color ?? s.fg2))),
+              Expanded(child: Text(i, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, height: 1.55, color: color ?? s.fg2))),
             ],
           ),
         ),
@@ -292,7 +289,7 @@ class _DocsGrid extends StatelessWidget {
           'Right-click / long-press — context menu · Esc closes it',
         ])),
         Builder(builder: (context) {
-          final s = GLSurfaces.of(context);
+          final s = BrowserStyleTabBarThemeData.of(context);
           return _Spec(
             label: 'Props',
             child: Text(
@@ -301,7 +298,7 @@ class _DocsGrid extends StatelessWidget {
               '  dirty?, pinned?)\n'
               'kind ∈ ledger · doc · store ·\n'
               '  chart · user · globe',
-              style: TextStyle(fontFamily: GLFonts.mono, fontSize: 12.5, height: 1.7, color: s.fg2),
+              style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 12.5, height: 1.7, color: s.fg2),
             ),
           );
         }),
@@ -310,9 +307,9 @@ class _DocsGrid extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _bullets(context, const ['✓ Pin long-lived references (chart of accounts).', '✓ Warn on closing a dirty tab.'], color: GLColors.success),
+              _bullets(context, const ['✓ Pin long-lived references (chart of accounts).', '✓ Warn on closing a dirty tab.'], color: BrowserStyleTabBarThemeData.success),
               const SizedBox(height: 8),
-              _bullets(context, const ['✗ More than ~3 pinned tabs.', '✗ Hiding the active tab off-screen on open.'], color: GLColors.danger),
+              _bullets(context, const ['✗ More than ~3 pinned tabs.', '✗ Hiding the active tab off-screen on open.'], color: BrowserStyleTabBarThemeData.danger),
             ],
           ),
         ),

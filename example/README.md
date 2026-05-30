@@ -1,3 +1,3 @@
-# browser_style_tabs_example
+# geniuslink_browser_tabs_example
 
 A new Flutter project.
