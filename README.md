@@ -72,12 +72,10 @@ overflow controls, and menus.
 
 ### Interactive Preview
 
-The included video shows the same interactions in motion, including tab
+The included GIF shows the same interactions in motion, including tab
 selection, menus, previews, and overflow behavior.
 
 ![Interactive preview](snapshots/preview.gif)
-
-[Watch the interaction preview](snapshots/preview.mp4)
 
 ### Self-Contained Theme Tokens
 
