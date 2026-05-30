@@ -21,6 +21,73 @@ and public API comments.
 - Drag-to-reorder, keyboard navigation, dark and light themes, and RTL layout.
 - Self-contained theme tokens through `BrowserStyleTabBarThemeData`.
 
+## Feature Snapshots
+
+### Browser-Style Workspace Tabs
+
+The tab strip mirrors a modern browser workspace: active tabs merge into the
+content surface, inactive tabs stay compact, and the add-tab and tab-list
+buttons stay anchored at the trailing edge.
+
+![Browser-style workspace tabs](snapshots/2.png)
+
+### Pinned, Closable, and Dirty Tabs
+
+Pinned tabs stay at the leading edge, closable tabs expose close affordances on
+hover or active state, and dirty tabs show an unsaved indicator before the user
+attempts to close them.
+
+![Pinned, closable, and dirty tabs](snapshots/2.png)
+
+### Context Menu Actions
+
+Right-click and long-press open a tab context menu with close, close others,
+close to the right, duplicate, and pin or unpin actions, including disabled and
+danger states.
+
+![Context menu actions](snapshots/3.png)
+
+### Overflow and Tab-List Dropdown
+
+Overflow chevrons appear only when the strip scrolls horizontally. The tab-list
+dropdown lists every open tab, highlights the active tab, and marks pinned or
+dirty tabs so users can jump directly to the right workspace.
+
+![Overflow and tab-list dropdown](snapshots/2.png)
+
+### Hover-Intent Mini-Page Preview
+
+Hovering over a tab opens a mini-page preview after a short delay. The preview
+renders a scaled version of the real page instead of a placeholder skeleton.
+
+![Hover-intent mini-page preview](snapshots/2.png)
+
+### Drag, Keyboard, Theme, and RTL Support
+
+The component supports drag-to-reorder, Left/Right/Home/End keyboard navigation,
+dark and light themes, and mirrored RTL layout for tab placement, separators,
+overflow controls, and menus.
+
+![RTL tab layout](snapshots/1.png)
+
+### Interactive Preview
+
+The included video shows the same interactions in motion, including tab
+selection, menus, previews, and overflow behavior.
+
+![Interactive preview](snapshots/preview.gif)
+
+[Watch the interaction preview](snapshots/preview.mp4)
+
+### Self-Contained Theme Tokens
+
+`BrowserStyleTabBarThemeData` carries all component tokens, including surfaces,
+foreground colors, semantic colors, radii, shadows, font family names, and
+motion values, so the tab strip and its overlays can be themed without a global
+design-system dependency.
+
+![Self-contained theme tokens](snapshots/2.png)
+
 ## Getting Started
 
 Add the package to a Flutter app. For the current local checkout, use a path
