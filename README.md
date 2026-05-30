@@ -29,7 +29,7 @@ The tab strip mirrors a modern browser workspace: active tabs merge into the
 content surface, inactive tabs stay compact, and the add-tab and tab-list
 buttons stay anchored at the trailing edge.
 
-![Browser-style workspace tabs](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/2.png)
+![Browser-style workspace tabs](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
 
 ### Pinned, Closable, and Dirty Tabs
 
@@ -37,7 +37,7 @@ Pinned tabs stay at the leading edge, closable tabs expose close affordances on
 hover or active state, and dirty tabs show an unsaved indicator before the user
 attempts to close them.
 
-![Pinned, closable, and dirty tabs](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/2.png)
+![Pinned, closable, and dirty tabs](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
 
 ### Context Menu Actions
 
@@ -45,7 +45,7 @@ Right-click and long-press open a tab context menu with close, close others,
 close to the right, duplicate, and pin or unpin actions, including disabled and
 danger states.
 
-![Context menu actions](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/3.png)
+![Context menu actions](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/3.png)
 
 ### Overflow and Tab-List Dropdown
 
@@ -53,14 +53,14 @@ Overflow chevrons appear only when the strip scrolls horizontally. The tab-list
 dropdown lists every open tab, highlights the active tab, and marks pinned or
 dirty tabs so users can jump directly to the right workspace.
 
-![Overflow and tab-list dropdown](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/2.png)
+![Overflow and tab-list dropdown](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
 
 ### Hover-Intent Mini-Page Preview
 
 Hovering over a tab opens a mini-page preview after a short delay. The preview
 renders a scaled version of the real page instead of a placeholder skeleton.
 
-![Hover-intent mini-page preview](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/2.png)
+![Hover-intent mini-page preview](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
 
 ### Drag, Keyboard, Theme, and RTL Support
 
@@ -68,14 +68,14 @@ The component supports drag-to-reorder, Left/Right/Home/End keyboard navigation,
 dark and light themes, and mirrored RTL layout for tab placement, separators,
 overflow controls, and menus.
 
-![RTL tab layout](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/1.png)
+![RTL tab layout](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/1.png)
 
 ### Interactive Preview
 
 The included GIF shows the same interactions in motion, including tab
 selection, menus, previews, and overflow behavior.
 
-![Interactive preview](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/preview.gif)
+![Interactive preview](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/preview.gif)
 
 ### Self-Contained Theme Tokens
 
@@ -84,7 +84,7 @@ foreground colors, semantic colors, radii, shadows, font family names, and
 motion values, so the tab strip and its overlays can be themed without a global
 design-system dependency.
 
-![Self-contained theme tokens](https://raw.githubusercontent.com/GeniusSystems24/browser_style_tabs/main/snapshots/2.png)
+![Self-contained theme tokens](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
 
 ## Getting Started
 
