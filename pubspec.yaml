@@ -1,0 +1,51 @@
+name: browser_style_tabs
+description: GeniusLink Design System — BrowserStyleTabBar (Flutter port of BrowserTabs.jsx).
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  # ── Fonts ──
+  # Drop the .ttf files under flutter/assets/fonts/ to match the design
+  # system exactly. Until then the families fall back to the platform UI
+  # font (the layout/metrics still hold). Families used:
+  #   Manrope (display) · Inter (body) · JetBrainsMono (mono) · NotoNaskhArabic
+  #
+  # fonts:
+  #   - family: Manrope
+  #     fonts:
+  #       - asset: assets/fonts/Manrope-Regular.ttf
+  #       - asset: assets/fonts/Manrope-SemiBold.ttf
+  #         weight: 600
+  #       - asset: assets/fonts/Manrope-Bold.ttf
+  #         weight: 700
+  #       - asset: assets/fonts/Manrope-ExtraBold.ttf
+  #         weight: 800
+  #   - family: Inter
+  #     fonts:
+  #       - asset: assets/fonts/Inter-Regular.ttf
+  #       - asset: assets/fonts/Inter-Medium.ttf
+  #         weight: 500
+  #       - asset: assets/fonts/Inter-SemiBold.ttf
+  #         weight: 600
+  #       - asset: assets/fonts/Inter-Bold.ttf
+  #         weight: 700
+  #   - family: JetBrainsMono
+  #     fonts:
+  #       - asset: assets/fonts/JetBrainsMono-Regular.ttf
+  #       - asset: assets/fonts/JetBrainsMono-Bold.ttf
+  #         weight: 700
+  #   - family: NotoNaskhArabic
+  #     fonts:
+  #       - asset: assets/fonts/NotoNaskhArabic-Regular.ttf
