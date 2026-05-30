@@ -1,3 +1,11 @@
+# 1.0.1
+
+> 2026-05-30
+
+- Updated README snapshot links to use absolute GitHub raw URLs so they render
+  on pub.dev.
+- Added pub.dev `screenshots` metadata for the package gallery.
+
 # 1.0.0
 
 > 2026-05-30
