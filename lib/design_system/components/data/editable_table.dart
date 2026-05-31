@@ -206,7 +206,7 @@ class _TableDataRow extends StatelessWidget {
     final s = GeniusThemeData.of(context);
     final selected = controller.selectedIds.contains(row.id);
     return Container(
-      constraints: BoxConstraints(minHeight: 48),
+      minHeight: 48,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(color: selected ? GeniusThemeData.blue500.withOpacity(.08) : Colors.transparent, border: Border(bottom: BorderSide(color: s.border.withOpacity(.65)))),
       child: Row(children: [

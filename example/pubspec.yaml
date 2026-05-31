@@ -4,14 +4,17 @@ publish_to: "none"
 version: 1.0.0
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.10.0 <4.0.0"
   flutter: ">=3.10.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   geniuslink_design_system:
     path: ../
+  smart_auto_suggest_box: ^0.15.3
 
 dev_dependencies:
   flutter_lints: ^3.0.0

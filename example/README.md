@@ -43,3 +43,7 @@ ThemeData(
 ```
 
 This is the minimum setup needed by apps that consume the package.
+
+## ComboBox dependency note
+
+`GLComboBox` is backed by `smart_auto_suggest_box`, so the example registers `SmartAutoSuggestBoxLocalizations.delegate` in `MaterialApp` and requires Dart `>=3.10.0`.

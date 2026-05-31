@@ -6,7 +6,7 @@ This package now covers the component groups in `genius_design_system_web/design
 
 ## Current version
 
-`1.2.0`
+`1.2.1`
 
 ## What is included
 
@@ -17,7 +17,7 @@ This package now covers the component groups in `genius_design_system_web/design
 | Domain components | `lib/design_system/components/domain/domain_components.dart` |
 | Charts | `lib/design_system/components/charts/chart_components.dart` |
 | Skeleton loaders | `lib/design_system/components/skeletons/skeleton_components.dart` |
-| ComboBox | `lib/design_system/components/forms/combo_box.dart` |
+| ComboBox | `lib/design_system/components/forms/combo_box.dart` (`smart_auto_suggest_box`) |
 | Editable table | `lib/design_system/components/data/editable_table.dart` |
 | Patterns | `lib/design_system/components/patterns/design_patterns.dart` |
 | Motion | `lib/design_system/components/motion/motion_components.dart` |
@@ -37,11 +37,18 @@ import 'package:geniuslink_design_system/geniuslink_design_system.dart';
 MaterialApp(
   theme: GeniusAppTheme.light(),
   darkTheme: GeniusAppTheme.dark(),
+  localizationsDelegates: const [
+    SmartAutoSuggestBoxLocalizations.delegate,
+    // GlobalMaterialLocalizations.delegate,
+    // GlobalWidgetsLocalizations.delegate,
+    // GlobalCupertinoLocalizations.delegate,
+  ],
+  supportedLocales: SmartAutoSuggestBoxLocalizations.delegate.supportedLocales,
   home: const AllComponentsDemo(),
 );
 ```
 
-`GeniusAppTheme` registers both the new `GeniusThemeData` extension and an adapter for the existing `BrowserStyleTabBarThemeData`.
+`GeniusAppTheme` registers both the new `GeniusThemeData` extension and an adapter for the existing `BrowserStyleTabBarThemeData`. ComboBox uses `smart_auto_suggest_box`, so apps that want its built-in localized strings should register `SmartAutoSuggestBoxLocalizations.delegate` in `MaterialApp`.
 
 ## Quick examples
 
@@ -66,7 +73,7 @@ const GLStateView(
 )
 ```
 
-### ComboBox with MVVM view model
+### ComboBox with MVVM view model backed by smart_auto_suggest_box
 
 ```dart
 final accounts = GLComboBoxViewModel<String>(options: const [
@@ -78,8 +85,13 @@ GLComboBox<String>(
   label: 'Account',
   viewModel: accounts,
   icon: 'book',
+  asyncLoader: (query) async => accounts.options
+      .where((option) => option.label.toLowerCase().contains(query.toLowerCase()))
+      .toList(),
 )
 ```
+
+The public `GLComboBox` API remains design-system friendly, while the overlay, keyboard navigation, async debounce, highlighting, and multi-select chips are delegated to `smart_auto_suggest_box`.
 
 ### Editable table
 
@@ -141,4 +153,5 @@ example/lib/components/
 
 - No HTML is used inside Flutter source files.
 - Theme values should come from `GeniusThemeData`, `GeniusAppTheme`, or the existing `BrowserStyleTabBarThemeData` adapter.
-- The sandbox used for this update does not include Flutter/Dart tooling, so `flutter analyze` could not be executed here. Run it locally before publishing.
+- `smart_auto_suggest_box` 0.15.x requires Dart `>=3.10.0`, so the package SDK constraint was raised accordingly.
+- The sandbox used for this update does not include Flutter/Dart tooling, so `flutter pub get`, `flutter analyze`, and `flutter test` could not be executed here. Run them locally before publishing.

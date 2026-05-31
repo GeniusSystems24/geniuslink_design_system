@@ -1,10 +1,16 @@
 // ============================================================
 // GeniusLink Design System — Combo box.
 // Source parity: components-combobox.html.
-// Architecture: MVVM. GLComboBoxViewModel owns query/open/selection/loading.
+// Architecture: MVVM wrapper around smart_auto_suggest_box.
+//
+// The view model owns the domain selection/options state, while
+// smart_auto_suggest_box owns the optimized overlay, keyboard navigation,
+// async search scheduling, and multi-select chip rendering.
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:smart_auto_suggest_box/smart_auto_suggest_box.dart';
+
 import '../../tokens.dart';
 import '../core/core_components.dart';
 
@@ -13,12 +19,22 @@ class GLComboOption<T> {
   final String label;
   final String? subtitle;
   final String? icon;
-  const GLComboOption({required this.value, required this.label, this.subtitle, this.icon});
+
+  const GLComboOption({
+    required this.value,
+    required this.label,
+    this.subtitle,
+    this.icon,
+  });
 }
 
 class GLComboBoxViewModel<T> extends ChangeNotifier {
-  GLComboBoxViewModel({List<GLComboOption<T>> options = const [], T? selectedValue, Iterable<T> selectedValues = const [], this.multi = false})
-      : _options = [...options],
+  GLComboBoxViewModel({
+    List<GLComboOption<T>> options = const [],
+    T? selectedValue,
+    Iterable<T> selectedValues = const [],
+    this.multi = false,
+  })  : _options = [...options],
         _selectedValue = selectedValue,
         _selectedValues = {...selectedValues};
 
@@ -42,12 +58,19 @@ class GLComboBoxViewModel<T> extends ChangeNotifier {
   List<GLComboOption<T>> get filtered {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return options;
-    return _options.where((o) => o.label.toLowerCase().contains(q) || (o.subtitle ?? '').toLowerCase().contains(q)).toList();
+    return _options
+        .where((o) =>
+            o.label.toLowerCase().contains(q) ||
+            (o.subtitle ?? '').toLowerCase().contains(q))
+        .toList();
   }
 
-  GLComboOption<T>? get selectedOption {
-    for (final o in _options) {
-      if (o.value == _selectedValue) return o;
+  GLComboOption<T>? get selectedOption => optionForValue(_selectedValue);
+
+  GLComboOption<T>? optionForValue(T? value) {
+    if (value == null) return null;
+    for (final option in _options) {
+      if (option.value == value) return option;
     }
     return null;
   }
@@ -83,6 +106,24 @@ class GLComboBoxViewModel<T> extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSelectedValue(T? value) {
+    if (_selectedValue == value) return;
+    _selectedValue = value;
+    notifyListeners();
+  }
+
+  void setSelectedValues(Iterable<T> values) {
+    final next = values.toSet();
+    if (_selectedValues.length == next.length &&
+        _selectedValues.containsAll(next)) {
+      return;
+    }
+    _selectedValues
+      ..clear()
+      ..addAll(next);
+    notifyListeners();
+  }
+
   void select(GLComboOption<T> option) {
     if (multi) {
       if (_selectedValues.contains(option.value)) {
@@ -114,6 +155,8 @@ class GLComboBox<T> extends StatefulWidget {
   final String placeholder;
   final String? label;
   final String? icon;
+  final int maxVisibleChips;
+  final int? maxSelections;
   final ValueChanged<T?>? onChanged;
   final ValueChanged<Set<T>>? onMultiChanged;
   final Future<List<GLComboOption<T>>> Function(String query)? asyncLoader;
@@ -128,6 +171,8 @@ class GLComboBox<T> extends StatefulWidget {
     this.placeholder = 'Select option…',
     this.label,
     this.icon,
+    this.maxVisibleChips = 3,
+    this.maxSelections,
     this.onChanged,
     this.onMultiChanged,
     this.asyncLoader,
@@ -140,27 +185,50 @@ class GLComboBox<T> extends StatefulWidget {
 class _GLComboBoxState<T> extends State<GLComboBox<T>> {
   late GLComboBoxViewModel<T> _vm;
   late bool _owns;
-  final _queryController = TextEditingController();
+  late SmartAutoSuggestDataSource<T> _dataSource;
+  late SmartAutoSuggestController<T> _singleController;
+  late SmartAutoSuggestMultiSelectController<T> _multiController;
+  int _dataSourceVersion = 0;
 
   @override
   void initState() {
     super.initState();
-    _vm = widget.viewModel ?? GLComboBoxViewModel<T>(options: widget.options, multi: widget.multi);
+    _vm = widget.viewModel ??
+        GLComboBoxViewModel<T>(options: widget.options, multi: widget.multi);
     _owns = widget.viewModel == null;
     _vm.addListener(_onVm);
+    _singleController = SmartAutoSuggestController<T>();
+    _multiController = SmartAutoSuggestMultiSelectController<T>();
+    _dataSource = _createDataSource();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncControllersFromVm());
   }
 
   @override
   void didUpdateWidget(covariant GLComboBox<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    var needsDataSourceRebuild = false;
+
     if (widget.viewModel != oldWidget.viewModel) {
       _vm.removeListener(_onVm);
       if (_owns) _vm.dispose();
-      _vm = widget.viewModel ?? GLComboBoxViewModel<T>(options: widget.options, multi: widget.multi);
+      _vm = widget.viewModel ??
+          GLComboBoxViewModel<T>(options: widget.options, multi: widget.multi);
       _owns = widget.viewModel == null;
       _vm.addListener(_onVm);
+      needsDataSourceRebuild = true;
     } else if (_owns && widget.options != oldWidget.options) {
       _vm.setOptions(widget.options);
+      needsDataSourceRebuild = true;
+    }
+
+    if (widget.asyncLoader != oldWidget.asyncLoader ||
+        widget.multi != oldWidget.multi) {
+      needsDataSourceRebuild = true;
+    }
+
+    if (needsDataSourceRebuild) {
+      _rebuildDataSource();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncControllersFromVm());
     }
   }
 
@@ -172,136 +240,329 @@ class _GLComboBoxState<T> extends State<GLComboBox<T>> {
   void dispose() {
     _vm.removeListener(_onVm);
     if (_owns) _vm.dispose();
-    _queryController.dispose();
+    _dataSource.dispose();
+    _singleController.dispose();
+    _multiController.dispose();
     super.dispose();
   }
 
-  Future<void> _search(String query) async {
-    _vm.setQuery(query);
-    if (widget.asyncLoader == null) return;
-    _vm.setLoading(true);
-    _vm.setError(null);
-    try {
-      final options = await widget.asyncLoader!(query);
-      if (mounted) _vm.setOptions(options);
-    } catch (_) {
-      if (mounted) _vm.setError('Could not load options.');
-    } finally {
-      if (mounted) _vm.setLoading(false);
-    }
+  SmartAutoSuggestDataSource<T> _createDataSource() {
+    return SmartAutoSuggestDataSource<T>(
+      itemBuilder: (_, value) => _toSuggestItem(value),
+      initialList: (_) => _vm.options.map((o) => o.value).toList(),
+      onSearch: widget.asyncLoader == null
+          ? null
+          : (context, currentItems, searchText) async {
+              final query = searchText ?? '';
+              _vm.setQuery(query);
+              _vm.setLoading(true);
+              _vm.setError(null);
+              try {
+                final options = await widget.asyncLoader!(query);
+                if (mounted) _vm.setOptions(options);
+                return options.map((o) => o.value).toList();
+              } catch (_) {
+                if (mounted) _vm.setError('Could not load options.');
+                rethrow;
+              } finally {
+                if (mounted) _vm.setLoading(false);
+              }
+            },
+      searchMode: widget.asyncLoader == null
+          ? SmartAutoSuggestSearchMode.onNoLocalResults
+          : SmartAutoSuggestSearchMode.always,
+      debounce: const Duration(milliseconds: 350),
+    );
   }
 
-  void _select(GLComboOption<T> option) {
-    _vm.select(option);
+  void _rebuildDataSource() {
+    final old = _dataSource;
+    _dataSource = _createDataSource();
+    _dataSourceVersion++;
+    old.dispose();
+  }
+
+  void _syncControllersFromVm() {
+    if (!mounted) return;
     if (widget.multi) {
-      widget.onMultiChanged?.call(_vm.selectedValues);
+      _multiController.clearAll();
+      for (final value in _vm.selectedValues) {
+        final option = _vm.optionForValue(value);
+        if (option != null) _multiController.select(_toSuggestItem(option.value));
+      }
     } else {
-      widget.onChanged?.call(_vm.selectedValue);
+      final option = _vm.selectedOption;
+      if (option == null) {
+        _singleController.clearSelection();
+      } else {
+        _singleController.select(_toSuggestItem(option.value));
+      }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  SmartAutoSuggestItem<T> _toSuggestItem(T value) {
+    final option = _vm.optionForValue(value) ??
+        GLComboOption<T>(value: value, label: value.toString());
+    return SmartAutoSuggestItem<T>(
+      key: option.value.hashCode.toString(),
+      value: option.value,
+      label: option.label,
+      semanticLabel: option.subtitle == null
+          ? option.label
+          : '${option.label}, ${option.subtitle}',
+      subtitle: option.subtitle == null ? null : Text(option.subtitle!),
+    );
+  }
+
+  InputDecoration _decoration(BuildContext context) {
     final s = GeniusThemeData.of(context);
-    final selectedText = widget.multi
-        ? (_vm.selectedValues.isEmpty ? null : '${_vm.selectedValues.length} selected')
-        : _vm.selectedOption?.label;
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (widget.label != null) ...[
-        Text(widget.label!, style: TextStyle(fontFamily: GeniusThemeData.bodyFont, fontSize: 12, fontWeight: FontWeight.w800, color: s.fg2)),
-        const SizedBox(height: 6),
-      ],
-      Semantics(
-        button: true,
-        expanded: _vm.open,
-        enabled: widget.enabled,
-        child: InkWell(
-          onTap: widget.enabled ? _vm.toggleOpen : null,
-          borderRadius: BorderRadius.circular(GeniusThemeData.radiusSm),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(color: widget.enabled ? s.inputBg : s.inputBg.withOpacity(.45), border: Border.all(color: _vm.error == null ? s.border : GeniusThemeData.danger500), borderRadius: BorderRadius.circular(GeniusThemeData.radiusSm)),
-            child: Row(children: [
-              if (widget.icon != null) ...[GLIcon(widget.icon!, size: 17, color: s.fg3), const SizedBox(width: 8)],
-              Expanded(child: Text(selectedText ?? widget.placeholder, style: TextStyle(fontFamily: GeniusThemeData.bodyFont, fontSize: 13.5, color: selectedText == null ? s.fg3 : s.fg1, fontWeight: FontWeight.w600))),
-              if (_vm.loading) const GLSpinner(size: 16) else Icon(_vm.open ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded, color: s.fg3),
-            ]),
-          ),
-        ),
+    final radius = BorderRadius.circular(GeniusThemeData.radiusSm);
+    final border = OutlineInputBorder(
+      borderRadius: radius,
+      borderSide: BorderSide(color: s.border),
+    );
+    return InputDecoration(
+      labelText: widget.label,
+      hintText: widget.placeholder,
+      filled: true,
+      fillColor: widget.enabled ? s.inputBg : s.inputBg.withOpacity(.45),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      prefixIcon: widget.icon == null
+          ? null
+          : SizedBox(
+              width: 42,
+              child: Center(child: GLIcon(widget.icon!, size: 17, color: s.fg3)),
+            ),
+      border: border,
+      enabledBorder: border,
+      disabledBorder: border.copyWith(
+        borderSide: BorderSide(color: s.border.withOpacity(.55)),
       ),
-      if (_vm.error != null) ...[
-        const SizedBox(height: 6),
-        Text(_vm.error!, style: const TextStyle(fontFamily: GeniusThemeData.bodyFont, fontSize: 12, color: GeniusThemeData.danger500)),
-      ],
-      AnimatedSwitcher(
-        duration: GeniusThemeData.durModerate,
-        child: !_vm.open
-            ? const SizedBox.shrink()
-            : Padding(
-                key: const ValueKey('dropdown'),
-                padding: const EdgeInsets.only(top: 8),
-                child: GLCard(
-                  padding: 6,
-                  elevated: true,
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    if (widget.searchable) ...[
-                      GLSearchField(placeholder: 'Search options…', controller: _queryController, onChanged: _search),
-                      const SizedBox(height: 6),
-                    ],
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 260),
-                      child: SingleChildScrollView(
-                        child: Column(children: [
-                          if (_vm.loading)
-                            const Padding(padding: EdgeInsets.all(18), child: GLSpinner())
-                          else if (_vm.filtered.isEmpty)
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: GLStateView(icon: 'search', title: 'No matching options', body: 'Refine the search term or create a new option.', tone: GLStateTone.neutral),
-                            )
-                          else
-                            for (final option in _vm.filtered) _ComboOptionRow<T>(option: option, selected: widget.multi ? _vm.selectedValues.contains(option.value) : _vm.selectedValue == option.value, multi: widget.multi, onTap: () => _select(option)),
-                        ]),
-                      ),
-                    ),
-                  ]),
+      focusedBorder: border.copyWith(
+        borderSide: const BorderSide(color: GeniusThemeData.blue500, width: 1.4),
+      ),
+      errorBorder: border.copyWith(
+        borderSide: const BorderSide(color: GeniusThemeData.danger500),
+      ),
+      labelStyle: TextStyle(
+        fontFamily: GeniusThemeData.bodyFont,
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
+        color: s.fg2,
+      ),
+      hintStyle: TextStyle(
+        fontFamily: GeniusThemeData.bodyFont,
+        fontSize: 13.5,
+        color: s.fg3,
+        fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+
+  SmartAutoSuggestTheme _suggestTheme(BuildContext context) {
+    final s = GeniusThemeData.of(context);
+    return SmartAutoSuggestTheme(
+      overlayColor: s.surface,
+      overlayCardColor: s.surface,
+      overlayBorderRadius: BorderRadius.circular(GeniusThemeData.radiusMd),
+      overlayShadows: GeniusThemeData.popShadow,
+      overlayMargin: 6,
+      tileColor: Colors.transparent,
+      selectedTileColor: GeniusThemeData.blue500.withOpacity(.12),
+      selectedTileTextColor: GeniusThemeData.blue500,
+      tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      tileSubtitleStyle: TextStyle(
+        fontFamily: GeniusThemeData.bodyFont,
+        fontSize: 11.5,
+        color: s.fg3,
+      ),
+      noResultsSubtitleStyle: TextStyle(
+        fontFamily: GeniusThemeData.bodyFont,
+        fontSize: 12,
+        color: s.fg3,
+      ),
+      loadingSubtitleStyle: TextStyle(
+        fontFamily: GeniusThemeData.bodyFont,
+        fontSize: 12,
+        color: s.fg3,
+      ),
+      errorSubtitleStyle: const TextStyle(
+        fontFamily: GeniusThemeData.bodyFont,
+        fontSize: 12,
+        color: GeniusThemeData.danger500,
+      ),
+      progressIndicatorColor: GeniusThemeData.blue500,
+    );
+  }
+
+  Widget _suggestionTile(
+    BuildContext context,
+    SmartAutoSuggestItem<T> item,
+    String? searchText,
+    bool isFocused,
+  ) {
+    final s = GeniusThemeData.of(context);
+    final option = _vm.optionForValue(item.value) ??
+        GLComboOption<T>(value: item.value, label: item.label);
+    return AnimatedContainer(
+      duration: GeniusThemeData.durFast,
+      minHeight: option.subtitle == null ? 42 : 54,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: isFocused ? GeniusThemeData.blue500.withOpacity(.10) : Colors.transparent,
+        borderRadius: BorderRadius.circular(GeniusThemeData.radiusSm),
+      ),
+      child: Row(children: [
+        if (option.icon != null) ...[
+          GLIcon(
+            option.icon!,
+            size: 17,
+            color: isFocused ? GeniusThemeData.blue500 : s.fg3,
+          ),
+          const SizedBox(width: 9),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SmartAutoSuggestHighlightText(
+                text: option.label,
+                query: searchText ?? '',
+                baseStyle: TextStyle(
+                  fontFamily: GeniusThemeData.bodyFont,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: isFocused ? GeniusThemeData.blue500 : s.fg1,
+                ),
+                matchStyle: const TextStyle(
+                  fontFamily: GeniusThemeData.bodyFont,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w900,
+                  color: GeniusThemeData.blue500,
                 ),
               ),
-      ),
-    ]);
+              if (option.subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                  option.subtitle!,
+                  style: TextStyle(
+                    fontFamily: GeniusThemeData.bodyFont,
+                    fontSize: 11.5,
+                    color: s.fg3,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ]),
+    );
   }
-}
 
-class _ComboOptionRow<T> extends StatelessWidget {
-  final GLComboOption<T> option;
-  final bool selected;
-  final bool multi;
-  final VoidCallback onTap;
-  const _ComboOptionRow({required this.option, required this.selected, required this.multi, required this.onTap});
+  Widget _noResults(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GLStateView(
+        icon: 'search',
+        title: 'No matching options',
+        body: 'Refine the search term or create a new option.',
+        tone: GLStateTone.neutral,
+      ),
+    );
+  }
+
+  Widget _loading(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(18),
+      child: Center(child: GLSpinner()),
+    );
+  }
+
+  Widget _chip(BuildContext context, SmartAutoSuggestItem<T> item, VoidCallback onRemove) {
+    final s = GeniusThemeData.of(context);
+    return InputChip(
+      label: Text(
+        item.label,
+        style: TextStyle(
+          fontFamily: GeniusThemeData.bodyFont,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: s.fg1,
+        ),
+      ),
+      onDeleted: onRemove,
+      backgroundColor: GeniusThemeData.blue500.withOpacity(.10),
+      deleteIconColor: GeniusThemeData.blue500,
+      side: BorderSide(color: GeniusThemeData.blue500.withOpacity(.20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(GeniusThemeData.radiusSm),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final s = GeniusThemeData.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(GeniusThemeData.radiusSm),
-      child: Container(
-        constraints: BoxConstraints(minHeight: 42),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(color: selected ? GeniusThemeData.blue500.withOpacity(.12) : Colors.transparent, borderRadius: BorderRadius.circular(GeniusThemeData.radiusSm)),
-        child: Row(children: [
-          if (option.icon != null) ...[GLIcon(option.icon!, size: 17, color: selected ? GeniusThemeData.blue500 : s.fg3), const SizedBox(width: 9)],
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(option.label, style: TextStyle(fontFamily: GeniusThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w800, color: selected ? GeniusThemeData.blue500 : s.fg1)),
-            if (option.subtitle != null) Text(option.subtitle!, style: TextStyle(fontFamily: GeniusThemeData.bodyFont, fontSize: 11.5, color: s.fg3)),
-          ])),
-          if (multi)
-            Checkbox(value: selected, onChanged: (_) => onTap(), activeColor: GeniusThemeData.blue500)
-          else if (selected)
-            const GLIcon('check', size: 17, color: GeniusThemeData.blue500),
-        ]),
-      ),
+    final textStyle = TextStyle(
+      fontFamily: GeniusThemeData.bodyFont,
+      fontSize: 13.5,
+      fontWeight: FontWeight.w600,
+      color: GeniusThemeData.of(context).fg1,
+    );
+
+    final childKey = ValueKey('gl-combo-${widget.multi}-$_dataSourceVersion');
+
+    if (widget.multi) {
+      return SmartAutoSuggestMultiSelectBox<T>(
+        key: childKey,
+        smartController: _multiController,
+        dataSource: _dataSource,
+        decoration: _decoration(context),
+        theme: _suggestTheme(context),
+        enabled: widget.enabled,
+        style: textStyle,
+        tileHeight: 54,
+        maxPopupHeight: 260,
+        maxVisibleChips: widget.maxVisibleChips,
+        maxSelections: widget.maxSelections,
+        itemBuilder: _suggestionTile,
+        chipBuilder: _chip,
+        noResultsFoundBuilder: (context) => _noResults(context),
+        waitingBuilder: _loading,
+        clearButtonEnabled: true,
+        direction: SmartAutoSuggestBoxDirection.bottom,
+        overlayCardConstraints: const BoxConstraints(minWidth: 280, maxHeight: 320),
+        onChanged: (text, _) => _vm.setQuery(text),
+        onSelectionChanged: (items) {
+          final values = items.map((item) => item.value).toSet();
+          _vm.setSelectedValues(values);
+          widget.onMultiChanged?.call(values);
+        },
+      );
+    }
+
+    return SmartAutoSuggestBox<T>(
+      key: childKey,
+      smartController: _singleController,
+      dataSource: _dataSource,
+      decoration: _decoration(context),
+      theme: _suggestTheme(context),
+      enabled: widget.enabled,
+      style: textStyle,
+      tileHeight: 54,
+      maxPopupHeight: 260,
+      itemBuilder: _suggestionTile,
+      noResultsFoundBuilder: (context) => _noResults(context),
+      waitingBuilder: _loading,
+      clearButtonEnabled: true,
+      direction: SmartAutoSuggestBoxDirection.bottom,
+      overlayCardConstraints: const BoxConstraints(minWidth: 280, maxHeight: 320),
+      trailingIcon: _vm.loading ? const GLSpinner(size: 16) : null,
+      onChanged: (text, _) => _vm.setQuery(text),
+      onSelected: (item) {
+        _vm.setSelectedValue(item?.value);
+        widget.onChanged?.call(item?.value);
+      },
     );
   }
 }

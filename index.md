@@ -11,7 +11,7 @@ This index covers the Flutter implementation of all component groups found in `g
 | Domain widgets | MVVM-ready views | Domain status enums separate presentation from application state. |
 | Charts | MVC | Model data is passed to CustomPainter view classes. |
 | Skeletons | View-only | Animation state is local and token-driven. |
-| ComboBox | MVVM | `GLComboBoxViewModel` owns query, loading, open state, and selection. |
+| ComboBox | MVVM + package adapter | `GLComboBoxViewModel` owns selection/options, while `smart_auto_suggest_box` owns overlay, keyboard navigation, async debounce, highlighting, and chips. |
 | Editable table | MVVM | `GLTableController` owns rows, selected IDs, sorting, and cell edits. |
 | Browser tabs | MVVM-C | `BrowserStyleTabBarController` coordinates state and view interactions. |
 | Patterns | Composition | Patterns are assembled from the canonical components. |
@@ -26,7 +26,7 @@ This index covers the Flutter implementation of all component groups found in `g
 | `components-domain.html` | `lib/design_system/components/domain/domain_components.dart` | `example/lib/components/domain_components_demo.dart` |
 | `components-charts.html` | `lib/design_system/components/charts/chart_components.dart` | `example/lib/components/charts_demo.dart` |
 | `components-skeletons.html` | `lib/design_system/components/skeletons/skeleton_components.dart` | `example/lib/components/skeletons_demo.dart` |
-| `components-combobox.html` | `lib/design_system/components/forms/combo_box.dart` | `example/lib/components/combo_box_demo.dart` |
+| `components-combobox.html` | `lib/design_system/components/forms/combo_box.dart` backed by `smart_auto_suggest_box` | `example/lib/components/combo_box_demo.dart` |
 | `components-table.html` | `lib/design_system/components/data/editable_table.dart` | `example/lib/components/table_demo.dart` |
 | `patterns.html` | `lib/design_system/components/patterns/design_patterns.dart` | `example/lib/components/patterns_demo.dart` |
 | `motion.html` | `lib/design_system/components/motion/motion_components.dart` | `example/lib/components/motion_demo.dart` |
@@ -44,11 +44,15 @@ import 'package:geniuslink_design_system/geniuslink_design_system.dart';
 MaterialApp(
   theme: GeniusAppTheme.light(),
   darkTheme: GeniusAppTheme.dark(),
+  localizationsDelegates: const [
+    SmartAutoSuggestBoxLocalizations.delegate,
+  ],
+  supportedLocales: SmartAutoSuggestBoxLocalizations.delegate.supportedLocales,
   home: const AllComponentsDemo(),
 );
 ```
 
-`GeniusAppTheme` registers both `GeniusThemeData` and the existing `BrowserStyleTabBarThemeData` adapter so older tab examples continue to work.
+`GeniusAppTheme` registers both `GeniusThemeData` and the existing `BrowserStyleTabBarThemeData` adapter so older tab examples continue to work. ComboBox also exports `SmartAutoSuggestBoxLocalizations` for apps that want localized built-in auto-suggest strings.
 
 ## Foundations
 
@@ -145,8 +149,8 @@ Documentation-only HTML source reference:
 | API | Purpose |
 |---|---|
 | `GLComboOption<T>` | Option model. |
-| `GLComboBoxViewModel<T>` | Query/open/loading/error/selection view model. |
-| `GLComboBox<T>` | Single, multi, searchable, async-ready combo box view. |
+| `GLComboBoxViewModel<T>` | Options, query/loading/error metadata, and single/multi selection state. |
+| `GLComboBox<T>` | Design-system wrapper over `SmartAutoSuggestBox` / `SmartAutoSuggestMultiSelectBox` with single, multi, async, highlighted search, and chip selection support. |
 
 Documentation-only HTML source reference:
 
@@ -219,3 +223,4 @@ The example launcher now contains a **Full Component Gallery** card that opens `
 | 1.1.8 | Patterns. |
 | 1.1.9 | Motion. |
 | 1.2.0 | Full stage documentation, exports, and example gallery. |
+| 1.2.1 | ComboBox migrated to `smart_auto_suggest_box` and SDK raised to Dart `>=3.10.0`. |

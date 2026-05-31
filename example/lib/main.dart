@@ -16,7 +16,9 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+import 'package:smart_auto_suggest_box/smart_auto_suggest_box.dart';
 import 'erp_app.dart';
 import 'figma_app.dart';
 import 'chrome_app.dart';
@@ -40,7 +42,13 @@ class ExampleApp extends StatelessWidget {
         scaffoldBackgroundColor: BrowserStyleTabBarThemeData.light.bg,
         extensions: const [BrowserStyleTabBarThemeData.light],
       ),
-      supportedLocales: const [Locale('en'), Locale('ar')],
+      localizationsDelegates: const [
+        SmartAutoSuggestBoxLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: SmartAutoSuggestBoxLocalizations.delegate.supportedLocales,
       home: const LauncherScreen(),
     );
   }

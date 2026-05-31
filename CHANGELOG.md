@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.2.1
+
+> 2026-05-31
+
+- Migrated `GLComboBox` to use `smart_auto_suggest_box: ^0.15.3` for single-select overlays, multi-select chips, async search debounce, keyboard navigation, and highlighted matches.
+- Preserved the design-system wrapper API (`GLComboOption`, `GLComboBoxViewModel`, `GLComboBox`) while delegating suggestion mechanics to `SmartAutoSuggestBox` and `SmartAutoSuggestMultiSelectBox`.
+- Added `SmartAutoSuggestBoxLocalizations` / `SmartAutoSuggestTheme` re-exports for app setup and updated the example app localization delegates.
+- Raised the Dart SDK constraint to `>=3.10.0` to match the selected `smart_auto_suggest_box` 0.15.x release line.
+
 ## 1.2.0
 
 > 2026-05-31
