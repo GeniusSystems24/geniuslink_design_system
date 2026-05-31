@@ -22,6 +22,7 @@ import 'figma_app.dart';
 import 'chrome_app.dart';
 import 'browser_tabs_demo.dart';
 import 'shell_kit.dart';
+import 'components/all_components_demo.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -117,6 +118,13 @@ class LauncherScreen extends StatelessWidget {
                         accent: s.fg2,
                         preview: const _DocsThumb(),
                         onTap: () => _open(context, const _GalleryRoute()),
+                      ),
+                      _DemoCard(
+                        title: 'Full Component Gallery',
+                        subtitle: 'Core · Domain · Charts · Skeletons · ComboBox · Table · Patterns · Motion',
+                        accent: GeniusThemeData.blue500,
+                        preview: const _ComponentsThumb(),
+                        onTap: () => _open(context, const AllComponentsDemo()),
                       ),
                     ],
                   );
@@ -362,4 +370,40 @@ class _GalleryRouteState extends State<_GalleryRoute> {
       child: BrowserTabsDemo(light: _light, onToggleTheme: (v) => setState(() => _light = v)),
     );
   }
+}
+
+
+class _ComponentsThumb extends StatelessWidget {
+  const _ComponentsThumb();
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(12),
+      child: GridView.count(
+        crossAxisCount: 3,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        physics: const NeverScrollableScrollPhysics(),
+        children: const [
+          _IconTile(Icons.smart_button_outlined),
+          _IconTile(Icons.chat_bubble_outline_rounded),
+          _IconTile(Icons.bar_chart_rounded),
+          _IconTile(Icons.blur_on_rounded),
+          _IconTile(Icons.search_rounded),
+          _IconTile(Icons.table_chart_outlined),
+        ],
+      ),
+    );
+  }
+}
+
+class _IconTile extends StatelessWidget {
+  final IconData icon;
+  const _IconTile(this.icon);
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: const Color(0xFFE2E8F0))),
+        child: Icon(icon, color: GeniusThemeData.blue500, size: 24),
+      );
 }

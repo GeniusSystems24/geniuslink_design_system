@@ -62,8 +62,8 @@ class TabContextMenu extends StatelessWidget {
     final screen = MediaQuery.of(context).size;
     const w = 220.0;
     final h = items.length * 36 + 12;
-    final left = at.dx.clamp(8.0, screen.width - w - 8);
-    final top = at.dy.clamp(8.0, screen.height - h - 8);
+    final left = at.dx.clamp(8.0, screen.width - w - 8).toDouble();
+    final top = at.dy.clamp(8.0, screen.height - h - 8).toDouble();
     return Positioned(
       left: left,
       top: top,
@@ -169,9 +169,9 @@ class TabListDropdown extends StatelessWidget {
     final screen = MediaQuery.of(context).size;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     const w = 280.0;
-    final left = (rtl ? anchor.left : anchor.right - w).clamp(8.0, screen.width - w - 8);
-    final top = (anchor.bottom + 6).clamp(8.0, screen.height - 8);
-    final maxH = (screen.height - top - 16).clamp(160.0, screen.height);
+    final left = (rtl ? anchor.left : anchor.right - w).clamp(8.0, screen.width - w - 8).toDouble();
+    final top = (anchor.bottom + 6).clamp(8.0, screen.height - 8).toDouble();
+    final maxH = (screen.height - top - 16).clamp(160.0, screen.height).toDouble();
     return Positioned(
       left: left,
       top: top,
@@ -310,14 +310,14 @@ class _MiniPagePreviewState extends State<MiniPagePreview> {
     final r = widget.anchor;
     const cardH = 210.0;
 
-    final left = r.left.clamp(8.0, screen.width - _w - 8);
+    final left = r.left.clamp(8.0, screen.width - _w - 8).toDouble();
     var top = r.bottom + 9;
     var above = false;
     if (top + cardH > screen.height - 8) {
       top = r.top - cardH - 9;
       above = true;
     }
-    final arrowX = (r.left + r.width / 2 - left).clamp(16.0, _w - 16);
+    final arrowX = (r.left + r.width / 2 - left).clamp(16.0, _w - 16).toDouble();
 
     return Positioned(
       left: left,

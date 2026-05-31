@@ -157,7 +157,7 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
 
   void _scrollByDir(bool towardEnd) {
     if (!_scroll.hasClients) return;
-    final target = (_scroll.offset + 220 * (towardEnd ? 1 : -1)).clamp(0.0, _scroll.position.maxScrollExtent);
+    final target = (_scroll.offset + 220 * (towardEnd ? 1 : -1)).clamp(0.0, _scroll.position.maxScrollExtent).toDouble();
     _scroll.animateTo(target, duration: BrowserStyleTabBarThemeData.durSlow, curve: BrowserStyleTabBarThemeData.curveStandard);
   }
 
@@ -208,9 +208,9 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     final i = ord.indexWhere((t) => t.id == _ctrl.activeId);
     var ni = i;
     if (e.logicalKey == LogicalKeyboardKey.arrowRight) {
-      ni = (i + 1).clamp(0, ord.length - 1);
+      ni = (i + 1).clamp(0, ord.length - 1).toInt();
     } else if (e.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      ni = (i - 1).clamp(0, ord.length - 1);
+      ni = (i - 1).clamp(0, ord.length - 1).toInt();
     } else if (e.logicalKey == LogicalKeyboardKey.home) {
       ni = 0;
     } else if (e.logicalKey == LogicalKeyboardKey.end) {

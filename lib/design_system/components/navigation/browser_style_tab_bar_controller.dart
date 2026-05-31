@@ -122,7 +122,7 @@ class BrowserStyleTabBarController extends ChangeNotifier {
         _activeId = null;
       } else {
         final candidates = ord.where((t) => t.id != id && _tabs.any((n) => n.id == t.id)).toList();
-        final idx = oi.clamp(0, candidates.length - 1);
+        final idx = oi.clamp(0, candidates.length - 1).toInt();
         _activeId = candidates.isEmpty ? _tabs.first.id : candidates[idx].id;
       }
     }
