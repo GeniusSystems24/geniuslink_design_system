@@ -1,12 +1,12 @@
 # GeniusLink Design System Flutter
 
-A Flutter design-system package for the GeniusLink foundations, core UI primitives, domain widgets, charts, skeletons, ComboBox, editable tables, reusable patterns, token-driven motion, and browser-style workspace tabs.
+A Flutter design-system package for the GeniusLink foundations, core UI primitives, domain widgets, charts, skeletons, ComboBox, TrinaGrid-backed editable tables, reusable patterns, token-driven motion, and browser-style workspace tabs.
 
 This package now covers the component groups in `genius_design_system_web/design_system` while keeping Flutter source code native. HTML snippets from the web project are documented only in `index.md`; they are not embedded in Flutter widgets.
 
 ## Current version
 
-`1.2.1`
+`1.2.2`
 
 ## What is included
 
@@ -18,7 +18,7 @@ This package now covers the component groups in `genius_design_system_web/design
 | Charts | `lib/design_system/components/charts/chart_components.dart` |
 | Skeleton loaders | `lib/design_system/components/skeletons/skeleton_components.dart` |
 | ComboBox | `lib/design_system/components/forms/combo_box.dart` (`smart_auto_suggest_box`) |
-| Editable table | `lib/design_system/components/data/editable_table.dart` |
+| Editable table | `lib/design_system/components/data/editable_table.dart` (`trina_grid`) |
 | Patterns | `lib/design_system/components/patterns/design_patterns.dart` |
 | Motion | `lib/design_system/components/motion/motion_components.dart` |
 | Browser tabs | `lib/design_system/components/navigation/*` |
@@ -95,10 +95,18 @@ The public `GLComboBox` API remains design-system friendly, while the overlay, k
 
 ### Editable table
 
+`GLEditableTable` is a GeniusLink MVVM wrapper over `trina_grid`. Keep your app state in `GLTableController`, define columns with `GLTableColumn`, and let TrinaGrid handle keyboard navigation, inline editing, row checks, filters, sorting, resizing, and typed editors.
+
 ```dart
+final controller = GLTableController(rows: glSampleRows());
+
 GLEditableTable(
+  controller: controller,
   columns: glSampleColumns(),
-  rows: glSampleRows(),
+  showFilters: true,
+  onCellChanged: (change) {
+    debugPrint('Updated ${change.rowId}.${change.columnKey}: ${change.value}');
+  },
 )
 ```
 
@@ -144,7 +152,7 @@ example/lib/components/
 
 ## Architecture
 
-- **MVVM**: ComboBox, editable table, browser tab controller, and externally driven state surfaces.
+- **MVVM**: ComboBox, TrinaGrid-backed editable table, browser tab controller, and externally driven state surfaces.
 - **MVC**: Chart models passed to Flutter `CustomPainter` views.
 - **MVVM-C**: Browser tab strip uses a controller to coordinate tab state, overlays, selection, and previews.
 - **Composition**: Patterns are assembled from canonical core/domain components.
@@ -154,4 +162,5 @@ example/lib/components/
 - No HTML is used inside Flutter source files.
 - Theme values should come from `GeniusThemeData`, `GeniusAppTheme`, or the existing `BrowserStyleTabBarThemeData` adapter.
 - `smart_auto_suggest_box` 0.15.x requires Dart `>=3.10.0`, so the package SDK constraint was raised accordingly.
+- `trina_grid: ^2.2.2` powers `GLEditableTable`; use the GeniusLink wrapper for token styling and state synchronization, and pass `TrinaGridConfiguration` only for advanced overrides.
 - The sandbox used for this update does not include Flutter/Dart tooling, so `flutter pub get`, `flutter analyze`, and `flutter test` could not be executed here. Run them locally before publishing.

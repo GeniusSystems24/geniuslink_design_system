@@ -12,7 +12,7 @@ This index covers the Flutter implementation of all component groups found in `g
 | Charts | MVC | Model data is passed to CustomPainter view classes. |
 | Skeletons | View-only | Animation state is local and token-driven. |
 | ComboBox | MVVM + package adapter | `GLComboBoxViewModel` owns selection/options, while `smart_auto_suggest_box` owns overlay, keyboard navigation, async debounce, highlighting, and chips. |
-| Editable table | MVVM | `GLTableController` owns rows, selected IDs, sorting, and cell edits. |
+| Editable table | MVVM + `trina_grid` adapter | `GLTableController` owns domain rows/selection while TrinaGrid renders editing, filters, sorting, keyboard navigation, and resizing. |
 | Browser tabs | MVVM-C | `BrowserStyleTabBarController` coordinates state and view interactions. |
 | Patterns | Composition | Patterns are assembled from the canonical components. |
 | Motion | Token-driven views | Motion is centralized through Flutter tokens. |
@@ -27,7 +27,7 @@ This index covers the Flutter implementation of all component groups found in `g
 | `components-charts.html` | `lib/design_system/components/charts/chart_components.dart` | `example/lib/components/charts_demo.dart` |
 | `components-skeletons.html` | `lib/design_system/components/skeletons/skeleton_components.dart` | `example/lib/components/skeletons_demo.dart` |
 | `components-combobox.html` | `lib/design_system/components/forms/combo_box.dart` backed by `smart_auto_suggest_box` | `example/lib/components/combo_box_demo.dart` |
-| `components-table.html` | `lib/design_system/components/data/editable_table.dart` | `example/lib/components/table_demo.dart` |
+| `components-table.html` | `lib/design_system/components/data/editable_table.dart` backed by `trina_grid` | `example/lib/components/table_demo.dart` |
 | `patterns.html` | `lib/design_system/components/patterns/design_patterns.dart` | `example/lib/components/patterns_demo.dart` |
 | `motion.html` | `lib/design_system/components/motion/motion_components.dart` | `example/lib/components/motion_demo.dart` |
 | `BrowserTabs.jsx`, `TabPages.jsx`, `components-browsertabs*.html` | `lib/design_system/components/navigation/*` | `example/lib/browser_tabs_demo.dart` |
@@ -163,13 +163,16 @@ Documentation-only HTML source reference:
 
 | API | Purpose |
 |---|---|
-| `GLTableColumn` | Column model. |
-| `GLTableRowModel` | Row model. |
-| `GLTableController` | Rows, selected IDs, sorting, and edits. |
-| `GLEditableTable` | Desktop table + responsive mobile cards. |
-| `GLResponsiveDataCards` | Mobile data-card fallback. |
+| `GLTableColumn` | Column model with text/number/currency/percentage/select/boolean/date/time semantics mapped to TrinaGrid column types. |
+| `GLTableRowModel` | Row model with dynamic typed cell values. |
+| `GLTableController` | MVVM row state, selected IDs, local sorting helpers, add/delete, and edit synchronization. |
+| `GLEditableTable` | GeniusLink-styled wrapper over `TrinaGrid` with filters, inline editing, keyboard navigation, row checks, resize/sort behavior, and optional responsive cards fallback. |
+| `GLResponsiveDataCards` | Optional mobile data-card fallback when `responsiveCards` is enabled. |
 | `GLTableStateBox` | Loading/empty/error table states. |
+| `GLTableCellChange` | Cell-change payload emitted by `GLEditableTable.onCellChanged`. |
 | `glSampleColumns`, `glSampleRows` | Example data helpers. |
+
+Implementation note: `GLEditableTable` delegates grid mechanics to `trina_grid` while retaining GeniusLink wrappers for state, tokens, examples, and API consistency. The web HTML table source remains documentation-only and is not embedded into Flutter code.
 
 ## Patterns
 
@@ -224,3 +227,4 @@ The example launcher now contains a **Full Component Gallery** card that opens `
 | 1.1.9 | Motion. |
 | 1.2.0 | Full stage documentation, exports, and example gallery. |
 | 1.2.1 | ComboBox migrated to `smart_auto_suggest_box` and SDK raised to Dart `>=3.10.0`. |
+| 1.2.2 | Editable table migrated to `trina_grid: ^2.2.2` with typed columns, filters, keyboard editing, row checks, and TrinaGrid configuration hooks. |

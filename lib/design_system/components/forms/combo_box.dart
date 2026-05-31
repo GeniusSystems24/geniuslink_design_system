@@ -406,7 +406,7 @@ class _GLComboBoxState<T> extends State<GLComboBox<T>> {
         GLComboOption<T>(value: item.value, label: item.label);
     return AnimatedContainer(
       duration: GeniusThemeData.durFast,
-      minHeight: option.subtitle == null ? 42 : 54,
+      constraints: BoxConstraints(minHeight: option.subtitle == null ? 42 : 54),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: isFocused ? GeniusThemeData.blue500.withOpacity(.10) : Colors.transparent,

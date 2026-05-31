@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.2
+
+> 2026-05-31
+
+- Migrated `GLEditableTable` to use `trina_grid: ^2.2.2` for data-grid rendering, inline editing, keyboard navigation, row checking, filtering, sorting, and column resizing.
+- Preserved the design-system MVVM API with `GLTableColumn`, `GLTableRowModel`, `GLTableController`, and added `GLTableCellChange` for edit callbacks.
+- Added typed table column semantics for text, number, currency, percentage, select, boolean, date, and time editors, mapped to TrinaGrid column types.
+- Updated the table example with add/delete-selected actions, filters, selection, typed currency/select columns, and edit-change feedback.
+- Re-exported selected TrinaGrid configuration classes for advanced consumers while keeping GeniusLink wrappers as the default public API.
+
 ## 1.2.1
 
 > 2026-05-31

@@ -9,6 +9,7 @@ library geniuslink_design_system;
 export 'design_system/tokens.dart';
 export 'design_system/app_theme.dart';
 export 'package:smart_auto_suggest_box/smart_auto_suggest_box.dart' show SmartAutoSuggestBoxLocalizations, SmartAutoSuggestTheme;
+export 'package:trina_grid/trina_grid.dart' show TrinaGridConfiguration, TrinaGridStateManager, TrinaGridStyleConfig, TrinaGridScrollbarConfig, TrinaGridColumnSizeConfig, TrinaAutoSizeMode, TrinaResizeMode;
 
 export 'design_system/components/core/core_components.dart';
 export 'design_system/components/domain/domain_components.dart';

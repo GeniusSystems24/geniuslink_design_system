@@ -1,6 +1,6 @@
 name: geniuslink_design_system
 description: A Flutter design-system package for GeniusLink foundations, core, domain, chart, skeleton, form, data, pattern, motion, and browser-tab components.
-version: 1.2.1
+version: 1.2.2
 repository: https://github.com/GeniusSystems24/geniuslink_design_system
 issue_tracker: https://github.com/GeniusSystems24/geniuslink_design_system/issues
 
@@ -36,6 +36,7 @@ dependencies:
   flutter:
     sdk: flutter
   smart_auto_suggest_box: ^0.15.3
+  trina_grid: ^2.2.2
 
 dev_dependencies:
   flutter_lints: ^3.0.0
