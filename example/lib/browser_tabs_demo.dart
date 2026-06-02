@@ -6,7 +6,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
 
 class BrowserTabsDemo extends StatelessWidget {
   final ValueChanged<bool>? onToggleTheme; // true => light

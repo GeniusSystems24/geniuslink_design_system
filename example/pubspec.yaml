@@ -1,7 +1,7 @@
 name: geniuslink_design_system_example
-description: Example app embedding GeniusLink BrowserStyleTabBar in a realistic workspace shell.
+description: Example app embedding the GeniusLink Design System widgets in realistic workspace shells.
 publish_to: "none"
-version: 1.0.0
+version: 2.0.0
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

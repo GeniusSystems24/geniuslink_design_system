@@ -1,16 +1,16 @@
 // ============================================================
-// GeniusLink — BrowserStyleTabBar — public barrel export.
+// GeniusLink Design System — unified public barrel.
 //   import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+//
+// Re-exports the whole kit. For a leaner import you can still pull a single
+// component group from its own barrel:
+//   • geniuslink_browser_tabs.dart   — BrowserStyleTabBar
+//   • geniuslink_editable_table.dart — EditableTable + typed columns
+//   • geniuslink_tree.dart           — Tree
+//
+// v2.0.0
 // ============================================================
 
-/// Public entry point for the GeniusLink Flutter design-system widgets.
-///
-/// Import this file to use the browser-style tab strip, its tab models, the
-/// tab-page demo surface, and the theme extension required by the component.
-library geniuslink_design_system;
-
-export 'design_system/components/navigation/browser_style_tab_bar_theme.dart';
-export 'design_system/components/navigation/browser_style_tab_bar_controller.dart';
-export 'design_system/components/navigation/tab_models.dart';
-export 'design_system/components/navigation/tab_pages.dart';
-export 'design_system/components/navigation/browser_style_tab_bar.dart';
+export 'geniuslink_browser_tabs.dart';
+export 'geniuslink_editable_table.dart';
+export 'geniuslink_tree.dart';

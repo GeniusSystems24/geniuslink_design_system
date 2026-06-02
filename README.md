@@ -1,353 +1,386 @@
+<!-- This README is also presented as an interactive web page: doc/showcase.html -->
+
 # GeniusLink Design System
 
-A Flutter design-system package for browser-style workspace tabs, themed
-previews, contextual menus, dirty-state guards, and RTL-ready navigation.
+[![pub package](https://img.shields.io/badge/pub-v2.0.0-4A7CFF.svg)](https://pub.dev/packages/geniuslink_design_system)
+[![flutter](https://img.shields.io/badge/Flutter-%E2%89%A53.10-1DB88A.svg)](https://flutter.dev)
+[![style](https://img.shields.io/badge/style-MVC-F97316.svg)](#architecture)
+[![license](https://img.shields.io/badge/license-MIT-64748B.svg)](#license)
 
-It is a Flutter implementation of the GeniusLink browser-style workspace tab
-experience, preserving the same visual structure, interaction model, and GL
-design tokens.
+A themeable, **MVC** Flutter widget kit ported from the GeniusLink web design system. Three production-grade, self-contained components — a browser-style **tab bar**, an Excel-style **editable table** with nine typed column kinds, and a customisable **tree** — all theme-aware (light **+** dark) and bilingual (LTR **+** RTL).
 
-It is prepared in the same layout and documentation style expected by pub.dev
-packages, including package metadata, example documentation, changelog, license,
-and public API comments.
+> 📺 **Visual tour:** open [`doc/showcase.html`](doc/showcase.html) in a browser for a designed walkthrough of every part and feature.
+
+---
 
 ## Features
 
-- Browser-style tab strip with active, inactive, hover, pressed, and focused
-  states.
-- Pinned tabs, closable tabs, dirty-state indicators, and guarded dirty-close
-  confirmation.
-- Right-click and long-press context menu with close, close others, close to
-  the right, duplicate, and pin or unpin actions.
-- Overflow chevrons plus a tab-list dropdown for jumping to any open tab.
-- Hover-intent mini-page previews that render a scaled version of the real tab
-  page.
-- Drag-to-reorder, keyboard navigation, dark and light themes, and RTL layout.
-- Self-contained theme tokens through `BrowserStyleTabBarThemeData`.
-- Optional `BrowserStyleTabBarController` for externally driven tab state.
-- Optional `pageBuilder` for custom per-tab pages in both the active content
-  surface and hover previews.
+- 🧩 **Three components, one kit** — `BrowserStyleTabBar`, `EditableTable`, `Tree`.
+- 🎨 **Self-contained theming** — each component carries its own `ThemeExtension` with ready-made `.light` / `.dark` presets. No global token file required.
+- 🏛️ **Strict MVC** — immutable models, a `ChangeNotifier` controller as the single source of truth, and a thin view. Drive any component from outside, or from its own page content via an `InheritedNotifier` scope.
+- ⌨️ **Full keyboard control** — spreadsheet navigation, inline editing, copy/cut/paste, undo/redo, and an in-widget shortcuts reference.
+- 🌍 **RTL + dark** everywhere — mirrors via `Directionality` + `EdgeInsetsDirectional`.
+- 🔌 **Zero third-party dependencies** — pure Flutter + Material.
 
-## Feature Snapshots
-
-### Browser-Style Workspace Tabs
-
-The tab strip mirrors a modern browser workspace: active tabs merge into the
-content surface, inactive tabs stay compact, and the add-tab and tab-list
-buttons stay anchored at the trailing edge.
-
-![Browser-style workspace tabs](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
-
-### Pinned, Closable, and Dirty Tabs
-
-Pinned tabs stay at the leading edge, closable tabs expose close affordances on
-hover or active state, and dirty tabs show an unsaved indicator before the user
-attempts to close them.
-
-![Pinned, closable, and dirty tabs](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
-
-### Context Menu Actions
-
-Right-click and long-press open a tab context menu with close, close others,
-close to the right, duplicate, and pin or unpin actions, including disabled and
-danger states.
-
-![Context menu actions](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/3.png)
-
-### Overflow and Tab-List Dropdown
-
-Overflow chevrons appear only when the strip scrolls horizontally. The tab-list
-dropdown lists every open tab, highlights the active tab, and marks pinned or
-dirty tabs so users can jump directly to the right workspace.
-
-![Overflow and tab-list dropdown](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
-
-### Hover-Intent Mini-Page Preview
-
-Hovering over a tab opens a mini-page preview after a short delay. The preview
-renders a scaled version of the real page instead of a placeholder skeleton.
-
-![Hover-intent mini-page preview](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
-
-### Drag, Keyboard, Theme, and RTL Support
-
-The component supports drag-to-reorder, Left/Right/Home/End keyboard navigation,
-dark and light themes, and mirrored RTL layout for tab placement, separators,
-overflow controls, and menus.
-
-![RTL tab layout](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/1.png)
-
-### Interactive Preview
-
-The included GIF shows the same interactions in motion, including tab
-selection, menus, previews, and overflow behavior.
-
-![Interactive preview](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/preview.gif)
-
-### Self-Contained Theme Tokens
-
-`BrowserStyleTabBarThemeData` carries all component tokens, including surfaces,
-foreground colors, semantic colors, radii, shadows, font family names, and
-motion values, so the tab strip and its overlays can be themed without a global
-design-system dependency.
-
-![Self-contained theme tokens](https://raw.githubusercontent.com/GeniusSystems24/geniuslink_design_system/main/snapshots/2.png)
-
-## Getting Started
-
-Add the package to a Flutter app. For the current local checkout, use a path
-dependency:
+## Install
 
 ```yaml
 dependencies:
   geniuslink_design_system:
-    path: ../flutter
+    git: # or a path/hosted source
+      url: https://example.com/geniuslink_design_system.git
 ```
-
-Then import the public barrel:
 
 ```dart
 import 'package:geniuslink_design_system/geniuslink_design_system.dart';
 ```
 
-Register the theme extension on your app theme:
+Prefer a leaner import? Each component ships its own barrel:
 
 ```dart
-ThemeData(
-  useMaterial3: true,
-  extensions: const [
+import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
+import 'package:geniuslink_design_system/geniuslink_editable_table.dart';
+import 'package:geniuslink_design_system/geniuslink_tree.dart';
+```
+
+Register the theme extensions you use (each falls back to its `.dark` preset if absent):
+
+```dart
+MaterialApp(
+  theme: ThemeData(extensions: const [
+    BrowserStyleTabBarThemeData.light,
+    EditableTableThemeData.light,
+    TreeThemeData.light,
+  ]),
+  darkTheme: ThemeData(extensions: const [
     BrowserStyleTabBarThemeData.dark,
-  ],
+    EditableTableThemeData.dark,
+    TreeThemeData.dark,
+  ]),
 );
 ```
 
-Use `BrowserStyleTabBarThemeData.light` for light mode, or switch between both
-with `ThemeMode`.
+---
 
-## Example Launcher
+## Run the example
 
-The package is a library, so it has no `lib/main.dart`. Run the example app:
+The package is a library (no `lib/main.dart`). Run the example app:
 
 ```bash
-cd example
+cd geniuslink_design_system_flutter/example
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome        # or any device / emulator
 ```
 
-The example opens a launcher with four demos that host the same component:
+It opens on a **launcher** of demos, each hosting the components in a realistic shell — an all-in-one **ERP Console** (tree sidebar + tabs + tables), an **EditableTable** gallery (every column type), a **Tree** gallery, plus Figma- and Chrome-style tab-bar shells.
 
-| Demo | Shell | Content |
-|------|-------|---------|
-| ERP System | Light SaaS shell with module sidebar and app bar | Built-in accounting pages, pinned reference tab, unsaved journal tab, close guard, and dark/light toggle |
-| Figma-Style Editor | Dark design-tool shell with tools rail, layers, and inspector | Custom canvas pages. The "Add frame" action mutates page state and marks the tab dirty, so its live thumbnail updates |
-| Chrome-Style Browser | Browser-like shell with omnibox toolbar | Custom document pages where in-page links open new tabs through the controller |
-| Documentation | Component documentation shell | Anatomy, states, props, and LTR/RTL specimens from `example/lib/browser_tabs_demo.dart` |
+---
 
-## Usage
+# Components
 
-Create a tab strip with the built-in sample state:
+## 1 · EditableTable
 
-```dart
-const BrowserStyleTabBar();
-```
+An Excel-style data-entry grid. Click to select, type to overwrite, `Enter ↓` / `Tab →` to move, sort by clicking a header, undo/redo — with **nine typed column kinds**, row-aware validation, optional delete confirmation, and a totals footer.
 
-Seed it with your own tabs:
+### Quick start
 
 ```dart
-BrowserStyleTabBar(
-  tabsState: [
-    BrowserTab(
-      id: 1,
-      title: 'Chart of Accounts',
-      kind: GLTabKind.ledger,
-      pinned: true,
-    ),
-    BrowserTab(
-      id: 2,
-      title: 'Opening Journal Entry',
-      kind: GLTabKind.doc,
-      dirty: true,
-    ),
-    BrowserTab(
-      id: 3,
-      title: 'Dashboard',
-      kind: GLTabKind.chart,
-    ),
+EditableTable(
+  columns: [
+    EditableColumn(key: 'name', label: 'Account', required: true),
+    NumericColumn(key: 'balance', label: 'Balance', includeInTotal: true),
   ],
-);
-```
-
-Use an external controller when the host app needs to own tab state:
-
-```dart
-final controller = BrowserStyleTabBarController(
-  tabs: [
-    BrowserTab(
-      id: 1,
-      title: 'Chart of Accounts',
-      kind: GLTabKind.ledger,
-      pinned: true,
-    ),
-    BrowserTab(
-      id: 2,
-      title: 'Opening Journal Entry',
-      kind: GLTabKind.doc,
-      dirty: true,
-    ),
+  initialRows: const [
+    {'name': 'Cash', 'balance': '42,500.00'},
+    {'name': 'Bank', 'balance': '186,420.00'},
   ],
-  activeId: 2,
-);
-
-BrowserStyleTabBar(
-  controller: controller,
-  pageBuilder: (context, tab) => MyWorkspacePage(tab: tab),
+  showTotals: true,
+  unitLabel: 'SAR',
+  onChanged: (rows) => debugPrint('${rows.length} rows'),
 );
 ```
 
-Render a content page for a single tab when you need the same demo surface
-outside the tab strip:
+`EditableRow` is just `Map<String, String>` — values are the strings the user typed; you parse on read. Provide `columns` + `initialRows` (the widget owns a controller), or pass a `controller:` to drive/observe it externally.
+
+### Column types
+
+Each kind is an ergonomic subclass of `EditableColumn` — pass the right one; the table picks the editor automatically.
+
+| Column | Editor | Stores |
+|---|---|---|
+| `EditableColumn` | inline text | free text |
+| `NumericColumn` | inline numeric (min/max/decimals) | grouped number `1,234.00` |
+| `DateColumn` | masked `YYYY-MM-DD` + 📅 calendar button | ISO date |
+| `TimeColumn` | masked `HH:mm` + 🕑 clock button | 24h time |
+| `ComboBoxColumn` | free text **+** suggestions ▾ | any string |
+| `DropdownColumn` | popup menu (strict) | one of `options` |
+| `ColorPickerColumn` | swatch menu | `#RRGGBB` hex |
+| `ReadonlyColumn` | — (never editable) | display only |
+| `ComputedColumn` | — (derived from the row) | `compute(row)` |
 
 ```dart
-GLTabPage(
-  tab: BrowserTab(
-    id: 4,
-    title: 'Downtown Central Store',
-    kind: GLTabKind.store,
+final columns = <EditableColumn>[
+  const ReadonlyColumn(key: 'id', label: 'ID', mono: true),
+  const EditableColumn(key: 'task', label: 'Task', required: true),
+
+  // Numeric — clamped, integer:
+  const NumericColumn(key: 'qty', label: 'Qty', min: 0, decimals: 0),
+  const NumericColumn(key: 'price', label: 'Price', min: 0, decimals: 2, includeInTotal: true),
+
+  // Computed — recomputes on every edit:
+  ComputedColumn(
+    key: 'total', label: 'Total', includeInTotal: true,
+    compute: (r) {
+      final q = EditableTableFormat.parseNumber(r['qty'] ?? '') ?? 0;
+      final p = EditableTableFormat.parseNumber(r['price'] ?? '') ?? 0;
+      return EditableTableFormat.formatNumber(q * p);
+    },
+  ),
+
+  // Web-style date & time fields — type with the keyboard, or use the picker button:
+  const DateColumn(key: 'due', label: 'Due date'),
+  const TimeColumn(key: 'at', label: 'Time'),
+
+  // Strict dropdown vs. free-text combo:
+  const DropdownColumn(key: 'status', label: 'Status', options: ['Open', 'Active', 'Done']),
+  const ComboBoxColumn(key: 'tag', label: 'Tag', options: ['Design', 'Build', 'QA']),
+
+  // Colour — cell shows a swatch + hex, edits via a swatch menu:
+  const ColorPickerColumn(key: 'color', label: 'Colour'),
+];
+```
+
+### Validation
+
+Two hooks, both fed into the red cell border and the toolbar's validity badge:
+
+```dart
+// value-only
+NumericColumn(
+  key: 'bal', label: 'Balance',
+  validate: (v) => (EditableTableFormat.parseNumber(v) ?? 0) < 0 ? 'No negatives' : null,
+);
+
+// row-aware (cross-column) — receives the whole row
+EditableColumn(
+  key: 'total', label: 'Line Total',
+  cellValidator: (value, row) {
+    final q = EditableTableFormat.parseNumber(row['qty'] ?? '');
+    final p = EditableTableFormat.parseNumber(row['price'] ?? '');
+    final t = EditableTableFormat.parseNumber(value);
+    if (q == null || p == null || t == null) return null;
+    return (q * p - t).abs() > 0.01 ? '≠ Qty × Price' : null;
+  },
+);
+```
+
+### Custom cell rendering
+
+`cellBuilder` replaces a cell's read-only content with any widget (a chip, badge, progress bar…). The cell stays selectable/editable; you get the value, the whole row, selection/invalid state, and a `requestEdit` callback:
+
+```dart
+DropdownColumn(
+  key: 'status', label: 'Status', options: ['Open', 'Active', 'Done'],
+  cellBuilder: (context, cell) => GestureDetector(
+    onTap: cell.requestEdit,
+    child: Chip(label: Text(cell.value)),
   ),
 );
 ```
 
-## State Controller
+### Keyboard shortcuts
 
-`BrowserStyleTabBarController` is a `ChangeNotifier` that stores the open tabs,
-active tab, pin and dirty flags, ordering, and live page snapshots.
+Press the **⌨ button** in the toolbar (or `⌘/Ctrl + /`) for the in-widget cheatsheet.
 
-Pass a controller to drive the strip from outside, or omit it and
-`BrowserStyleTabBar` creates a private controller seeded from `tabsState`.
-Descendant pages can access the hosting controller:
+| | |
+|---|---|
+| `↑ ↓ ← →` | Move between cells |
+| `Tab` / `⇧Tab` | Next / previous cell — **Tab past the last cell appends a row** (`growOnTab`) |
+| `Home` / `End` · `⌘+Home/End` | First / last column · first / last cell |
+| Type · `Enter` / `F2` | Overwrite · edit (or open a select) |
+| `Enter ↓` · `Tab →` | Commit & move |
+| `⌘+Enter` · `⌘+D` · `⌘+⌫` | Add row · duplicate row · delete row |
+| `⌘+C / X / V` · `⌘+Z / ⇧Z` | Copy / cut / paste cell · undo / redo |
+
+### Options
 
 ```dart
-final tabs = BrowserStyleTabBarController.of(context);
-
-tabs?.add(title: 'New report', kind: GLTabKind.chart);
-tabs?.setDirty(myTabId, true);
-tabs?.select(otherTabId);
+EditableTable(
+  columns: columns,
+  showToolbar: true,        // validity badge, clipboard hint, shortcuts, undo/redo
+  showRowNumbers: true,     // A1-style gutter
+  showActions: true,        // per-row insert-below / delete
+  showTotals: true,         // footer summing includeInTotal columns
+  totalsLabel: 'Total',
+  unitLabel: 'SAR',
+  confirmDelete: true,      // popup before deleting (set false = instant)
+  growOnTab: true,          // Tab on the last cell adds a new row
+  showShortcutsHelp: true,  // the ⌨ reference button
+);
 ```
 
-`BrowserStyleTabBarController.of(context)` returns `null` when the widget is not
-hosted inside a `BrowserStyleTabBar`, so custom pages can still be rendered
-stand-alone. Use `BrowserStyleTabBarController.read(context)` in callbacks when
-you do not need to subscribe to controller changes.
+### Driving it from code — `EditableTableController`
 
-Controller operations include `select`, `add`, `close`, `closeOthers`,
-`closeToRight`, `duplicate`, `togglePin`, `setPinned`, `reorder`, `setDirty`,
-`rename`, and `mutate`.
+```dart
+final c = EditableTableController(columns: columns, rows: seed);
+c.addRow();
+c.duplicateSelectedRow();
+c.sortByColumn(1);
+c.undo();
+final picked = c.checkedLeafIds;          // Tree analogue; here use c.rows
 
-## Live Page Thumbnails
+EditableTable(controller: c);             // observe / share it
 
-Hover previews are live page thumbnails, not static placeholders. The component
-captures the active page through a `RepaintBoundary` and stores the rendered
-frame in the controller. The active tab is recaptured on hover, while inactive
-tabs show their last captured frame. If a tab has not been rendered yet, the
-preview falls back to building the page at thumbnail scale.
+// from inside a custom cell / page:
+EditableTableController.of(context)?.addRow();
+```
 
-This model keeps previews accurate for custom pages, including controller-driven
-state changes, dirty-page mutations, and pages that open additional tabs.
+---
+
+## 2 · Tree
+
+A customisable hierarchical tree / outline — file explorers, category outlines, layer panels. Indent guide-lines, disclosure twisties, inline rename, search-with-highlight, tri-state checkboxes, keyboard nav, a context menu, and undo/redo.
+
+### Quick start
+
+```dart
+Tree(
+  roots: const [
+    TreeNode(id: 'src', label: 'src', folder: true, children: [
+      TreeNode(id: 'main', label: 'main.dart'),
+      TreeNode(id: 'ui', label: 'ui', folder: true, children: [
+        TreeNode(id: 'button', label: 'button.dart', badge: 'edited'),
+      ]),
+    ]),
+    TreeNode(id: 'readme', label: 'README.md'),
+  ],
+  initiallyExpanded: const {'src', 'ui'},
+  onSelected: (node) => debugPrint('opened ${node.id}'),
+);
+```
+
+### Options & hooks
+
+```dart
+Tree(
+  roots: roots,
+  showToolbar: true,        // search + expand/collapse all + undo/redo
+  showSearch: true,
+  showCheckboxes: false,    // tri-state checks; onCheckedChanged gives leaf ids
+  showFooter: true,
+  showGuides: true,         // the │ ├ └ indent guides
+  dense: false,
+  editable: true,           // inline rename (F2 / double-click) + structural edits
+  iconBuilder: (row) => row.node.isFolder ? Icons.folder : Icons.description,
+  trailingBuilder: (context, row) => null,   // inject host widgets per row
+  labelBuilder: (context, row) => null,      // fully replace the label cell
+  contextActions: (node) => [                // extra right-click items
+    TreeAction(label: 'Open', icon: Icons.open_in_new, onSelected: (c, n) {}),
+  ],
+  onSelected: (n) {},
+  onActivated: (n) {},        // double-click / Enter on a leaf
+  onCheckedChanged: (ids) {},
+  onChanged: (roots) {},      // structural change
+);
+```
+
+### Driving it — `TreeController`
+
+```dart
+final t = TreeController(roots: roots, expanded: {'src'}, selected: 'main');
+t.addChild('src', label: 'new.dart');
+t.expandAll();
+t.beginEdit('main');     // inline rename
+t.undo();
+
+// from inside row content:
+TreeController.of(context)?.addChild(parentId);
+```
+
+Keyboard: `↑ ↓` move · `→ ←` expand/step-in / collapse/step-out · `Enter` toggle/activate · `F2` rename · `Space` check · `Delete` remove · `⌘Z` undo.
+
+---
+
+## 3 · BrowserStyleTabBar
+
+A browser-style workspace tab strip — pinned / closable / dirty tabs, drag-to-reorder, a context menu, an overflow dropdown, a dirty-close confirm dialog, and **live mini-page previews** (the page's real captured frame on hover). Renders only the strip and drives the active-screen body.
+
+### Quick start
+
+```dart
+// self-contained — owns a controller seeded with the default set:
+const BrowserStyleTabBar();
+
+// seed your own tabs:
+BrowserStyleTabBar(tabsState: [
+  BrowserTab(id: 1, title: 'Chart of Accounts', kind: GLTabKind.ledger, pinned: true),
+  BrowserTab(id: 2, title: 'Journal Entry', kind: GLTabKind.doc, dirty: true),
+  BrowserTab(id: 3, title: 'Dashboard', kind: GLTabKind.chart),
+]);
+
+// external controller + custom page content:
+BrowserStyleTabBar(
+  controller: myController,
+  pageBuilder: (ctx, tab) => MyPage(tab),
+);
+```
+
+### Driving it — `BrowserStyleTabBarController`
+
+```dart
+final tabs = BrowserStyleTabBarController(tabs: [...], activeId: 2);
+tabs.add(title: 'New report', kind: GLTabKind.chart);
+tabs.setDirty(myId, true);
+tabs.select(otherId);
+
+// any page can drive the strip:
+BrowserStyleTabBarController.of(context)?.add(title: 'Detail', kind: GLTabKind.doc);
+```
+
+Ops: `select · add · close · closeOthers · closeToRight · duplicate · togglePin · reorder · setDirty · rename · mutate`. `of(context)` returns **null** outside a tab bar, so pages stay reusable stand-alone.
+
+---
 
 ## Theming
 
-`BrowserStyleTabBarThemeData` is a `ThemeExtension` that contains the colors,
-font family names, radii, elevation shadows, and motion tokens used by the tab
-strip and its overlays.
+Every component is self-contained: all of its surfaces live in one `ThemeExtension` with `.light` / `.dark` presets (lerped on theme change). Instance fields are the swappable surfaces (`bg / surface / hover / border / fg1..fg4`); static consts are the brand constants (`accent` + semantic palette, font families `Manrope` / `Inter` / `JetBrainsMono`, radii, shadows, motion).
 
 ```dart
-final tabsTheme = BrowserStyleTabBarThemeData.of(context);
+ThemeData(extensions: const [EditableTableThemeData.light]);
+final t = EditableTableThemeData.of(context); // falls back to .dark
+
+// tweak a preset:
+EditableTableThemeData.light.copyWith(surface: const Color(0xFFFBFBFD));
 ```
 
-If no extension is registered, `BrowserStyleTabBarThemeData.of(context)` falls
-back to the dark preset so the widget can still paint.
+Brand tokens: blue `#4A7CFF` · green `#1DB88A` · orange `#F97316` · 4px radii · 40px controls.
 
-The package references these optional font families:
+## RTL & internationalisation
 
-- `Manrope` for display text.
-- `Inter` for body text.
-- `JetBrainsMono` for tab metadata and numeric text.
+Wrap any component in `Directionality(textDirection: TextDirection.rtl, …)` — strips, guides, gutters, and menus all mirror. The example's **ERP Console** flips EN ⇄ AR (LTR ⇄ RTL) live.
 
-If your app does not register those fonts, Flutter falls back to the platform
-font. The example keeps the font declarations commented in `pubspec.yaml` so
-you can add the `.ttf` files when available.
+## Architecture
 
-## Implementation Map
-
-| Source or concept | Flutter implementation |
-|-------------------|------------------------|
-| Browser-style tab component | `lib/design_system/components/navigation/browser_style_tab_bar.dart` |
-| State controller | `lib/design_system/components/navigation/browser_style_tab_bar_controller.dart` |
-| Context menu, tab list, dirty dialog, and preview overlays | `lib/design_system/components/navigation/tab_overlays.dart` |
-| Tab content pages | `lib/design_system/components/navigation/tab_pages.dart` |
-| Tab model and icon maps | `lib/design_system/components/navigation/tab_models.dart` |
-| GL color, type, radius, shadow, and motion tokens | `lib/design_system/components/navigation/browser_style_tab_bar_theme.dart` |
-| Documentation gallery | `example/lib/browser_tabs_demo.dart` |
-
-## Feature Parity
-
-The Flutter component covers active, inactive, hover, pressed, and focused
-states; closable tabs; add and select actions; pinned icon-only tabs; overflow
-scrolling with animated chevrons; right-click and long-press context menus;
-unsaved indicators; dirty-close confirmation; tab-list dropdowns; live
-mini-page previews; long-title truncation and tooltips; drag-to-reorder;
-keyboard navigation with Left, Right, Home, End, and Escape; external
-`ChangeNotifier` state; custom `pageBuilder` content; dark and light themes;
-and RTL mirroring through `Directionality` and directional padding.
-
-## Public API
-
-The primary import is:
-
-```dart
-import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+```
+lib/
+├── geniuslink_design_system.dart        unified barrel (exports the 3 below)
+├── geniuslink_browser_tabs.dart         · BrowserStyleTabBar barrel
+├── geniuslink_editable_table.dart       · EditableTable barrel
+├── geniuslink_tree.dart                 · Tree barrel
+└── design_system/components/
+    ├── data/
+    │   ├── editable_table_models.dart        Model — columns, cell ref, formatters
+    │   ├── editable_table_columns.dart       Model — typed column subclasses
+    │   ├── editable_table_controller.dart    Controller — ChangeNotifier + scope
+    │   ├── editable_table_theme.dart         Theme  — ThemeExtension
+    │   ├── editable_table.dart               View   — EditableTable widget
+    │   └── tree_*.dart                        Tree — model · controller · theme · view
+    └── navigation/
+        └── browser_style_tab_bar*.dart        BrowserStyleTabBar — MVC + overlays + pages
 ```
 
-It exports:
-
-- `BrowserStyleTabBar`
-- `BrowserStyleTabBarController`
-- `BrowserStyleTabBarScope`
-- `BrowserStyleTabBarThemeData`
-- `BrowserTab`
-- `GLTabKind`
-- `GLTabPage`
-- `TabPageBuilder`
-- `glTabIcon`
-- `glPreviewMeta`
-- `kNewTabCycle`
-
-When no controller is supplied, the tab strip owns its internal tab list and
-active-tab state after creation. To lift state into an application controller,
-create and pass a `BrowserStyleTabBarController`.
-
-## Accessibility and Interaction
-
-- Mouse: hover, close, context menu, drag-to-reorder, and preview-on-hover.
-- Touch: tap, long-press context menu, and scrollable overflow.
-- Keyboard: Left, Right, Home, End, and Escape for overlay dismissal.
-- Directionality: all tab edges, paddings, menus, and dropdown placement honor
-  `Directionality`.
-
-## Platform Support
-
-The package uses Flutter framework widgets only and has no native plugin code.
-It is suitable for Android, iOS, Linux, macOS, web, and Windows, with the most
-complete browser-tab interaction model on desktop and web.
-
-## Publishing Checklist
-
-Before publishing this package publicly, verify the final release metadata:
-
-- Replace the private `LICENSE` file if the package should be distributed under
-  an open-source license.
-- Run `flutter analyze` and `dart pub publish --dry-run` from the package root.
+Each component follows **Model → Controller → View → Theme**: immutable data, a `ChangeNotifier` as the single source of truth, a thin view that forwards every gesture/keystroke, and a `ThemeExtension`. Controllers are exposed to descendant page content via an `InheritedNotifier` scope, so any child can drive the component.
 
 ## License
 
-See `LICENSE` for the current redistribution terms.
+MIT © GeniusLink.

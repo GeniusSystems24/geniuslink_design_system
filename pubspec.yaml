@@ -1,36 +1,11 @@
 name: geniuslink_design_system
-description: A Flutter design-system package for GeniusLink browser-style workspace tabs, previews, menus, and RTL-ready navigation.
-version: 1.1.0
-repository: https://github.com/GeniusSystems24/geniuslink_design_system
-issue_tracker: https://github.com/GeniusSystems24/geniuslink_design_system/issues
-
-screenshots:
-  - description: Browser-style workspace tabs with preview and tab-list dropdown.
-    path: snapshots/2.png
-  - description: Context menu actions for close, duplicate, and pin behavior.
-    path: snapshots/3.png
-  - description: RTL tab layout with mirrored controls.
-    path: snapshots/1.png
-  - description: Animated preview of tab interactions.
-    path: snapshots/preview.gif
+description: GeniusLink Design System for Flutter — a themeable, MVC widget kit (BrowserStyleTabBar, EditableTable with typed columns, Tree) with light/dark + LTR/RTL support.
+publish_to: "none"
+version: 2.0.0
 
 environment:
   sdk: ">=3.0.0 <4.0.0"
   flutter: ">=3.10.0"
-
-platforms:
-  android:
-  ios:
-  linux:
-  macos:
-  web:
-  windows:
-
-topics:
-  - design-system
-  - flutter-widget
-  - navigation
-  - tabs
 
 dependencies:
   flutter:
@@ -41,10 +16,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # ── Fonts ──
   # Drop the .ttf files under flutter/assets/fonts/ to match the design
   # system exactly. Until then the families fall back to the platform UI
-  # font and the layout still holds. Families used:
-  #   Manrope (display), Inter (body), JetBrainsMono (mono), NotoNaskhArabic.
+  # font (the layout/metrics still hold). Families used:
+  #   Manrope (display) · Inter (body) · JetBrainsMono (mono) · NotoNaskhArabic
   #
   # fonts:
   #   - family: Manrope

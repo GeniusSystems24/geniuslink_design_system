@@ -12,15 +12,18 @@
 // through BrowserStyleTabBarController.of(context), and the hover preview
 // shows each page's REAL captured frame.
 //
-//   Run:  cd flutter/example && flutter pub get && flutter run -d chrome
+//   Run:  cd geniuslink_design_system_flutter/example && flutter pub get && flutter run -d chrome
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
 import 'erp_app.dart';
 import 'figma_app.dart';
 import 'chrome_app.dart';
 import 'browser_tabs_demo.dart';
+import 'editable_table_demo.dart';
+import 'tree_demo.dart';
+import 'erp_console.dart';
 import 'shell_kit.dart';
 
 void main() => runApp(const ExampleApp());
@@ -63,7 +66,7 @@ class LauncherScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
               children: [
-                Text('GENIUSLINK DESIGN SYSTEM',
+                const Text('GENIUSLINK DESIGN SYSTEM',
                     style: TextStyle(
                         fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.6, color: BrowserStyleTabBarThemeData.accent)),
                 const SizedBox(height: 12),
@@ -91,6 +94,13 @@ class LauncherScreen extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
                       _DemoCard(
+                        title: 'ERP Console — All-in-one',
+                        subtitle: 'Tree sidebar + BrowserTabs + EditableTable in one console · 6 screens · Light/Dark · EN/AR (RTL)',
+                        accent: const Color(0xFF4A7CFF),
+                        preview: const _ErpConsoleThumb(),
+                        onTap: () => _open(context, const ErpConsole()),
+                      ),
+                      _DemoCard(
                         title: 'ERP System',
                         subtitle: 'Light SaaS workspace · accounting pages · pinned reference · unsaved journal',
                         accent: BrowserStyleTabBarThemeData.accent,
@@ -117,6 +127,20 @@ class LauncherScreen extends StatelessWidget {
                         accent: s.fg2,
                         preview: const _DocsThumb(),
                         onTap: () => _open(context, const _GalleryRoute()),
+                      ),
+                      _DemoCard(
+                        title: 'EditableTable',
+                        subtitle: 'Customisable Excel-style data-entry grid · MVC · sort · undo · totals',
+                        accent: BrowserStyleTabBarThemeData.success,
+                        preview: const _EditableTableThumb(),
+                        onTap: () => _open(context, const EditableTableDemo()),
+                      ),
+                      _DemoCard(
+                        title: 'Tree',
+                        subtitle: 'Customisable hierarchical tree · MVC · search · rename · checkboxes · undo',
+                        accent: const Color(0xFF4A7CFF),
+                        preview: const _TreeThumb(),
+                        onTap: () => _open(context, const TreeDemo()),
                       ),
                     ],
                   );
@@ -255,7 +279,7 @@ class _FigmaThumb extends StatelessWidget {
       color: const Color(0xFF1E1E1E),
       child: Column(children: [
         const _MiniTabs(strip: Color(0xFF1E1E1E), active: Color(0xFF2C2C2C), text: Color(0xFFB3B3B3), labels: ['System', 'App', 'Site'], activeIndex: 1),
-        Expanded(child: Container(color: const Color(0xFF1A1A1A), margin: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Center(child: Container(width: 120, height: 70, decoration: BoxDecoration(color: const Color(0xFF222226), borderRadius: BorderRadius.circular(4)), child: Stack(children: const [
+        Expanded(child: Container(color: const Color(0xFF1A1A1A), margin: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Center(child: Container(width: 120, height: 70, decoration: BoxDecoration(color: const Color(0xFF222226), borderRadius: BorderRadius.circular(4)), child: const Stack(children: [
           Positioned(left: 12, top: 12, child: _Box(34, 34, Color(0xFF7B61FF), circle: true)),
           Positioned(left: 56, top: 16, child: _Box(48, 20, Color(0xFF0ACF83))),
           Positioned(left: 56, top: 42, child: _Box(40, 16, Color(0xFFFF7262))),
@@ -278,6 +302,174 @@ class _ChromeThumb extends StatelessWidget {
           Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [for (int i = 0; i < 2; i++) Padding(padding: const EdgeInsets.only(bottom: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: 60, height: 5, color: const Color(0xFFE2E8F0)), const SizedBox(height: 4), Container(width: 120, height: 7, color: const Color(0xFF1A0DAB))]))]))),
         ]))),
       ]),
+    );
+  }
+}
+
+class _EditableTableThumb extends StatelessWidget {
+  const _EditableTableThumb();
+  @override
+  Widget build(BuildContext context) {
+    const line = Color(0xFFE2E8F0);
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          Container(height: 16, color: const Color(0xFFF7F8FA), child: Row(children: [
+            for (int i = 0; i < 4; i++) Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 5), height: 4, color: const Color(0xFFBDC1C6))),
+          ])),
+          Container(height: 1, color: const Color(0xFFC2C6D6)),
+          for (int r = 0; r < 3; r++)
+            Expanded(child: Row(children: [
+              for (int cIdx = 0; cIdx < 4; cIdx++)
+                Expanded(child: Container(
+                  margin: const EdgeInsets.all(0.5),
+                  decoration: BoxDecoration(
+                    color: r == 1 && cIdx == 2 ? const Color(0x1A4A7CFF) : Colors.white,
+                    border: r == 1 && cIdx == 2 ? Border.all(color: const Color(0xFF4A7CFF), width: 1.5) : Border.all(color: line, width: 0.5),
+                  ),
+                  child: Center(child: Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 6), color: const Color(0xFFEEF1F7))),
+                )),
+            ])),
+          Container(height: 14, decoration: const BoxDecoration(color: Color(0xFFF7F8FA), border: Border(top: BorderSide(color: Color(0xFFC2C6D6), width: 1.5)))),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ErpConsoleThumb extends StatelessWidget {
+  const _ErpConsoleThumb();
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF4A7CFF);
+    const border = Color(0xFFE2E8F0);
+    Widget treeRow(int indent, bool folder, {bool sel = false}) => Container(
+          height: 8,
+          margin: const EdgeInsets.only(bottom: 4),
+          child: Row(children: [
+            SizedBox(width: 5.0 * indent),
+            Container(width: 5, height: 5, decoration: BoxDecoration(color: folder ? accent.withOpacity(0.8) : const Color(0xFFBDC1C6), borderRadius: BorderRadius.circular(folder ? 1.5 : 2.5))),
+            const SizedBox(width: 4),
+            Expanded(child: Container(height: 3, decoration: BoxDecoration(color: sel ? accent.withOpacity(0.5) : const Color(0xFFD7DCE6), borderRadius: BorderRadius.circular(2)))),
+          ]),
+        );
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(10),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(6)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          // top bar
+          Container(height: 14, color: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 6), child: Row(children: [
+            Container(width: 7, height: 7, decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(2))),
+            const Spacer(),
+            Container(width: 16, height: 6, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3))),
+            const SizedBox(width: 4),
+            Container(width: 16, height: 6, decoration: BoxDecoration(color: accent.withOpacity(0.15), borderRadius: BorderRadius.circular(3))),
+          ])),
+          Container(height: 1, color: border),
+          Expanded(child: Row(children: [
+            // tree sidebar
+            Container(width: 58, color: const Color(0xFFF7F8FA), padding: const EdgeInsets.all(7), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              treeRow(0, true),
+              treeRow(1, false, sel: true),
+              treeRow(1, false),
+              treeRow(0, true),
+              treeRow(1, false),
+              treeRow(0, true),
+            ])),
+            Container(width: 1, color: border),
+            // workspace
+            Expanded(child: Container(color: const Color(0xFFF7F8FA), padding: const EdgeInsets.all(7), child: Column(children: [
+              // tabs
+              Row(children: [
+                Container(width: 26, height: 9, decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(3)), border: Border.all(color: border))),
+                const SizedBox(width: 2),
+                Container(width: 22, height: 9, decoration: const BoxDecoration(color: Color(0xFFEDEFF3), borderRadius: BorderRadius.vertical(top: Radius.circular(3)))),
+              ]),
+              const SizedBox(height: 5),
+              // KPI strip
+              Row(children: [
+                for (int i = 0; i < 3; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  Expanded(child: Container(height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3), border: Border.all(color: border)))),
+                ],
+              ]),
+              const SizedBox(height: 5),
+              // table
+              Expanded(child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3), border: Border.all(color: border)), child: Column(children: [
+                Container(height: 7, decoration: const BoxDecoration(color: Color(0xFFF1F3F8), borderRadius: BorderRadius.vertical(top: Radius.circular(3)))),
+                for (int i = 0; i < 4; i++) Expanded(child: Container(decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: border, width: 0.5))))),
+              ]))),
+            ]))),
+          ])),
+        ]),
+      ),
+    );
+  }
+}
+
+class _TreeThumb extends StatelessWidget {
+  const _TreeThumb();
+  @override
+  Widget build(BuildContext context) {
+    const folder = Color(0xFF4A7CFF);
+    const guide = Color(0xFFD7DCE6);
+    Widget row(int indent, bool isFolder, {bool sel = false}) => Container(
+          height: 13,
+          margin: const EdgeInsets.symmetric(vertical: 1.5),
+          decoration: BoxDecoration(
+            color: sel ? const Color(0x1A4A7CFF) : Colors.transparent,
+            borderRadius: BorderRadius.circular(3),
+          ),
+          child: Row(children: [
+            SizedBox(width: 8.0 * indent),
+            if (indent > 0)
+              Container(width: 1, height: 13, color: guide, margin: const EdgeInsets.only(right: 5)),
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isFolder ? folder.withOpacity(0.85) : const Color(0xFFBDC1C6),
+                borderRadius: BorderRadius.circular(isFolder ? 2 : 4),
+              ),
+            ),
+            const SizedBox(width: 6),
+            Expanded(child: Container(height: 4, color: isFolder ? const Color(0xFFBDC1C6) : const Color(0xFFD7DCE6))),
+            const SizedBox(width: 8),
+          ]),
+        );
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          Container(height: 16, color: const Color(0xFFF7F8FA), padding: const EdgeInsets.symmetric(horizontal: 6), child: Row(children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: const Color(0xFFBDC1C6), borderRadius: BorderRadius.circular(2))),
+            const SizedBox(width: 5),
+            Expanded(child: Container(height: 5, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3)))),
+          ])),
+          Container(height: 1, color: const Color(0xFFC2C6D6)),
+          Expanded(child: Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+              row(0, true),
+              row(1, true),
+              row(2, false),
+              row(2, false, sel: true),
+              row(1, false),
+              row(0, false),
+            ]),
+          )),
+        ]),
+      ),
     );
   }
 }

@@ -9,7 +9,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:geniuslink_design_system/geniuslink_design_system.dart';
+import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
 
 /// Wraps [child] in a ThemeData carrying [ext] so every
 /// `BrowserStyleTabBarThemeData.of(context)` below resolves to this shell.
