@@ -1,25 +1,57 @@
 // ============================================================
-// Account Tree — sample data (chart of accounts).
-// A five-level GeniusLink chart of accounts. Leaf accounts carry a `bal`;
-// group balances roll up from their descendants so every figure reconciles.
-// Each node: id = account code, label = English name, data = {ar, type, bal?}.
+// Account Tree — typed sample data (chart of accounts).
+// ------------------------------------------------------------
+// Demonstrates the tree's generic value type: every node is a
+// `TreeNode<Account>`, so `node.value` is a strongly-typed [Account] — no map
+// look-ups, no casting. A five-level GeniusLink chart of accounts; leaf
+// accounts carry a `balance`, group balances roll up from their descendants.
 //   File: example/lib/account_tree_data.dart
 // ============================================================
 
 import 'package:geniuslink_design_system/geniuslink_tree.dart';
 
+/// The strongly-typed payload carried by every account node (`TreeNode<Account>`).
+class Account {
+  /// Ledger code — also used as the node id.
+  final String code;
+
+  /// English display name — also the node label (what search matches).
+  final String nameEn;
+
+  /// Arabic display name (rendered RTL).
+  final String nameAr;
+
+  /// One of: Asset · Liability · Equity · Income · Expense.
+  final String type;
+
+  /// Posting balance in SAR. Null for group (roll-up) accounts.
+  final int? balance;
+
+  const Account({
+    required this.code,
+    required this.nameEn,
+    required this.nameAr,
+    required this.type,
+    this.balance,
+  });
+
+  /// Normal balance side derived from the account type.
+  bool get isDebitNature => type == 'Asset' || type == 'Expense';
+  String get nature => isDebitNature ? 'DR' : 'CR';
+}
+
 /// Compact node builder used only to author the sample tree below.
-TreeNode _acc(String code, String en, String ar, String type, {int? bal, List<TreeNode> children = const []}) {
-  return TreeNode(
+TreeNode<Account> _acc(String code, String en, String ar, String type, {int? bal, List<TreeNode<Account>> children = const []}) {
+  return TreeNode<Account>(
     id: code,
     label: en,
+    value: Account(code: code, nameEn: en, nameAr: ar, type: type, balance: bal),
     children: children,
-    data: {'ar': ar, 'type': type, if (bal != null) 'bal': bal},
   );
 }
 
 /// The sample chart of accounts (5 levels · Asset / Liability / Equity / Income / Expense).
-final List<TreeNode> kAccountTreeRoots = [
+final List<TreeNode<Account>> kAccountTreeRoots = [
   _acc('1000', 'Assets', 'الأصول', 'Asset', children: [
     _acc('1100', 'Current Assets', 'الأصول المتداولة', 'Asset', children: [
       _acc('1110', 'Cash & Cash Equivalents', 'النقد وما في حكمه', 'Asset', children: [

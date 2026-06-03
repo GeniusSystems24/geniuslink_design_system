@@ -13,8 +13,26 @@ This project adheres to [Semantic Versioning](https://semver.org).
   `EditableTable` (it reuses `EditableTableThemeData`, so header / hairline grid /
   surfaces / type ramp match exactly). It renders arbitrary **widget** cells
   (status pills, two-line bilingual text, progress bars, links…) with flexible or
-  fixed column widths, optional header / zebra / hover / row-tap. New barrel
-  `geniuslink_readable_table.dart`; re-exported from the unified barrel.
+  fixed column widths, and adds the read-only interaction layer a display grid
+  needs:
+  - **Selection** — five modes via `ReadableSelectionMode`:
+    `none · singleRow · multiRow · singleCell · multiCell`. Pointer: click
+    selects, Ctrl/⌘-click toggles, Shift-click extends a range (linear for rows,
+    rectangular for cells). `onRowSelectionChanged` / `onCellSelectionChanged`
+    report **original** (pre-sort) indices; `initialSelectedRows` /
+    `initialSelectedCells` seed it.
+  - **Keyboard** — arrows move the active row/cell, Shift+arrows extend a
+    multi-selection, Space toggles, Enter activates (`onRowTap`), ⌘/Ctrl+A selects
+    all, Esc clears, Home/End + ⌘/Ctrl+Home/End jump to row edges / grid corners,
+    and `?` (or ⌘/Ctrl+/) opens an in-widget shortcut cheatsheet.
+  - **Column sort** — mark a column `sortable: true`; click its header to cycle
+    asc → desc (numeric-looking text sorts numerically, else case-insensitive
+    string). `sortKeyOf` provides keys for non-text cells; `initialSortColumn` /
+    `initialSortAscending` / `onSortChanged` round it out.
+  - Defaults reproduce a plain, non-interactive ledger — adopting it for
+    display-only tables is a no-op until a mode is opted into.
+  - New barrel `geniuslink_readable_table.dart`; re-exported from the unified
+    barrel. New example `example/lib/readable_table_demo.dart` + launcher card.
 - **`BrowserStyleTabBar` shell options** (all optional, defaults unchanged):
   `showChrome`, `fillContent`, `contentPadding`, `scrollContent`,
   `contentBackground`, `onAddTab` — let the bar be embedded edge-to-edge as a
@@ -24,19 +42,54 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ## [2.0.1]
 
+### ⚠️ Changed — Tree is now generic (`Tree<T>` / `TreeNode<T>`)
+
+- **`TreeNode<T>` carries a strongly-typed `value`.** The node schema is now
+  generic over a value type `T`, so a host can attach a typed payload (an
+  `Account`, a `FileMeta`, a `Person`, …) and read `node.value` with **no
+  casting**. `TreeController<T>`, `Tree<T>`, `TreeScope<T>`, `TreeOps` helpers,
+  and the builder/callback typedefs all thread `<T>` through. A new
+  `controller.valueOf(id)` returns the typed value for an id.
+  - **Backwards compatible:** existing call sites that write `TreeNode(...)`,
+    `Tree(...)` or `TreeController(...)` infer `T = dynamic` and keep working.
+    The loose `data` map is retained for incidental metadata.
+
+### ✨ Added — Tree keyboard control
+
+- **Full keyboard navigation** in the `Tree` view: `↑ ↓` move the focus cursor,
+  `← →` collapse / step out and expand / step in, `Home`/`End` jump, `Enter`
+  opens a leaf (fires `onActivated`) or toggles a group, `Space` toggles a
+  checkbox, `F2` renames, `Delete` removes, `/` (or `⌘/Ctrl+F`) focuses search,
+  `Esc` clears it, `*` / `\` expand / collapse all, `⌘/Ctrl+Z` undo (`⇧` redo),
+  and `?` opens a **shortcuts cheatsheet** dialog (also reachable from a new
+  toolbar button). The focused row shows an accent ring and auto-scrolls into
+  view. New `TreeController` cursor API: `focused`, `focus`, `moveFocus`,
+  `focusFirst/Last`, `focusInto/Out`, `activateFocused`, `revealNode`.
+
+### 📝 Added — Tree documentation page
+
+- **`docs/components-tree.html`** — an interactive documentation gallery for the
+  tree (cloned from the design-system web tool, with `tree-component.jsx`,
+  `tree-examples.jsx`, `ds-kit.jsx`). Documents every feature, the row anatomy,
+  the search behaviour and the keyboard map, and ships **three live examples**
+  that demonstrate the generic value type: `TreeNode<Account>` (chart of
+  accounts), `TreeNode<FileMeta>` (file explorer) and `TreeNode<Person>` (org
+  chart) — one tree engine, three value types.
+
 ### 🔄 Changed — example
 
-- **Tree demo rebuilt as “Account Tree.”** `example/lib/tree_demo.dart` now
-  mirrors the GeniusLink web *Account Tree* tool: a five-level chart of accounts
-  with KPI summary cards (Assets / Liabilities / Equity / Net Income), a recursive
-  search that matches **code + English + Arabic** with live in-row highlighting and
-  a match counter, colour-coded account-type filter chips, “Try” query chips,
-  roll-up group balances with proportional share bars, DR / CR nature pills,
-  leaf-count badges, an accounting-equation balance check (A = L + E) and a
-  leaf-opens-ledger strip. State (expansion · selection · query) is still driven by
-  the library's `TreeController`; rows are painted in an account-specific
-  4-column layout via `TreeThemeData` (dark / light). The generic `Tree` widget and
-  its MVC core are unchanged — only the demo was re-skinned.
+- **Tree demo rebuilt as “Account Tree” (typed + keyboard-driven).**
+  `example/lib/tree_demo.dart` mirrors the GeniusLink web *Account Tree* tool and
+  is now built on `TreeController<Account>` with `TreeNode<Account>` nodes (typed
+  `Account` value: code · nameEn · nameAr · type · balance). It adds KPI summary
+  cards (Assets / Liabilities / Equity / Net Income), a recursive search matching
+  **code + English + Arabic** with live in-row highlighting and a match counter,
+  colour-coded type filter chips, “Try” query chips, roll-up group balances with
+  share bars, DR / CR nature pills, leaf-count badges, an accounting-equation
+  balance check (A = L + E), a leaf-opens-ledger strip, full keyboard navigation
+  and a `?` shortcuts dialog. Sample data moved to
+  `example/lib/account_tree_data.dart`. Rows are painted in an account-specific
+  4-column layout via `TreeThemeData` (dark / light).
 
 ---
 
@@ -150,8 +203,6 @@ MVC, three-component design system — and renames the package accordingly.
 ---
 
 ## [1.0.0]
-
-> 2026-05-30
 
 ### Added
 

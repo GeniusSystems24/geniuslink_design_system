@@ -1,11 +1,11 @@
 // ============================================================
-// Tree — VIEW.
+// Tree — VIEW  (generic over the node's value type `T`).
 // ------------------------------------------------------------
-// A thin, customisable render of TreeController. Paints the visible rows with
-// indent guide-lines, disclosure twisties, icons, optional tri-state
-// checkboxes, an optional toolbar (search + expand/collapse + undo/redo) and
-// an optional footer. Every gesture and keystroke is forwarded to the
-// controller — this widget owns no tree state of its own.
+// A thin, customisable render of TreeController<T>. Paints the visible rows
+// with indent guide-lines, disclosure twisties, icons, optional tri-state
+// checkboxes, an optional toolbar (search + expand/collapse + undo/redo + a
+// keyboard-shortcuts help button) and an optional footer. Every gesture and
+// keystroke is forwarded to the controller — this widget owns no tree state.
 //
 // Customisation surface:
 //   • showToolbar / showSearch / showCheckboxes / showFooter / showGuides
@@ -15,6 +15,12 @@
 //   • labelBuilder       — fully replace the label cell (e.g. rich text)
 //   • contextActions     — entries for the right-click / ⋯ menu per node
 //   • onSelected / onActivated / onCheckedChanged / onChanged callbacks
+//
+// Keyboard (focus the body, then):
+//   ↑ ↓ move · ← collapse/out · → expand/in · Home/End jump
+//   Enter open leaf / toggle folder · Space check · F2 rename · Del remove
+//   / focus search · Esc clear search · * expand all · \ collapse all
+//   ⌘/Ctrl+Z undo · ⌘/Ctrl+Shift+Z redo · ? shortcuts cheatsheet
 //
 //   File: lib/design_system/components/data/tree.dart
 // ============================================================
@@ -26,24 +32,24 @@ import 'tree_models.dart';
 import 'tree_theme.dart';
 
 /// One entry in a node's context menu (right-click or the ⋯ affordance).
-class TreeAction {
+class TreeAction<T> {
   final String label;
   final IconData? icon;
   final bool danger;
-  final void Function(TreeController c, TreeNode node) onSelected;
+  final void Function(TreeController<T> c, TreeNode<T> node) onSelected;
   const TreeAction({required this.label, this.icon, this.danger = false, required this.onSelected});
 }
 
-typedef TreeIconBuilder = IconData? Function(TreeRow row);
-typedef TreeWidgetBuilder = Widget? Function(BuildContext context, TreeRow row);
-typedef TreeActionsBuilder = List<TreeAction> Function(TreeNode node);
+typedef TreeIconBuilder<T> = IconData? Function(TreeRow<T> row);
+typedef TreeWidgetBuilder<T> = Widget? Function(BuildContext context, TreeRow<T> row);
+typedef TreeActionsBuilder<T> = List<TreeAction<T>> Function(TreeNode<T> node);
 
-class Tree extends StatefulWidget {
+class Tree<T> extends StatefulWidget {
   /// Initial forest. Required when [controller] is null.
-  final List<TreeNode>? roots;
+  final List<TreeNode<T>>? roots;
 
   /// Drive/observe from outside. When null the widget owns a private one.
-  final TreeController? controller;
+  final TreeController<T>? controller;
 
   /// Ids expanded on first build (ignored when a [controller] is supplied).
   final Set<TreeNodeId>? initiallyExpanded;
@@ -63,16 +69,16 @@ class Tree extends StatefulWidget {
   final bool editable;
 
   // ── customisation hooks ──
-  final TreeIconBuilder? iconBuilder;
-  final TreeWidgetBuilder? trailingBuilder;
-  final TreeWidgetBuilder? labelBuilder;
-  final TreeActionsBuilder? contextActions;
+  final TreeIconBuilder<T>? iconBuilder;
+  final TreeWidgetBuilder<T>? trailingBuilder;
+  final TreeWidgetBuilder<T>? labelBuilder;
+  final TreeActionsBuilder<T>? contextActions;
 
   // ── callbacks ──
-  final ValueChanged<TreeNode>? onSelected;
-  final ValueChanged<TreeNode>? onActivated; // double-click / Enter on a leaf
+  final ValueChanged<TreeNode<T>>? onSelected;
+  final ValueChanged<TreeNode<T>>? onActivated; // double-click / Enter on a leaf
   final ValueChanged<Set<TreeNodeId>>? onCheckedChanged;
-  final ValueChanged<List<TreeNode>>? onChanged; // structural change
+  final ValueChanged<List<TreeNode<T>>>? onChanged; // structural change
 
   /// Placeholder when the (filtered) tree is empty.
   final Widget? emptyState;
@@ -101,16 +107,18 @@ class Tree extends StatefulWidget {
   }) : assert(roots != null || controller != null, 'Provide roots or a controller.');
 
   @override
-  State<Tree> createState() => _TreeState();
+  State<Tree<T>> createState() => _TreeState<T>();
 }
 
-class _TreeState extends State<Tree> {
-  late TreeController _controller;
+class _TreeState<T> extends State<Tree<T>> {
+  late TreeController<T> _controller;
   bool _ownsController = false;
 
   final FocusNode _treeFocus = FocusNode(debugLabel: 'Tree.body');
   final FocusNode _editFocus = FocusNode(debugLabel: 'Tree.editor');
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'Tree.search');
   final TextEditingController _editText = TextEditingController();
+  final TextEditingController _searchText = TextEditingController();
   final ScrollController _scroll = ScrollController();
 
   String? _hovered;
@@ -125,7 +133,7 @@ class _TreeState extends State<Tree> {
   void initState() {
     super.initState();
     _controller = widget.controller ??
-        TreeController(roots: widget.roots!, expanded: widget.initiallyExpanded);
+        TreeController<T>(roots: widget.roots!, expanded: widget.initiallyExpanded);
     _ownsController = widget.controller == null;
     _controller.addListener(_onModelChanged);
     _lastStructure = _structureSig();
@@ -133,7 +141,7 @@ class _TreeState extends State<Tree> {
   }
 
   @override
-  void didUpdateWidget(covariant Tree old) {
+  void didUpdateWidget(covariant Tree<T> old) {
     super.didUpdateWidget(old);
     if (widget.controller != null && widget.controller != _controller) {
       _controller.removeListener(_onModelChanged);
@@ -150,14 +158,16 @@ class _TreeState extends State<Tree> {
     if (_ownsController) _controller.dispose();
     _treeFocus.dispose();
     _editFocus.dispose();
+    _searchFocus.dispose();
     _editText.dispose();
+    _searchText.dispose();
     _scroll.dispose();
     super.dispose();
   }
 
   String _structureSig() {
     final b = StringBuffer();
-    TreeOps.walk(_controller.roots, (n, anc) => b.write('${anc.length}:${n.id}:${n.label};'));
+    TreeOps.walk<T>(_controller.roots, (n, anc) => b.write('${anc.length}:${n.id}:${n.label};'));
     return b.toString();
   }
 
@@ -174,6 +184,11 @@ class _TreeState extends State<Tree> {
           _editText.selection = TextSelection(baseOffset: 0, extentOffset: _editText.text.length);
         });
       }
+    }
+
+    // Keep the search field in sync if the query was changed programmatically.
+    if (_searchText.text != _controller.query && !_searchFocus.hasFocus) {
+      _searchText.text = _controller.query;
     }
 
     // Fire host callbacks on the relevant transitions.
@@ -200,19 +215,40 @@ class _TreeState extends State<Tree> {
     if (_controller.editing != null) return KeyEventResult.ignored;
 
     final meta = HardwareKeyboard.instance.isMetaPressed || HardwareKeyboard.instance.isControlPressed;
+    final shift = HardwareKeyboard.instance.isShiftPressed;
     final k = e.logicalKey;
 
+    // Cheatsheet / search focus / bulk expand are available everywhere.
+    if ((meta && k == LogicalKeyboardKey.keyF) || (!meta && k == LogicalKeyboardKey.slash && !shift)) {
+      _searchFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.slash && shift) {
+      _showShortcuts(_t);
+      return KeyEventResult.handled;
+    }
+    if (!meta && k == LogicalKeyboardKey.asterisk) {
+      _controller.expandAll();
+      return KeyEventResult.handled;
+    }
+    if (!meta && k == LogicalKeyboardKey.backslash) {
+      _controller.collapseAll();
+      return KeyEventResult.handled;
+    }
+
     if (meta && k == LogicalKeyboardKey.keyZ) {
-      HardwareKeyboard.instance.isShiftPressed ? _controller.redo() : _controller.undo();
+      shift ? _controller.redo() : _controller.undo();
       return KeyEventResult.handled;
     }
 
     switch (k) {
       case LogicalKeyboardKey.arrowDown:
         _controller.moveFocus(1);
+        _scrollToFocused();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowUp:
         _controller.moveFocus(-1);
+        _scrollToFocused();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowRight:
         _controller.focusInto();
@@ -222,9 +258,11 @@ class _TreeState extends State<Tree> {
         return KeyEventResult.handled;
       case LogicalKeyboardKey.home:
         _controller.focusFirst();
+        _scrollToFocused();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.end:
         _controller.focusLast();
+        _scrollToFocused();
         return KeyEventResult.handled;
     }
 
@@ -258,11 +296,46 @@ class _TreeState extends State<Tree> {
     return KeyEventResult.ignored;
   }
 
+  // Esc inside the search field clears it and returns focus to the body.
+  KeyEventResult _onSearchKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent) return KeyEventResult.ignored;
+    if (e.logicalKey == LogicalKeyboardKey.escape) {
+      _searchText.clear();
+      _controller.setQuery('');
+      _treeFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _treeFocus.requestFocus();
+      _controller.focusFirst();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _scrollToFocused() {
+    final fid = _controller.focused;
+    if (fid == null || !_scroll.hasClients) return;
+    final rows = _controller.visibleRows();
+    final idx = rows.indexWhere((r) => r.node.id == fid);
+    if (idx < 0) return;
+    final target = idx * _rowH;
+    final vp = _scroll.position.viewportDimension;
+    final cur = _scroll.offset;
+    double? to;
+    if (target < cur) to = target;
+    else if (target + _rowH > cur + vp) to = target + _rowH - vp;
+    if (to != null) {
+      _scroll.animateTo(to.clamp(0, _scroll.position.maxScrollExtent),
+          duration: TreeThemeData.durBase, curve: TreeThemeData.curveStandard);
+    }
+  }
+
   // ── build ──────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     final t = _t;
-    return TreeScope(
+    return TreeScope<T>(
       controller: _controller,
       child: DefaultTextStyle(
         style: TextStyle(fontFamily: TreeThemeData.bodyFont, color: t.fg1, fontSize: 13.5),
@@ -336,11 +409,13 @@ class _TreeState extends State<Tree> {
         children: [
           if (widget.showSearch) Expanded(child: _searchField(t)) else const Spacer(),
           const SizedBox(width: 8),
-          _toolBtn(t, Icons.unfold_more, 'Expand all', _controller.expandAll),
-          _toolBtn(t, Icons.unfold_less, 'Collapse all', _controller.collapseAll),
+          _toolBtn(t, Icons.unfold_more, 'Expand all  ·  *', _controller.expandAll),
+          _toolBtn(t, Icons.unfold_less, 'Collapse all  ·  \\', _controller.collapseAll),
           Container(width: 1, height: 18, color: t.border, margin: const EdgeInsets.symmetric(horizontal: 4)),
-          _toolBtn(t, Icons.undo, 'Undo', _controller.canUndo ? _controller.undo : null),
-          _toolBtn(t, Icons.redo, 'Redo', _controller.canRedo ? _controller.redo : null),
+          _toolBtn(t, Icons.undo, 'Undo  ·  ⌘Z', _controller.canUndo ? _controller.undo : null),
+          _toolBtn(t, Icons.redo, 'Redo  ·  ⌘⇧Z', _controller.canRedo ? _controller.redo : null),
+          Container(width: 1, height: 18, color: t.border, margin: const EdgeInsets.symmetric(horizontal: 4)),
+          _toolBtn(t, Icons.keyboard_outlined, 'Keyboard shortcuts  ·  ?', () => _showShortcuts(t)),
         ],
       ),
     );
@@ -349,26 +424,31 @@ class _TreeState extends State<Tree> {
   Widget _searchField(TreeThemeData t) {
     return SizedBox(
       height: 28,
-      child: TextField(
-        onChanged: _controller.setQuery,
-        style: TextStyle(color: t.fg1, fontSize: 13),
-        cursorColor: TreeThemeData.accent,
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: 'Search…',
-          hintStyle: TextStyle(color: t.fg3, fontSize: 13),
-          prefixIcon: Icon(Icons.search, size: 16, color: t.fg3),
-          prefixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 0),
-          filled: true,
-          fillColor: t.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(TreeThemeData.radiusMd),
-            borderSide: BorderSide(color: t.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(TreeThemeData.radiusMd),
-            borderSide: const BorderSide(color: TreeThemeData.accent),
+      child: Focus(
+        onKeyEvent: _onSearchKey,
+        child: TextField(
+          controller: _searchText,
+          focusNode: _searchFocus,
+          onChanged: _controller.setQuery,
+          style: TextStyle(color: t.fg1, fontSize: 13),
+          cursorColor: TreeThemeData.accent,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Search…  ( / )',
+            hintStyle: TextStyle(color: t.fg3, fontSize: 13),
+            prefixIcon: Icon(Icons.search, size: 16, color: t.fg3),
+            prefixIconConstraints: const BoxConstraints(minWidth: 30, minHeight: 0),
+            filled: true,
+            fillColor: t.inputBg,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(TreeThemeData.radiusMd),
+              borderSide: BorderSide(color: t.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(TreeThemeData.radiusMd),
+              borderSide: const BorderSide(color: TreeThemeData.accent),
+            ),
           ),
         ),
       ),
@@ -390,6 +470,78 @@ class _TreeState extends State<Tree> {
     );
   }
 
+  // ── shortcuts cheatsheet ───────────────────────────────────
+  static const List<List<String>> _shortcuts = [
+    ['↑  ↓', 'Move between rows'],
+    ['←  →', 'Collapse / out · expand / in'],
+    ['Home  End', 'Jump to first / last'],
+    ['Enter', 'Open leaf · toggle folder'],
+    ['Space', 'Toggle checkbox'],
+    ['F2', 'Rename'],
+    ['Delete', 'Remove node'],
+    ['/', 'Focus search'],
+    ['Esc', 'Clear search'],
+    ['*  \\', 'Expand all · collapse all'],
+    ['⌘/Ctrl Z', 'Undo · ⇧ redo'],
+    ['?', 'This cheatsheet'],
+  ];
+
+  void _showShortcuts(TreeThemeData t) {
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.45),
+      builder: (ctx) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 420,
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: BorderRadius.circular(TreeThemeData.radiusLg),
+              border: Border.all(color: t.borderStrong),
+              boxShadow: TreeThemeData.popShadow,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.keyboard_outlined, size: 18, color: TreeThemeData.accent),
+                  const SizedBox(width: 9),
+                  Text('Keyboard shortcuts',
+                      style: TextStyle(fontFamily: TreeThemeData.displayFont, fontSize: 16, fontWeight: FontWeight.w700, color: t.fg1)),
+                  const Spacer(),
+                  InkWell(
+                    onTap: () => Navigator.of(ctx).pop(),
+                    borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+                    child: Padding(padding: const EdgeInsets.all(4), child: Icon(Icons.close, size: 16, color: t.fg3)),
+                  ),
+                ]),
+                const SizedBox(height: 14),
+                for (final s in _shortcuts)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 120,
+                          child: Text(s[0],
+                              style: TextStyle(fontFamily: TreeThemeData.monoFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: t.fg2)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(s[1], style: TextStyle(fontSize: 13, color: t.fg3))),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── footer ─────────────────────────────────────────────────
   Widget _buildFooter(TreeThemeData t) {
     final checked = _controller.checkedLeafIds.length;
@@ -401,24 +553,30 @@ class _TreeState extends State<Tree> {
         border: Border(top: BorderSide(color: t.border)),
       ),
       alignment: Alignment.centerLeft,
-      child: Text(
-        widget.showCheckboxes && checked > 0
-            ? '$checked selected · ${_controller.nodeCount} items'
-            : _controller.filtering
-                ? '${_controller.matchCount} matches'
-                : '${_controller.nodeCount} items',
-        style: TextStyle(
-          color: t.fg3,
-          fontSize: 11.5,
-          fontFamily: TreeThemeData.monoFont,
-          letterSpacing: 0.2,
-        ),
+      child: Row(
+        children: [
+          Text(
+            widget.showCheckboxes && checked > 0
+                ? '$checked selected · ${_controller.nodeCount} items'
+                : _controller.filtering
+                    ? '${_controller.matchCount} matches'
+                    : '${_controller.nodeCount} items',
+            style: TextStyle(
+              color: t.fg3,
+              fontSize: 11.5,
+              fontFamily: TreeThemeData.monoFont,
+              letterSpacing: 0.2,
+            ),
+          ),
+          const Spacer(),
+          Text('press  ?  for shortcuts', style: TextStyle(color: t.fg4, fontSize: 11, fontFamily: TreeThemeData.monoFont)),
+        ],
       ),
     );
   }
 
   // ── row ────────────────────────────────────────────────────
-  Widget _buildRow(TreeThemeData t, TreeRow row) {
+  Widget _buildRow(TreeThemeData t, TreeRow<T> row) {
     final n = row.node;
     final selected = _controller.isSelected(n.id);
     final focused = _controller.focused == n.id;
@@ -490,7 +648,7 @@ class _TreeState extends State<Tree> {
     );
   }
 
-  Widget _indentAndTwisty(TreeThemeData t, TreeRow row) {
+  Widget _indentAndTwisty(TreeThemeData t, TreeRow<T> row) {
     final width = TreeThemeData.indentStep * row.depth + TreeThemeData.twistySize + 6;
     return SizedBox(
       width: width,
@@ -507,7 +665,7 @@ class _TreeState extends State<Tree> {
     );
   }
 
-  Widget _twisty(TreeThemeData t, TreeRow row) {
+  Widget _twisty(TreeThemeData t, TreeRow<T> row) {
     return Padding(
       padding: const EdgeInsets.only(right: 6),
       child: InkWell(
@@ -523,7 +681,7 @@ class _TreeState extends State<Tree> {
     );
   }
 
-  Widget _checkbox(TreeThemeData t, TreeNode n) {
+  Widget _checkbox(TreeThemeData t, TreeNode<T> n) {
     final state = _controller.checkState(n);
     final on = state == TreeCheck.all;
     final partial = state == TreeCheck.some;
@@ -556,7 +714,7 @@ class _TreeState extends State<Tree> {
     );
   }
 
-  Widget _leadingIcon(TreeThemeData t, TreeRow row) {
+  Widget _leadingIcon(TreeThemeData t, TreeRow<T> row) {
     final n = row.node;
     final custom = widget.iconBuilder?.call(row) ?? n.icon;
     final icon = custom ??
@@ -567,7 +725,7 @@ class _TreeState extends State<Tree> {
     return Icon(icon, size: TreeThemeData.iconSize, color: n.selectable ? color : t.fg4);
   }
 
-  Widget _label(TreeThemeData t, TreeRow row) {
+  Widget _label(TreeThemeData t, TreeRow<T> row) {
     final n = row.node;
     final q = _controller.query.trim();
     final style = TextStyle(
@@ -600,7 +758,7 @@ class _TreeState extends State<Tree> {
     );
   }
 
-  Widget _inlineEditor(TreeThemeData t, TreeNode n) {
+  Widget _inlineEditor(TreeThemeData t, TreeNode<T> n) {
     return SizedBox(
       height: _rowH - 8,
       child: TextField(
@@ -650,7 +808,7 @@ class _TreeState extends State<Tree> {
     );
   }
 
-  Widget _rowMenuButton(TreeThemeData t, TreeNode n) {
+  Widget _rowMenuButton(TreeThemeData t, TreeNode<T> n) {
     return InkWell(
       onTapDown: (d) => _openMenu(n, d.globalPosition),
       borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
@@ -662,7 +820,7 @@ class _TreeState extends State<Tree> {
   }
 
   // ── context menu ───────────────────────────────────────────
-  Future<void> _openMenu(TreeNode n, Offset globalPos) async {
+  Future<void> _openMenu(TreeNode<T> n, Offset globalPos) async {
     final t = _t;
     _controller.select(n.id);
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
@@ -671,7 +829,7 @@ class _TreeState extends State<Tree> {
       Offset.zero & overlay.size,
     );
 
-    final custom = widget.contextActions?.call(n) ?? const <TreeAction>[];
+    final custom = widget.contextActions?.call(n) ?? const [];
     // Menu values are closures — no enum bookkeeping, no index juggling.
     final items = <PopupMenuEntry<VoidCallback>>[];
 
@@ -734,12 +892,10 @@ class _TreeState extends State<Tree> {
   }
 }
 
-// (Removed) legacy enum-based menu handler.
-
 /// Paints the indent guide-lines for one row: continuing verticals for each
 /// ancestor that has a following sibling, plus the ├ / └ elbow into this node.
 class _GuidePainter extends CustomPainter {
-  final TreeRow row;
+  final TreeRow<Object?> row;
   final Color color;
   const _GuidePainter({required this.row, required this.color});
 

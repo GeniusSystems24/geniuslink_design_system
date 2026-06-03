@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GeniusLink — Account Tree</title>
+<meta name="viewport" content="width=1240" />
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { font-family: var(--gl-font-body); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--gl-border-strong); border-radius: 5px; }
+  mark { background: transparent; }
+</style>
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="#111318"/>
+    <circle cx="30" cy="28" r="3.5" fill="#4A7CFF"/>
+    <line x1="30" y1="31" x2="30" y2="50" stroke="#33353A" stroke-width="1.5"/>
+    <line x1="30" y1="44" x2="44" y2="44" stroke="#33353A" stroke-width="1.5"/>
+    <line x1="30" y1="58" x2="44" y2="58" stroke="#33353A" stroke-width="1.5"/>
+    <circle cx="48" cy="44" r="3" fill="#1DB88A"/>
+    <circle cx="48" cy="58" r="3" fill="#F97316"/>
+    <rect x="36" y="68" width="32" height="3" rx="1.5" fill="#E2E2E9"/>
+    <rect x="36" y="74" width="20" height="2.5" rx="1.25" fill="#8D90A0"/>
+  </svg>
+</template>
+</head>
+<body data-theme="">
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ds-kit.jsx"></script>
+<script type="text/babel" src="tree-component.jsx"></script>
+<script type="text/babel" src="tree-examples.jsx"></script>
+<script type="text/babel">
+const { GLIcon, DSPill, Shell, Section } = window;
+const { AccountTreeLive, FileTreeLive, OrgTreeLive } = window;
+
+/* ════════════════════════════════════════════════════════════
+   FEATURE DESCRIPTIONS — توصيف كل ميزة
+   ════════════════════════════════════════════════════════════ */
+const FEATURES = [
+  { icon: 'searchO', title: 'Recursive search', ar: 'بحث متداخل',
+    body: 'One field matches code, English name and Arabic name at once. A hit keeps its entire subtree and every ancestor, so a deep leaf always stays reachable. Matched text is highlighted in place and the live count shows beside the field.' },
+  { icon: 'grid', title: 'Type filters', ar: 'تصفية حسب النوع',
+    body: 'Colour-coded chips scope the tree to Assets, Liabilities, Equity, Income or Expense. Filter and search compose — the type filter runs first, then the query narrows what remains.' },
+  { icon: 'chevD', title: 'Expand / collapse', ar: 'توسيع وطي',
+    body: 'Click any group row to toggle its branch, or use Expand all / Collapse to drive every node at once. The first level opens by default; searching force-opens every branch that contains a match.' },
+  { icon: 'bars', title: 'Roll-up balances', ar: 'أرصدة تراكمية',
+    body: 'Only leaf accounts hold a figure; every group sums its descendants, so totals always reconcile. A thin share bar under each balance shows the node’s weight within its root branch.' },
+  { icon: 'check', title: 'Accounting equation check', ar: 'فحص المعادلة المحاسبية',
+    body: 'A live badge verifies Assets = Liabilities + Equity across the whole tree and turns green when the books balance — an instant integrity signal at the top of the toolbar.' },
+  { icon: 'user', title: 'Bilingual rows', ar: 'صفوف ثنائية اللغة',
+    body: 'Each account shows its code, English name and Arabic name (rendered RTL in Noto Naskh Arabic), plus a DR / CR pill derived from the account type’s normal balance.' },
+  { icon: 'info', title: 'Leaf-count badges', ar: 'عدّاد الحسابات',
+    body: 'Every group carries a pill with the number of posting accounts beneath it, so you can gauge the size of a branch before expanding it.' },
+  { icon: 'doc', title: 'Open the ledger', ar: 'فتح دفتر الأستاذ',
+    body: 'Clicking a leaf (a posting account) selects it and opens its ledger — here surfaced as a confirmation strip at the foot of the panel. Group rows toggle instead of opening.' },
+  { icon: 'keyboard', title: 'Keyboard control', ar: 'تحكّم بلوحة المفاتيح',
+    body: 'Focus the tree and drive it entirely from the keyboard: ↑↓ to move, ←→ to collapse / expand or step in and out, Enter to open a leaf or toggle a group, / to jump to search and ? for the cheatsheet. The focused row shows a blue ring.' },
+  { icon: 'command', title: 'Generic value type', ar: 'نوع قيمة عام',
+    body: 'The Flutter widget is TreeNode<T> — each node carries a strongly-typed value (here an Account), so row code reads node.value with no casting. The same tree re-skins for files, people or any domain by swapping the value type and row renderer.' },
+  { icon: 'home', title: 'Theme-aware', ar: 'متوافق مع السمة',
+    body: 'Every colour, border and shadow is a design-system token, so the component re-skins for dark and light themes with no code changes. Toggle the switch in the header.' },
+];
+
+/* ── annotated row anatomy ── */
+const ANATOMY = [
+  ['01', 'Disclosure chevron', 'Rotates 90° on expand; absent on leaf rows.'],
+  ['02', 'Type dot', 'Asset · Liability · Equity · Income · Expense, each its own hue. Root dots get a soft halo.'],
+  ['03', 'Account code', 'Monospaced, tabular. Part of the searchable text.'],
+  ['04', 'English name', 'Weight steps down with depth (700 → 500).'],
+  ['05', 'Arabic name', 'RTL, Noto Naskh Arabic, tertiary colour.'],
+  ['06', 'Leaf-count badge', 'Posting accounts under a group.'],
+  ['07', 'DR / CR nature', 'Normal balance derived from account type.'],
+  ['08', 'Balance + share bar', 'Rolled-up total with a proportional bar.'],
+];
+
+function FeatureCard({ icon, title, ar, body }) {
+  return (
+    <div style={{ background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', padding: 18, display: 'flex', flexDirection: 'column', gap: 11 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+        <span style={{ width: 34, height: 34, borderRadius: 'var(--gl-radius-md)', background: 'color-mix(in srgb, var(--gl-blue-500) 14%, transparent)', color: 'var(--gl-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <GLIcon name={icon} size={17} />
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--gl-fg-1)' }}>{title}</div>
+          <div dir="rtl" style={{ fontFamily: 'var(--gl-font-arabic)', fontSize: 12, color: 'var(--gl-fg-3)', marginTop: 1 }}>{ar}</div>
+        </div>
+      </div>
+      <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: 'var(--gl-fg-3)' }}>{body}</p>
+    </div>
+  );
+}
+
+/* ── annotated sample row ── */
+function AnatomyDiagram() {
+  const Tag = ({ n }) => (
+    <span style={{ width: 18, height: 18, borderRadius: 999, background: 'var(--gl-blue-500)', color: '#fff', fontFamily: 'var(--gl-font-mono)', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
+  );
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {/* the row, blown up */}
+      <div style={{ background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', padding: '26px 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 70px 190px', gap: 16, alignItems: 'center', maxWidth: 760, margin: '0 auto' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
+            <span style={{ position: 'relative', display: 'flex', color: 'var(--gl-fg-3)' }}><GLIcon name="chevD" size={15} /><Pin n="01" /></span>
+            <span style={{ position: 'relative', width: 9, height: 9, borderRadius: 999, background: '#4A7CFF', boxShadow: '0 0 0 3px #4A7CFF22' }}><Pin n="02" /></span>
+            <span style={{ position: 'relative', fontFamily: 'var(--gl-font-mono)', fontSize: 13, color: 'var(--gl-fg-3)' }}>1111<Pin n="03" /></span>
+            <span style={{ position: 'relative', fontSize: 14.5, fontWeight: 700, color: 'var(--gl-fg-1)' }}>Bank Accounts<Pin n="04" /></span>
+            <span dir="rtl" style={{ position: 'relative', fontFamily: 'var(--gl-font-arabic)', fontSize: 13, color: 'var(--gl-fg-4)' }}>الحسابات البنكية<Pin n="05" /></span>
+            <span style={{ position: 'relative', fontFamily: 'var(--gl-font-mono)', fontSize: 10, fontWeight: 700, color: 'var(--gl-fg-3)', background: 'var(--gl-input-bg)', border: '1px solid var(--gl-border)', borderRadius: 999, padding: '1px 8px' }}>3<Pin n="06" /></span>
+          </span>
+          <span style={{ position: 'relative', display: 'flex' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 9px', borderRadius: 999, fontFamily: 'var(--gl-font-mono)', fontSize: 10.5, fontWeight: 700, color: 'var(--gl-blue-500)', background: 'color-mix(in srgb, var(--gl-blue-500) 15%, transparent)', border: '1px solid color-mix(in srgb, var(--gl-blue-500) 35%, transparent)' }}>DR</span>
+            <Pin n="07" />
+          </span>
+          <span style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+            <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 14, fontWeight: 700, color: 'var(--gl-fg-1)' }}>319,970.00</span>
+            <span style={{ width: '100%', height: 4, borderRadius: 999, background: 'var(--gl-input-bg)', overflow: 'hidden' }}>
+              <span style={{ display: 'block', height: '100%', width: '62%', background: '#4A7CFF', borderRadius: 999 }} />
+            </span>
+            <Pin n="08" />
+          </span>
+        </div>
+      </div>
+      {/* legend */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
+        {ANATOMY.map(([n, t, d]) => (
+          <div key={n} style={{ display: 'flex', gap: 11, alignItems: 'flex-start', padding: '11px 14px', background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-md)' }}>
+            <Tag n={n} />
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gl-fg-1)' }}>{t}</div>
+              <div style={{ fontSize: 12, color: 'var(--gl-fg-3)', marginTop: 2, lineHeight: 1.5 }}>{d}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function Pin({ n }) {
+  return (
+    <span style={{ position: 'absolute', top: -24, left: '50%', transform: 'translateX(-50%)', width: 18, height: 18, borderRadius: 999, background: 'var(--gl-blue-500)', color: '#fff', fontFamily: 'var(--gl-font-mono)', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,.3)' }}>{n}</span>
+  );
+}
+
+/* ── search behaviour mini-reference ── */
+const SEARCH_RULES = [
+  ['Three fields at once', 'A single needle is tested against code + English + Arabic, lower-cased. “bank”, “1111” and “البنك” all land on the same rows.'],
+  ['Subtree retention', 'When a node matches, its whole subtree is kept so you can drill into the children of a hit without losing context.'],
+  ['Ancestor retention', 'When a descendant matches, every parent up to the root is kept and force-opened, so deep leaves surface at the top level.'],
+  ['Live highlight + count', 'The matched span is tinted blue inside each label, and a running match count sits at the end of the field.'],
+  ['Composes with filters', 'The active type filter scopes the set first; the query then narrows what is left.'],
+  ['Empty state', 'No matches shows a clear “No accounts match …” panel with a path back to clearing the query.'],
+];
+
+/* ── keyboard shortcuts reference ── */
+const KEYS = [
+  ['↑  ↓', 'Move between rows'],
+  ['←  →', 'Collapse / step out · expand / step in'],
+  ['Home  End', 'Jump to first / last row'],
+  ['Enter  Space', 'Open a leaf · toggle a group'],
+  ['/', 'Focus the search field'],
+  ['Esc', 'Clear the search'],
+  ['*   \\', 'Expand all · collapse all'],
+  ['?', 'Open the shortcuts cheatsheet'],
+];
+
+function KeyCap({ children }) {
+  return <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 12, fontWeight: 700, color: 'var(--gl-fg-1)', background: 'var(--gl-input-bg)', border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-sm)', padding: '3px 9px', whiteSpace: 'pre' }}>{children}</span>;
+}
+
+function App() {
+  return (
+    <Shell title="Account Tree" subtitle="GeniusLink Design System · شجرة الحسابات">
+      <Section title="Live component" desc="An interactive five-level chart of accounts. Search by code or name (try the chips), filter by type, expand or collapse branches, and click a posting account to open its ledger. Every balance rolls up from the leaves and the equation badge confirms the books balance.">
+        <div style={{ gridColumn: '1 / -1' }}><AccountTreeLive /></div>
+      </Section>
+
+      <Section title="Anatomy of a row" desc="Each row packs identity, classification and a rolled-up figure into one scannable line. The numbered parts below map to the documentation that follows.">
+        <div style={{ gridColumn: '1 / -1' }}><AnatomyDiagram /></div>
+      </Section>
+
+      <Section title="Features · المميزات" desc="Every capability the component ships with, each described on its own card." cols="repeat(auto-fill, minmax(320px, 1fr))">
+        {FEATURES.map((f) => <FeatureCard key={f.title} {...f} />)}
+      </Section>
+
+      <Section title="Generic value type · نوع قيمة عام" desc="In the Flutter library the tree is TreeNode<T> — every node carries a strongly-typed value, so row code reads node.value with no casts. The same recursive tree, search and keyboard model drive completely different domains just by swapping the value type and the row renderer. The two live examples below prove it.">
+        <div style={{ gridColumn: '1 / -1', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+          {[
+            ['TreeNode&lt;Account&gt;', 'code · nameEn · nameAr · type · balance', 'var(--gl-blue-500)', 'bars'],
+            ['TreeNode&lt;FileMeta&gt;', 'kind · size · modified', 'var(--gl-success-500)', 'folderOpen'],
+            ['TreeNode&lt;Person&gt;', 'role · dept · initials', '#A855F7', 'people'],
+          ].map(([t, fields, c, icon]) => (
+            <div key={t} style={{ background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', padding: 18, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ width: 32, height: 32, borderRadius: 'var(--gl-radius-md)', background: `color-mix(in srgb, ${c} 14%, transparent)`, color: c, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><GLIcon name={icon} size={16} /></span>
+                <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 13.5, fontWeight: 700, color: 'var(--gl-fg-1)' }} dangerouslySetInnerHTML={{ __html: t }} />
+              </div>
+              <div style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 11.5, color: 'var(--gl-fg-3)', lineHeight: 1.6 }}>value: {'{'} {fields} {'}'}</div>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Example — File explorer" desc="The same tree carrying a FileMeta value. Folders roll up a child count; files show size and last-modified. Search matches the file name; arrow keys and ? work exactly as on the account tree.">
+        <div style={{ gridColumn: '1 / -1' }}><FileTreeLive /></div>
+      </Section>
+
+      <Section title="Example — Org chart" desc="The same tree carrying a Person value. Managers roll up a headcount; every row shows an initials avatar, role and a colour-coded department badge. Search matches name, role or department.">
+        <div style={{ gridColumn: '1 / -1' }}><OrgTreeLive /></div>
+      </Section>
+
+      <Section title="Keyboard shortcuts · اختصارات لوحة المفاتيح" desc="Focus any tree (click it) and it is fully keyboard-drivable. The same map ships in the Flutter widget — press ? inside any tree above to see this cheatsheet in place.">
+        <div style={{ gridColumn: '1 / -1', background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', padding: '8px 22px' }}>
+          {KEYS.map(([k, d], i) => (
+            <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0', borderTop: i ? '1px solid var(--gl-border)' : 'none' }}>
+              <span style={{ width: 150, flexShrink: 0 }}><KeyCap>{k}</KeyCap></span>
+              <span style={{ fontSize: 13, color: 'var(--gl-fg-2)' }}>{d}</span>
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Search behaviour · سلوك البحث" desc="The search is the component’s headline feature — here is exactly how the recursive filter behaves." cols="repeat(auto-fill, minmax(320px, 1fr))">
+        {SEARCH_RULES.map(([t, d]) => (
+          <div key={t} style={{ background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', padding: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <GLIcon name="search" size={15} color="var(--gl-blue-500)" />
+              <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gl-fg-1)' }}>{t}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: 'var(--gl-fg-3)' }}>{d}</p>
+          </div>
+        ))}
+      </Section>
+    </Shell>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

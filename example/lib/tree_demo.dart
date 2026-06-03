@@ -1,26 +1,28 @@
 // ============================================================
-// Tree — demo gallery  →  ACCOUNT TREE.
+// Tree — demo gallery  →  ACCOUNT TREE (typed + keyboard-driven).
 // ------------------------------------------------------------
-// Rebuilt to mirror the GeniusLink "Account Tree" tool (the web
-// components-tree gallery): an interactive five-level chart of accounts with
-// KPI summary cards, a recursive search that matches code + English + Arabic
-// (with live in-row highlighting), colour-coded type filter chips, roll-up
-// balances with proportional share bars, DR / CR nature pills, leaf-count
-// badges and an accounting-equation balance check.
+// Mirrors the GeniusLink "Account Tree" web tool, and showcases two library
+// capabilities:
+//   1. GENERIC VALUE TYPE — the whole tree is `TreeNode<Account>`, so every
+//      row reads a strongly-typed `node.value` (an [Account]) with no casts.
+//   2. KEYBOARD CONTROL    — full arrow navigation, Enter/Space to open or
+//      toggle, / to search, * / \ to expand / collapse all, ? for a cheatsheet.
 //
-// State (expansion · selection · search query) is driven by the library's own
-// TreeController, painted with TreeThemeData (dark / light). Rows are rendered
-// in the account-specific 4-column layout that the generic Tree view does not
-// ship — proving the same MVC core re-skins into a domain widget.
-// Sample data lives in account_tree_data.dart.
+// An interactive five-level chart of accounts with KPI summary cards, a
+// recursive search that matches code + English + Arabic (live in-row
+// highlighting), colour-coded type filter chips, roll-up balances with share
+// bars, DR / CR nature pills, leaf-count badges and an accounting-equation
+// balance check. Expansion / selection / query are driven by the library's
+// `TreeController<Account>`; rows are painted with `TreeThemeData` (dark/light).
 //   File: example/lib/tree_demo.dart
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:geniuslink_design_system/geniuslink_tree.dart';
 import 'account_tree_data.dart';
 
-// ── account-type palette (mirrors the web TYPE_DOT / nature maps) ──
+// ── account-type palette (mirrors the web TYPE_DOT map) ──
 const Map<String, Color> _typeDot = {
   'Asset': Color(0xFF4A7CFF),
   'Liability': Color(0xFFF97316),
@@ -28,44 +30,37 @@ const Map<String, Color> _typeDot = {
   'Income': Color(0xFF38BDF8),
   'Expense': Color(0xFFEF4444),
 };
-const Map<String, String> _typeNature = {
-  'Asset': 'debit',
-  'Expense': 'debit',
-  'Liability': 'credit',
-  'Equity': 'credit',
-  'Income': 'credit',
-};
 const List<String> _typeOrder = ['Asset', 'Liability', 'Equity', 'Income', 'Expense'];
 
-// ── tree maths ──
-int _nodeTotal(TreeNode n) =>
-    n.children.isEmpty ? (n.data['bal'] as int? ?? 0) : n.children.fold(0, (s, c) => s + _nodeTotal(c));
-int _leafCount(TreeNode n) =>
+// ── tree maths (read the typed value, no casting) ──
+int _nodeTotal(TreeNode<Account> n) =>
+    n.children.isEmpty ? (n.value?.balance ?? 0) : n.children.fold(0, (s, c) => s + _nodeTotal(c));
+int _leafCount(TreeNode<Account> n) =>
     n.children.isEmpty ? 1 : n.children.fold(0, (s, c) => s + _leafCount(c));
 
-String _searchable(TreeNode n) => '${n.id} ${n.label} ${n.data['ar'] ?? ''}'.toLowerCase();
+String _searchable(TreeNode<Account> n) => '${n.id} ${n.label} ${n.value?.nameAr ?? ''}'.toLowerCase();
 
 /// Recursive filter: keep a node if it (or any descendant) matches; a hit
 /// retains its whole subtree, a deep hit keeps its ancestors.
-List<TreeNode> _filterTree(List<TreeNode> nodes, String q) {
+List<TreeNode<Account>> _filterTree(List<TreeNode<Account>> nodes, String q) {
   final needle = q.trim().toLowerCase();
   if (needle.isEmpty) return nodes;
-  TreeNode? walk(TreeNode n) {
+  TreeNode<Account>? walk(TreeNode<Account> n) {
     final self = _searchable(n).contains(needle);
-    final kids = n.children.isEmpty ? const <TreeNode>[] : n.children.map(walk).whereType<TreeNode>().toList();
+    final kids = n.children.isEmpty ? const <TreeNode<Account>>[] : n.children.map(walk).whereType<TreeNode<Account>>().toList();
     if (self) return n;
     if (kids.isNotEmpty) return n.copyWith(children: kids);
     return null;
   }
 
-  return nodes.map(walk).whereType<TreeNode>().toList();
+  return nodes.map(walk).whereType<TreeNode<Account>>().toList();
 }
 
-int _countMatches(List<TreeNode> nodes, String q) {
+int _countMatches(List<TreeNode<Account>> nodes, String q) {
   final needle = q.trim().toLowerCase();
   if (needle.isEmpty) return 0;
   var c = 0;
-  void w(TreeNode n) {
+  void w(TreeNode<Account> n) {
     if (_searchable(n).contains(needle)) c++;
     for (final k in n.children) w(k);
   }
@@ -94,9 +89,9 @@ String _fmtShort(int n) {
 }
 
 /// Group ids at depth ≤ [maxD] (for the default expansion).
-Set<String> _groupCodes(List<TreeNode> nodes, int maxD) {
+Set<String> _groupCodes(List<TreeNode<Account>> nodes, int maxD) {
   final out = <String>{};
-  void w(List<TreeNode> ns, int d) {
+  void w(List<TreeNode<Account>> ns, int d) {
     for (final n in ns) {
       if (n.children.isNotEmpty) {
         if (d <= maxD) out.add(n.id);
@@ -119,22 +114,146 @@ class _TreeDemoState extends State<TreeDemo> {
   bool _light = true;
   String _typeFilter = 'all';
   String? _opened;
+  String? _focusId; // keyboard cursor
 
   final TextEditingController _searchCtrl = TextEditingController();
-  late final TreeController _c = TreeController(roots: kAccountTreeRoots, expanded: _groupCodes(kAccountTreeRoots, 1));
+  final FocusNode _searchFocus = FocusNode(debugLabel: 'AccountTree.search');
+  final FocusNode _panelFocus = FocusNode(debugLabel: 'AccountTree.panel');
+  late final TreeController<Account> _c =
+      TreeController<Account>(roots: kAccountTreeRoots, expanded: _groupCodes(kAccountTreeRoots, 1));
 
   static const List<String> _samples = ['1111', 'Bank', 'البنك', 'Cash', 'Loan', '5512'];
+
+  @override
+  void initState() {
+    super.initState();
+    // Repaint the panel's focus ring when keyboard focus enters / leaves.
+    _panelFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
     _c.dispose();
     _searchCtrl.dispose();
+    _searchFocus.dispose();
+    _panelFocus.dispose();
     super.dispose();
   }
 
   void _runQuery(String q) {
     _searchCtrl.value = TextEditingValue(text: q, selection: TextSelection.collapsed(offset: q.length));
     _c.setQuery(q);
+  }
+
+  // ── keyboard ───────────────────────────────────────────────
+  List<TreeNode<Account>> _flatVisible(List<TreeNode<Account>> nodes, bool searching) {
+    final out = <TreeNode<Account>>[];
+    void rec(List<TreeNode<Account>> ns) {
+      for (final n in ns) {
+        out.add(n);
+        final open = searching || _c.isExpanded(n.id);
+        if (n.children.isNotEmpty && open) rec(n.children);
+      }
+    }
+
+    rec(nodes);
+    return out;
+  }
+
+  KeyEventResult _onPanelKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final k = e.logicalKey;
+    final shift = HardwareKeyboard.instance.isShiftPressed;
+
+    if (k == LogicalKeyboardKey.slash && !shift) {
+      _searchFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.slash && shift) {
+      _showShortcuts();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.asterisk) {
+      _c.expandAll();
+      return KeyEventResult.handled;
+    }
+    if (k == LogicalKeyboardKey.backslash) {
+      _c.collapseAll();
+      return KeyEventResult.handled;
+    }
+
+    final searching = _c.query.trim().isNotEmpty;
+    final byType = _typeFilter == 'all' ? kAccountTreeRoots : kAccountTreeRoots.where((n) => n.value?.type == _typeFilter).toList();
+    final visible = _filterTree(byType, _c.query);
+    final flat = _flatVisible(visible, searching);
+    if (flat.isEmpty) return KeyEventResult.ignored;
+    final idx = _focusId == null ? -1 : flat.indexWhere((n) => n.id == _focusId);
+    final cur = idx >= 0 ? flat[idx] : null;
+
+    switch (k) {
+      case LogicalKeyboardKey.arrowDown:
+        setState(() => _focusId = flat[(idx + 1).clamp(0, flat.length - 1)].id);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowUp:
+        setState(() => _focusId = flat[(idx <= 0 ? 0 : idx - 1)].id);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.home:
+        setState(() => _focusId = flat.first.id);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.end:
+        setState(() => _focusId = flat.last.id);
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowRight:
+        if (cur != null && cur.children.isNotEmpty) {
+          if (!searching && !_c.isExpanded(cur.id)) {
+            _c.expand(cur.id);
+          } else {
+            setState(() => _focusId = cur.children.first.id);
+          }
+        }
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.arrowLeft:
+        if (cur != null && cur.children.isNotEmpty && !searching && _c.isExpanded(cur.id)) {
+          _c.collapse(cur.id);
+        } else if (cur != null) {
+          final anc = TreeOps.ancestorsOf<Account>(visible, cur.id);
+          if (anc.isNotEmpty) setState(() => _focusId = anc.last);
+        }
+        return KeyEventResult.handled;
+      case LogicalKeyboardKey.enter:
+      case LogicalKeyboardKey.numpadEnter:
+      case LogicalKeyboardKey.space:
+        if (cur == null) return KeyEventResult.ignored;
+        if (cur.children.isNotEmpty) {
+          _c.toggle(cur.id);
+        } else {
+          setState(() => _opened = cur.id);
+          _c.select(cur.id);
+        }
+        return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  KeyEventResult _onSearchKey(FocusNode node, KeyEvent e) {
+    if (e is! KeyDownEvent) return KeyEventResult.ignored;
+    if (e.logicalKey == LogicalKeyboardKey.escape) {
+      _runQuery('');
+      _panelFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    if (e.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _panelFocus.requestFocus();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _focusRow(TreeNode<Account> n) {
+    _panelFocus.requestFocus();
+    setState(() => _focusId = n.id);
   }
 
   @override
@@ -162,12 +281,12 @@ class _TreeDemoState extends State<TreeDemo> {
                     final query = _c.query;
                     final searching = query.trim().isNotEmpty;
                     final byType =
-                        _typeFilter == 'all' ? kAccountTreeRoots : kAccountTreeRoots.where((n) => n.data['type'] == _typeFilter).toList();
+                        _typeFilter == 'all' ? kAccountTreeRoots : kAccountTreeRoots.where((n) => n.value?.type == _typeFilter).toList();
                     final visible = _filterTree(byType, query);
                     final matches = _countMatches(byType, query);
 
                     int totalOf(String type) =>
-                        kAccountTreeRoots.where((n) => n.data['type'] == type).fold(0, (s, n) => s + _nodeTotal(n));
+                        kAccountTreeRoots.where((n) => n.value?.type == type).fold(0, (s, n) => s + _nodeTotal(n));
                     final assets = totalOf('Asset'), liabilities = totalOf('Liability'), equity = totalOf('Equity');
                     final income = totalOf('Income'), expense = totalOf('Expense');
                     final balanced = (assets - (liabilities + equity)).abs() < 1;
@@ -225,9 +344,9 @@ class _TreeDemoState extends State<TreeDemo> {
               ]),
               const SizedBox(height: 8),
               Text(
-                'A five-level chart of accounts. Search by code or name, filter by type, '
-                'expand or collapse branches, and open a posting account. Balances roll up '
-                'from the leaves and the equation badge confirms the books balance.',
+                'TreeNode<Account> — a strongly-typed five-level chart of accounts. '
+                'Search by code or name, filter by type, navigate by keyboard (press ? for shortcuts), '
+                'and open a posting account. Balances roll up from the leaves; the equation badge confirms the books balance.',
                 style: TextStyle(fontSize: 14, height: 1.5, color: t.fg3),
               ),
             ],
@@ -298,6 +417,8 @@ class _TreeDemoState extends State<TreeDemo> {
               _toolBtn(t, Icons.unfold_more, 'Expand all', _c.expandAll),
               const SizedBox(width: 8),
               _toolBtn(t, Icons.unfold_less, 'Collapse', _c.collapseAll),
+              const SizedBox(width: 8),
+              _toolBtn(t, Icons.keyboard_outlined, 'Shortcuts', _showShortcuts),
             ],
           ),
           const SizedBox(height: 14),
@@ -337,42 +458,46 @@ class _TreeDemoState extends State<TreeDemo> {
   Widget _searchField(TreeThemeData t, String query, bool searching, int matches) {
     return SizedBox(
       height: 40,
-      child: TextField(
-        controller: _searchCtrl,
-        onChanged: _c.setQuery,
-        style: TextStyle(color: t.fg1, fontSize: 13.5),
-        cursorColor: TreeThemeData.accent,
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: 'Search by code, English or Arabic name…',
-          hintStyle: TextStyle(color: t.fg3, fontSize: 13.5),
-          prefixIcon: Icon(Icons.search, size: 16, color: t.fg3),
-          prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 0),
-          suffixIcon: searching
-              ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('$matches', style: TextStyle(fontFamily: TreeThemeData.monoFont, fontSize: 11, color: t.fg3)),
-                    const SizedBox(width: 4),
-                    InkWell(
-                      onTap: () => _runQuery(''),
-                      borderRadius: BorderRadius.circular(4),
-                      child: Padding(padding: const EdgeInsets.all(6), child: Icon(Icons.close, size: 14, color: t.fg3)),
-                    ),
-                  ],
-                )
-              : null,
-          suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          filled: true,
-          fillColor: t.inputBg,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
-            borderSide: BorderSide(color: t.borderStrong),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
-            borderSide: const BorderSide(color: TreeThemeData.accent, width: 2),
+      child: Focus(
+        onKeyEvent: _onSearchKey,
+        child: TextField(
+          controller: _searchCtrl,
+          focusNode: _searchFocus,
+          onChanged: _c.setQuery,
+          style: TextStyle(color: t.fg1, fontSize: 13.5),
+          cursorColor: TreeThemeData.accent,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Search by code, English or Arabic name…   ( / )',
+            hintStyle: TextStyle(color: t.fg3, fontSize: 13.5),
+            prefixIcon: Icon(Icons.search, size: 16, color: t.fg3),
+            prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 0),
+            suffixIcon: searching
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('$matches', style: TextStyle(fontFamily: TreeThemeData.monoFont, fontSize: 11, color: t.fg3)),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () => _runQuery(''),
+                        borderRadius: BorderRadius.circular(4),
+                        child: Padding(padding: const EdgeInsets.all(6), child: Icon(Icons.close, size: 14, color: t.fg3)),
+                      ),
+                    ],
+                  )
+                : null,
+            suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+            filled: true,
+            fillColor: t.inputBg,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+              borderSide: BorderSide(color: t.borderStrong),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+              borderSide: const BorderSide(color: TreeThemeData.accent, width: 2),
+            ),
           ),
         ),
       ),
@@ -381,22 +506,25 @@ class _TreeDemoState extends State<TreeDemo> {
 
   Widget _toolBtn(TreeThemeData t, IconData icon, String label, VoidCallback onTap) {
     return _Hoverable(builder: (hover) {
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 13),
-          decoration: BoxDecoration(
-            color: hover ? t.hover : Colors.transparent,
-            border: Border.all(color: t.borderStrong),
-            borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+      return Tooltip(
+        message: label,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 13),
+            decoration: BoxDecoration(
+              color: hover ? t.hover : Colors.transparent,
+              border: Border.all(color: t.borderStrong),
+              borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+            ),
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Icon(icon, size: 16, color: t.fg2),
+              const SizedBox(width: 7),
+              Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.fg1)),
+            ]),
           ),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(icon, size: 16, color: t.fg2),
-            const SizedBox(width: 7),
-            Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: t.fg1)),
-          ]),
         ),
       );
     });
@@ -463,78 +591,100 @@ class _TreeDemoState extends State<TreeDemo> {
   }
 
   // ── tree panel ──
-  Widget _treePanel(TreeThemeData t, List<TreeNode> visible, bool searching, String query, int totalAccounts, int visibleAccounts) {
-    return Container(
-      decoration: BoxDecoration(
-        color: t.surface,
-        border: Border.all(color: t.border),
-        borderRadius: BorderRadius.circular(TreeThemeData.radiusLg),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // title row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 18, 24, 0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(width: 4, height: 36, margin: const EdgeInsets.only(top: 2, right: 11), decoration: BoxDecoration(color: TreeThemeData.accent, borderRadius: BorderRadius.circular(12))),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Chart of Accounts Hierarchy', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: t.fg1)),
-                      const SizedBox(height: 2),
-                      Text('5 levels · click a group to expand, click a leaf to open its ledger', style: TextStyle(fontSize: 12, color: t.fg3)),
-                    ],
+  Widget _treePanel(TreeThemeData t, List<TreeNode<Account>> visible, bool searching, String query, int totalAccounts, int visibleAccounts) {
+    return Focus(
+      focusNode: _panelFocus,
+      onKeyEvent: _onPanelKey,
+      child: Container(
+        decoration: BoxDecoration(
+          color: t.surface,
+          border: Border.all(color: _panelFocus.hasFocus ? TreeThemeData.accent.withOpacity(0.5) : t.border),
+          borderRadius: BorderRadius.circular(TreeThemeData.radiusLg),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // title row
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 18, 12, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 4, height: 36, margin: const EdgeInsets.only(top: 2, right: 11), decoration: BoxDecoration(color: TreeThemeData.accent, borderRadius: BorderRadius.circular(12))),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Chart of Accounts Hierarchy', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: t.fg1)),
+                        const SizedBox(height: 2),
+                        Text('5 levels · click or use ↑↓ ← → · Enter opens a leaf', style: TextStyle(fontSize: 12, color: t.fg3)),
+                      ],
+                    ),
                   ),
-                ),
-                Text(searching ? '$visibleAccounts of $totalAccounts' : '$totalAccounts accounts',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: t.fg3)),
-              ],
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(searching ? '$visibleAccounts of $totalAccounts' : '$totalAccounts accounts',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: t.fg3)),
+                  ),
+                  _Hoverable(builder: (hover) {
+                    return Tooltip(
+                      message: 'Keyboard shortcuts  ·  ?',
+                      child: InkWell(
+                        onTap: _showShortcuts,
+                        borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+                        child: Padding(padding: const EdgeInsets.all(6), child: Icon(Icons.keyboard_outlined, size: 16, color: hover ? t.fg1 : t.fg3)),
+                      ),
+                    );
+                  }),
+                ],
+              ),
             ),
-          ),
-          // column header
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
-            child: Row(children: [
-              Expanded(child: Text('ACCOUNT · الحساب', style: _colHead(t))),
-              const SizedBox(width: 12),
-              SizedBox(width: 64, child: Text('NATURE', style: _colHead(t))),
-              const SizedBox(width: 12),
-              SizedBox(width: 168, child: Text('BALANCE (SAR)', textAlign: TextAlign.right, style: _colHead(t))),
-              const SizedBox(width: 12),
-              const SizedBox(width: 26),
-            ]),
-          ),
-          // body
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-            child: visible.isEmpty
-                ? _emptyState(t, query)
-                : Column(
-                    children: [
-                      for (final n in visible)
-                        _AccountRow(
-                          node: n,
-                          depth: 0,
-                          rootTotal: _nodeTotal(n),
-                          forceOpen: searching,
-                          controller: _c,
-                          query: query,
-                          onOpen: (node) {
-                            setState(() => _opened = node.id);
-                            _c.select(node.id);
-                          },
-                        ),
-                    ],
-                  ),
-          ),
-          if (_opened != null) _openedStrip(t),
-        ],
+            // column header
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
+              child: Row(children: [
+                Expanded(child: Text('ACCOUNT · الحساب', style: _colHead(t))),
+                const SizedBox(width: 12),
+                SizedBox(width: 64, child: Text('NATURE', style: _colHead(t))),
+                const SizedBox(width: 12),
+                SizedBox(width: 168, child: Text('BALANCE (SAR)', textAlign: TextAlign.right, style: _colHead(t))),
+                const SizedBox(width: 12),
+                const SizedBox(width: 26),
+              ]),
+            ),
+            // body
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+              child: visible.isEmpty
+                  ? _emptyState(t, query)
+                  : Column(
+                      children: [
+                        for (final n in visible)
+                          _AccountRow(
+                            node: n,
+                            depth: 0,
+                            rootTotal: _nodeTotal(n),
+                            forceOpen: searching,
+                            controller: _c,
+                            query: query,
+                            focusId: _focusId,
+                            onFocus: _focusRow,
+                            onOpen: (node) {
+                              setState(() {
+                                _opened = node.id;
+                                _focusId = node.id;
+                              });
+                              _c.select(node.id);
+                            },
+                          ),
+                      ],
+                    ),
+            ),
+            if (_opened != null) _openedStrip(t),
+          ],
+        ),
       ),
     );
   }
@@ -557,6 +707,7 @@ class _TreeDemoState extends State<TreeDemo> {
   }
 
   Widget _openedStrip(TreeThemeData t) {
+    final acc = _c.valueOf(_opened!);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       decoration: BoxDecoration(
@@ -568,8 +719,10 @@ class _TreeDemoState extends State<TreeDemo> {
         const SizedBox(width: 10),
         Expanded(
           child: Text.rich(TextSpan(style: TextStyle(fontSize: 12.5, color: t.fg2), children: [
-            const TextSpan(text: 'Opened ledger for account '),
-            TextSpan(text: _opened, style: TextStyle(fontFamily: TreeThemeData.monoFont, fontWeight: FontWeight.w700, color: t.fg1)),
+            const TextSpan(text: 'Opened ledger for '),
+            TextSpan(text: acc?.nameEn ?? _opened, style: TextStyle(fontWeight: FontWeight.w700, color: t.fg1)),
+            TextSpan(text: '  ·  ', style: TextStyle(color: t.fg4)),
+            TextSpan(text: _opened, style: TextStyle(fontFamily: TreeThemeData.monoFont, color: t.fg3)),
           ])),
         ),
         InkWell(
@@ -580,19 +733,88 @@ class _TreeDemoState extends State<TreeDemo> {
       ]),
     );
   }
+
+  // ── shortcuts cheatsheet ──
+  static const List<List<String>> _shortcutRows = [
+    ['↑  ↓', 'Move between rows'],
+    ['←  →', 'Collapse / out · expand / in'],
+    ['Home  End', 'Jump to first / last'],
+    ['Enter / Space', 'Open a leaf · toggle a group'],
+    ['/', 'Focus the search field'],
+    ['Esc', 'Clear search'],
+    ['*  \\', 'Expand all · collapse all'],
+    ['?', 'This cheatsheet'],
+  ];
+
+  void _showShortcuts() {
+    final t = TreeThemeData.of(context);
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.45),
+      builder: (ctx) => Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: 440,
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 22),
+            decoration: BoxDecoration(
+              color: t.surface,
+              borderRadius: BorderRadius.circular(TreeThemeData.radiusLg),
+              border: Border.all(color: t.borderStrong),
+              boxShadow: TreeThemeData.popShadow,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Icon(Icons.keyboard_outlined, size: 18, color: TreeThemeData.accent),
+                  const SizedBox(width: 9),
+                  Text('Keyboard shortcuts',
+                      style: TextStyle(fontFamily: TreeThemeData.displayFont, fontSize: 16, fontWeight: FontWeight.w700, color: t.fg1)),
+                  const Spacer(),
+                  InkWell(
+                    onTap: () => Navigator.of(ctx).pop(),
+                    borderRadius: BorderRadius.circular(TreeThemeData.radiusSm),
+                    child: Padding(padding: const EdgeInsets.all(4), child: Icon(Icons.close, size: 16, color: t.fg3)),
+                  ),
+                ]),
+                const SizedBox(height: 14),
+                for (final s in _shortcutRows)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(children: [
+                      SizedBox(
+                        width: 130,
+                        child: Text(s[0],
+                            style: TextStyle(fontFamily: TreeThemeData.monoFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: t.fg2)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(s[1], style: TextStyle(fontSize: 13, color: t.fg3))),
+                    ]),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ════════════════════════════════════════════════════════════
 // One account row — recursive, with the 4-column account layout.
 // ════════════════════════════════════════════════════════════
 class _AccountRow extends StatefulWidget {
-  final TreeNode node;
+  final TreeNode<Account> node;
   final int depth;
   final int rootTotal;
   final bool forceOpen;
-  final TreeController controller;
+  final TreeController<Account> controller;
   final String query;
-  final ValueChanged<TreeNode> onOpen;
+  final String? focusId;
+  final ValueChanged<TreeNode<Account>> onFocus;
+  final ValueChanged<TreeNode<Account>> onOpen;
 
   const _AccountRow({
     required this.node,
@@ -601,6 +823,8 @@ class _AccountRow extends StatefulWidget {
     required this.forceOpen,
     required this.controller,
     required this.query,
+    required this.focusId,
+    required this.onFocus,
     required this.onOpen,
   });
 
@@ -615,14 +839,16 @@ class _AccountRowState extends State<_AccountRow> {
   Widget build(BuildContext context) {
     final t = TreeThemeData.of(context);
     final n = widget.node;
+    final acc = n.value;
     final hasKids = n.children.isNotEmpty;
     final open = widget.forceOpen || widget.controller.isExpanded(n.id);
     final total = _nodeTotal(n);
     final share = widget.rootTotal > 0 ? total / widget.rootTotal : 0.0;
-    final dot = _typeDot[n.data['type']] ?? t.fg3;
-    final nature = _typeNature[n.data['type']] ?? 'debit';
+    final dot = _typeDot[acc?.type] ?? t.fg3;
+    final isDebit = acc?.isDebitNature ?? true;
     final indent = 14.0 + widget.depth * 22.0;
     final isSel = widget.controller.isSelected(n.id);
+    final isFocus = widget.focusId == n.id;
 
     final row = MouseRegion(
       onEnter: (_) => setState(() => _hover = true),
@@ -630,7 +856,10 @@ class _AccountRowState extends State<_AccountRow> {
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: () => hasKids ? widget.controller.toggle(n.id) : widget.onOpen(n),
+        onTap: () {
+          widget.onFocus(n);
+          hasKids ? widget.controller.toggle(n.id) : widget.onOpen(n);
+        },
         child: Container(
           padding: EdgeInsets.only(left: indent, right: 12, top: 9, bottom: 9),
           decoration: BoxDecoration(
@@ -638,7 +867,9 @@ class _AccountRowState extends State<_AccountRow> {
                 ? Color.alphaBlend(TreeThemeData.accent.withOpacity(0.12), t.surface)
                 : (_hover ? t.hover : Colors.transparent),
             borderRadius: BorderRadius.circular(5),
-            border: isSel ? Border.all(color: TreeThemeData.accent.withOpacity(0.45)) : null,
+            border: (isSel || isFocus)
+                ? Border.all(color: TreeThemeData.accent.withOpacity(isSel ? 0.45 : 0.7), width: isFocus && !isSel ? 1.5 : 1)
+                : null,
           ),
           child: Row(
             children: [
@@ -684,7 +915,7 @@ class _AccountRowState extends State<_AccountRow> {
                     const SizedBox(width: 9),
                     Directionality(
                       textDirection: TextDirection.rtl,
-                      child: _hl('${n.data['ar'] ?? ''}', widget.query, TextStyle(fontSize: 12, color: t.fg4)),
+                      child: _hl(acc?.nameAr ?? '', widget.query, TextStyle(fontSize: 12, color: t.fg4)),
                     ),
                     if (hasKids) ...[
                       const SizedBox(width: 9),
@@ -699,7 +930,7 @@ class _AccountRowState extends State<_AccountRow> {
               ),
               const SizedBox(width: 12),
               // nature
-              SizedBox(width: 64, child: Align(alignment: Alignment.centerLeft, child: _naturePill(t, nature))),
+              SizedBox(width: 64, child: Align(alignment: Alignment.centerLeft, child: _naturePill(t, isDebit))),
               const SizedBox(width: 12),
               // balance + share bar
               SizedBox(
@@ -761,6 +992,8 @@ class _AccountRowState extends State<_AccountRow> {
                     forceOpen: widget.forceOpen,
                     controller: widget.controller,
                     query: widget.query,
+                    focusId: widget.focusId,
+                    onFocus: widget.onFocus,
                     onOpen: widget.onOpen,
                   ),
               ],
@@ -771,8 +1004,7 @@ class _AccountRowState extends State<_AccountRow> {
     );
   }
 
-  Widget _naturePill(TreeThemeData t, String nature) {
-    final dr = nature == 'debit';
+  Widget _naturePill(TreeThemeData t, bool dr) {
     final c = dr ? TreeThemeData.accent : TreeThemeData.warning;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

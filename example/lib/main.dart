@@ -22,6 +22,7 @@ import 'figma_app.dart';
 import 'chrome_app.dart';
 import 'browser_tabs_demo.dart';
 import 'editable_table_demo.dart';
+import 'readable_table_demo.dart';
 import 'tree_demo.dart';
 import 'erp_console.dart';
 import 'shell_kit.dart';
@@ -134,6 +135,13 @@ class LauncherScreen extends StatelessWidget {
                         accent: BrowserStyleTabBarThemeData.success,
                         preview: const _EditableTableThumb(),
                         onTap: () => _open(context, const EditableTableDemo()),
+                      ),
+                      _DemoCard(
+                        title: 'ReadableTable',
+                        subtitle: 'Read-only display grid · 5 selection modes · keyboard nav · click-to-sort · rich cells',
+                        accent: const Color(0xFF4A7CFF),
+                        preview: const _ReadableTableThumb(),
+                        onTap: () => _open(context, const ReadableTableDemo()),
                       ),
                       _DemoCard(
                         title: 'Account Tree',
@@ -335,6 +343,57 @@ class _EditableTableThumb extends StatelessWidget {
                 )),
             ])),
           Container(height: 14, decoration: const BoxDecoration(color: Color(0xFFF7F8FA), border: Border(top: BorderSide(color: Color(0xFFC2C6D6), width: 1.5)))),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ReadableTableThumb extends StatelessWidget {
+  const _ReadableTableThumb();
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF4A7CFF);
+    const line = Color(0xFFE2E8F0);
+    const selFill = Color(0x1A4A7CFF);
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          // header with a sorted column arrow
+          Container(height: 16, color: const Color(0xFFF7F8FA), child: Row(children: [
+            for (int i = 0; i < 4; i++)
+              Expanded(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Row(children: [
+                  Expanded(child: Container(height: 4, color: i == 3 ? accent : const Color(0xFFBDC1C6))),
+                  if (i == 3) const Icon(Icons.arrow_downward_rounded, size: 7, color: accent),
+                ]),
+              )),
+          ])),
+          Container(height: 1, color: const Color(0xFFC2C6D6)),
+          // rows — two selected (accent fill + left bar)
+          for (int r = 0; r < 4; r++)
+            Expanded(child: Container(
+              decoration: BoxDecoration(
+                color: (r == 1 || r == 2) ? selFill : Colors.white,
+                border: Border(
+                  bottom: const BorderSide(color: line, width: 0.5),
+                  left: (r == 1 || r == 2) ? const BorderSide(color: accent, width: 2) : BorderSide.none,
+                ),
+              ),
+              child: Row(children: [
+                for (int cIdx = 0; cIdx < 4; cIdx++)
+                  Expanded(child: Center(child: cIdx == 1
+                      ? Container(height: 5, margin: const EdgeInsets.symmetric(horizontal: 6), decoration: BoxDecoration(color: const Color(0xFFD7DCE6), borderRadius: BorderRadius.circular(2)))
+                      : (cIdx == 2
+                          ? Container(width: 18, height: 7, decoration: BoxDecoration(color: accent.withOpacity(0.18), borderRadius: BorderRadius.circular(999)))
+                          : Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 6), color: const Color(0xFFEEF1F7))))),
+              ]),
+            )),
         ]),
       ),
     );

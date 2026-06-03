@@ -1,19 +1,19 @@
 // ============================================================
-// Tree — CONTROLLER.
+// Tree — CONTROLLER  (generic over the node's value type `T`).
 // ------------------------------------------------------------
 // The single source of truth and all of the tree's logic, as a
 // ChangeNotifier. The view (Tree) is a thin render of this state and forwards
 // every gesture / keystroke here. The same controller is exposed to row
 // content via an InheritedNotifier so any descendant can drive the tree:
 //
-//   final t = TreeController.of(context);   // may be null
+//   final t = TreeController.of<Account>(context);   // may be null
 //   t?.addChild(parentId);
 //
 // Holds: the (immutable) node forest as the working copy, the expanded set,
 // the tri-state checked set, single selection, a keyboard focus cursor, the
 // search query, the inline-rename target, and one undo/redo history covering
 // every structural change. Nodes are immutable, so a snapshot is just the
-// previous `List<TreeNode>` reference — undo is a swap, never a deep clone.
+// previous `List<TreeNode<T>>` reference — undo is a swap, never a deep clone.
 //
 //   File: lib/design_system/components/data/tree_controller.dart
 // ============================================================
@@ -21,9 +21,9 @@
 import 'package:flutter/widgets.dart';
 import 'tree_models.dart';
 
-class TreeController extends ChangeNotifier {
+class TreeController<T> extends ChangeNotifier {
   TreeController({
-    required List<TreeNode> roots,
+    required List<TreeNode<T>> roots,
     Set<TreeNodeId>? expanded,
     Set<TreeNodeId>? checked,
     TreeNodeId? selected,
@@ -37,7 +37,7 @@ class TreeController extends ChangeNotifier {
 
   final int historyLimit;
 
-  List<TreeNode> _roots;
+  List<TreeNode<T>> _roots;
   final Set<TreeNodeId> _expanded;
   final Set<TreeNodeId> _checked; // fully-checked LEAVES (branches derive)
   TreeNodeId? _selected;
@@ -45,25 +45,28 @@ class TreeController extends ChangeNotifier {
   String _query = '';
   TreeNodeId? _editing;
 
-  final List<List<TreeNode>> _past = [];
-  final List<List<TreeNode>> _future = [];
+  final List<List<TreeNode<T>>> _past = [];
+  final List<List<TreeNode<T>>> _future = [];
 
   int _seq = 0;
 
   // ── reads ──────────────────────────────────────────────────
-  List<TreeNode> get roots => _roots;
+  List<TreeNode<T>> get roots => _roots;
   String get query => _query;
   TreeNodeId? get selected => _selected;
   TreeNodeId? get focused => _focused ?? _selected;
   TreeNodeId? get editing => _editing;
   bool get canUndo => _past.isNotEmpty;
   bool get canRedo => _future.isNotEmpty;
-  int get nodeCount => TreeOps.count(_roots);
+  int get nodeCount => TreeOps.count<T>(_roots);
   bool get filtering => _query.trim().isNotEmpty;
 
   bool isExpanded(TreeNodeId id) => _expanded.contains(id);
   bool isSelected(TreeNodeId id) => _selected == id;
-  TreeNode? node(TreeNodeId id) => TreeOps.find(_roots, id);
+  TreeNode<T>? node(TreeNodeId id) => TreeOps.find<T>(_roots, id);
+
+  /// The strongly-typed value behind [id], or null.
+  T? valueOf(TreeNodeId id) => node(id)?.value;
 
   /// Ids of every checked leaf (the meaningful selection for a host).
   Set<TreeNodeId> get checkedLeafIds => {..._checked};
@@ -73,7 +76,7 @@ class TreeController extends ChangeNotifier {
     final q = _query.trim().toLowerCase();
     if (q.isEmpty) return 0;
     var n = 0;
-    TreeOps.walk(_roots, (node, _) {
+    TreeOps.walk<T>(_roots, (node, _) {
       if (node.label.toLowerCase().contains(q)) n++;
     });
     return n;
@@ -83,14 +86,14 @@ class TreeController extends ChangeNotifier {
   /// The visible rows in render order. While searching, only matches and
   /// their ancestors are shown, and ancestor folders are force-expanded so
   /// the hits are revealed.
-  List<TreeRow> visibleRows() {
+  List<TreeRow<T>> visibleRows() {
     final q = _query.trim().toLowerCase();
     final filter = q.isNotEmpty;
 
     final matched = <TreeNodeId>{};
     final onPath = <TreeNodeId>{}; // ancestors of a match
     if (filter) {
-      void rec(List<TreeNode> nodes, List<TreeNodeId> path) {
+      void rec(List<TreeNode<T>> nodes, List<TreeNodeId> path) {
         for (final n in nodes) {
           if (n.label.toLowerCase().contains(q)) {
             matched.add(n.id);
@@ -103,17 +106,17 @@ class TreeController extends ChangeNotifier {
       rec(_roots, const []);
     }
 
-    bool visible(TreeNode n) => !filter || matched.contains(n.id) || onPath.contains(n.id);
-    bool expandedFor(TreeNode n) => filter ? onPath.contains(n.id) : _expanded.contains(n.id);
+    bool visible(TreeNode<T> n) => !filter || matched.contains(n.id) || onPath.contains(n.id);
+    bool expandedFor(TreeNode<T> n) => filter ? onPath.contains(n.id) : _expanded.contains(n.id);
 
-    final rows = <TreeRow>[];
-    void emit(List<TreeNode> nodes, int depth, List<bool> ancestorHasNext) {
+    final rows = <TreeRow<T>>[];
+    void emit(List<TreeNode<T>> nodes, int depth, List<bool> ancestorHasNext) {
       final shown = filter ? nodes.where(visible).toList() : nodes;
       for (var i = 0; i < shown.length; i++) {
         final n = shown[i];
         final isLast = i == shown.length - 1;
         final expanded = expandedFor(n);
-        rows.add(TreeRow(
+        rows.add(TreeRow<T>(
           node: n,
           depth: depth,
           expanded: expanded,
@@ -132,8 +135,8 @@ class TreeController extends ChangeNotifier {
   }
 
   // ── checks (tri-state, derived from leaves) ────────────────
-  TreeCheck checkState(TreeNode n) {
-    final leaves = TreeOps.leafIds(n);
+  TreeCheck checkState(TreeNode<T> n) {
+    final leaves = TreeOps.leafIds<T>(n);
     if (leaves.isEmpty) return _checked.contains(n.id) ? TreeCheck.all : TreeCheck.none;
     final on = leaves.where(_checked.contains).length;
     if (on == 0) return TreeCheck.none;
@@ -146,7 +149,7 @@ class TreeController extends ChangeNotifier {
   void toggleCheck(TreeNodeId id) {
     final n = node(id);
     if (n == null) return;
-    final leaves = TreeOps.leafIds(n);
+    final leaves = TreeOps.leafIds<T>(n);
     final targets = leaves.isEmpty ? [id] : leaves;
     final allOn = targets.every(_checked.contains);
     if (allOn) {
@@ -180,7 +183,7 @@ class TreeController extends ChangeNotifier {
 
   void expandAll() {
     _expanded.clear();
-    TreeOps.walk(_roots, (n, _) {
+    TreeOps.walk<T>(_roots, (n, _) {
       if (n.isFolder) _expanded.add(n.id);
     });
     notifyListeners();
@@ -188,6 +191,16 @@ class TreeController extends ChangeNotifier {
 
   void collapseAll() {
     _expanded.clear();
+    notifyListeners();
+  }
+
+  /// Expand only the [node] and its ancestors so a deep node is revealed.
+  void revealNode(TreeNodeId id) {
+    for (final a in TreeOps.ancestorsOf<T>(_roots, id)) {
+      _expanded.add(a);
+    }
+    _expanded.add(id);
+    _focused = id;
     notifyListeners();
   }
 
@@ -256,11 +269,26 @@ class TreeController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    final ancestors = TreeOps.ancestorsOf(_roots, id);
+    final ancestors = TreeOps.ancestorsOf<T>(_roots, id);
     if (ancestors.isNotEmpty) {
       _focused = ancestors.last;
       notifyListeners();
     }
+  }
+
+  /// Toggle / activate the focused row: folders expand, leaves select.
+  /// Returns the activated leaf node (for the host to open), or null.
+  TreeNode<T>? activateFocused() {
+    final id = focused;
+    if (id == null) return null;
+    final n = node(id);
+    if (n == null) return null;
+    if (n.isFolder) {
+      toggle(id);
+      return null;
+    }
+    select(id);
+    return n;
   }
 
   // ── search ─────────────────────────────────────────────────
@@ -271,7 +299,7 @@ class TreeController extends ChangeNotifier {
   }
 
   // ── history plumbing ───────────────────────────────────────
-  void _apply(List<TreeNode> next) {
+  void _apply(List<TreeNode<T>> next) {
     _past.add(_roots);
     if (_past.length > historyLimit) _past.removeAt(0);
     _future.clear();
@@ -281,16 +309,16 @@ class TreeController extends ChangeNotifier {
 
   TreeNodeId _newId() => 'gen-${DateTime.now().microsecondsSinceEpoch}-${_seq++}';
 
-  TreeNode _cloneFresh(TreeNode n) =>
+  TreeNode<T> _cloneFresh(TreeNode<T> n) =>
       n.copyWith(id: _newId(), children: [for (final c in n.children) _cloneFresh(c)]);
 
   // ── structural edits (undoable) ────────────────────────────
   /// Append a new child under [parentId], expand it, select & begin renaming
   /// the new node. Returns the new node's id.
-  TreeNodeId addChild(TreeNodeId parentId, {String label = 'New item', bool folder = false}) {
+  TreeNodeId addChild(TreeNodeId parentId, {String label = 'New item', bool folder = false, T? value}) {
     final id = _newId();
-    final child = TreeNode(id: id, label: label, folder: folder ? true : null);
-    _apply(TreeOps.mapNode(_roots, parentId, (p) => p.copyWith(
+    final child = TreeNode<T>(id: id, label: label, folder: folder ? true : null, value: value);
+    _apply(TreeOps.mapNode<T>(_roots, parentId, (p) => p.copyWith(
           folder: true,
           children: [...p.children, child],
         )));
@@ -303,20 +331,20 @@ class TreeController extends ChangeNotifier {
 
   /// Insert a sibling immediately after [id] (or append at root if [id] has
   /// no parent and isn't found nested). Returns the new node's id.
-  TreeNodeId addSibling(TreeNodeId id, {String label = 'New item'}) {
+  TreeNodeId addSibling(TreeNodeId id, {String label = 'New item', T? value}) {
     final newId = _newId();
-    final sibling = TreeNode(id: newId, label: label);
-    final ancestors = TreeOps.ancestorsOf(_roots, id);
+    final sibling = TreeNode<T>(id: newId, label: label, value: value);
+    final ancestors = TreeOps.ancestorsOf<T>(_roots, id);
     if (ancestors.isEmpty) {
       // Root-level sibling.
-      final out = <TreeNode>[];
+      final out = <TreeNode<T>>[];
       for (final n in _roots) {
         out.add(n);
         if (n.id == id) out.add(sibling);
       }
       _apply(out);
     } else {
-      _apply(TreeOps.insertAfter(_roots, id, sibling));
+      _apply(TreeOps.insertAfter<T>(_roots, id, sibling));
     }
     _selected = newId;
     _focused = newId;
@@ -326,11 +354,11 @@ class TreeController extends ChangeNotifier {
 
   /// Remove [id] and everything beneath it.
   void remove(TreeNodeId id) {
-    final ancestors = TreeOps.ancestorsOf(_roots, id);
-    _apply(TreeOps.removeNode(_roots, id));
-    final gone = TreeOps.find(_roots, id) == null;
+    final ancestors = TreeOps.ancestorsOf<T>(_roots, id);
+    _apply(TreeOps.removeNode<T>(_roots, id));
+    final gone = TreeOps.find<T>(_roots, id) == null;
     if (gone) {
-      _checked.removeAll(_checked.where((c) => TreeOps.find(_roots, c) == null).toList());
+      _checked.removeAll(_checked.where((c) => TreeOps.find<T>(_roots, c) == null).toList());
       if (_selected == id) _selected = ancestors.isNotEmpty ? ancestors.last : null;
       if (_focused == id) _focused = _selected;
       if (_editing == id) _editing = null;
@@ -342,16 +370,16 @@ class TreeController extends ChangeNotifier {
     final original = node(id);
     if (original == null) return null;
     final copy = _cloneFresh(original).copyWith(label: '${original.label} copy');
-    final ancestors = TreeOps.ancestorsOf(_roots, id);
+    final ancestors = TreeOps.ancestorsOf<T>(_roots, id);
     if (ancestors.isEmpty) {
-      final out = <TreeNode>[];
+      final out = <TreeNode<T>>[];
       for (final n in _roots) {
         out.add(n);
         if (n.id == id) out.add(copy);
       }
       _apply(out);
     } else {
-      _apply(TreeOps.insertAfter(_roots, id, copy));
+      _apply(TreeOps.insertAfter<T>(_roots, id, copy));
     }
     _selected = copy.id;
     _focused = copy.id;
@@ -380,7 +408,7 @@ class TreeController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    _apply(TreeOps.mapNode(_roots, id, (n) => n.copyWith(label: trimmed)));
+    _apply(TreeOps.mapNode<T>(_roots, id, (n) => n.copyWith(label: trimmed)));
   }
 
   // ── undo / redo ────────────────────────────────────────────
@@ -399,7 +427,7 @@ class TreeController extends ChangeNotifier {
   }
 
   /// Replace the whole forest (resets history). For host-driven reloads.
-  void replaceRoots(List<TreeNode> roots) {
+  void replaceRoots(List<TreeNode<T>> roots) {
     _past.clear();
     _future.clear();
     _roots = List.unmodifiable(roots);
@@ -407,8 +435,8 @@ class TreeController extends ChangeNotifier {
   }
 
   // ── InheritedNotifier access ───────────────────────────────
-  static TreeController? of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<TreeScope>();
+  static TreeController<T>? of<T>(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<TreeScope<T>>();
     return scope?.controller;
   }
 }
@@ -416,9 +444,9 @@ class TreeController extends ChangeNotifier {
 /// Exposes a [TreeController] to the subtree so any descendant (custom row
 /// content, toolbars built by the host) can read/drive the tree and rebuild
 /// when it changes.
-class TreeScope extends InheritedNotifier<TreeController> {
-  const TreeScope({super.key, required TreeController controller, required super.child})
+class TreeScope<T> extends InheritedNotifier<TreeController<T>> {
+  const TreeScope({super.key, required TreeController<T> controller, required super.child})
       : super(notifier: controller);
 
-  TreeController get controller => notifier!;
+  TreeController<T> get controller => notifier!;
 }

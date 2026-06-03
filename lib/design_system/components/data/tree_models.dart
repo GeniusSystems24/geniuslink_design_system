@@ -1,11 +1,16 @@
 // ============================================================
-// Tree — MODEL.
+// Tree — MODEL  (generic over the node's value type `T`).
 // ------------------------------------------------------------
 // Pure data: the immutable node schema a host builds to describe its tree
-// (a file explorer, a category outline, an org chart, a layers panel …), the
-// flattened "visible row" the view renders, and small lookup helpers. No
+// (a file explorer, a category outline, an org chart, a chart of accounts …),
+// the flattened "visible row" the view renders, and small lookup helpers. No
 // widgets, no mutable state — expansion / selection / checks all live in the
 // controller, keyed by node id, so this layer carries no UI coupling.
+//
+// `TreeNode<T>` carries a **typed** `value` of type `T` (the strongly-typed
+// host payload — an Account, a FileMeta, a Person, …) alongside the loose
+// `data` map kept for ad-hoc metadata. Make the whole tree `TreeNode<Account>`
+// and `node.value` is an `Account`, with no casting at the call site.
 //
 //   File: lib/design_system/components/data/tree_models.dart
 // ============================================================
@@ -17,12 +22,13 @@ import 'package:flutter/widgets.dart' show IconData;
 /// keys (paths, uuids, db ids) without adapting.
 typedef TreeNodeId = String;
 
-/// The schema for a single node. This is the customisation surface: a host
-/// composes a `List<TreeNode>` (each with its own `children`) to define the
-/// whole tree. Immutable — structural edits in the controller produce new
-/// node objects via [copyWith], which makes undo/redo a cheap reference swap.
+/// The schema for a single node, generic over its [value] type [T]. This is
+/// the customisation surface: a host composes a `List<TreeNode<T>>` (each with
+/// its own `children`) to define the whole tree. Immutable — structural edits
+/// in the controller produce new node objects via [copyWith], which makes
+/// undo/redo a cheap reference swap.
 @immutable
-class TreeNode {
+class TreeNode<T> {
   /// Unique, stable id across the whole tree.
   final TreeNodeId id;
 
@@ -30,7 +36,11 @@ class TreeNode {
   final String label;
 
   /// Child nodes. Empty for a leaf (or for an empty folder — see [folder]).
-  final List<TreeNode> children;
+  final List<TreeNode<T>> children;
+
+  /// Strongly-typed host payload travelling with the node. `null` for nodes
+  /// that carry no domain object (e.g. structural group headers).
+  final T? value;
 
   /// Optional leading icon override. When null the view picks a sensible
   /// default (folder-open / folder / leaf dot) from the node's role.
@@ -48,13 +58,15 @@ class TreeNode {
   /// When false the row can't be selected (still expandable / shown).
   final bool selectable;
 
-  /// Arbitrary host payload travelling with the node (type, href, meta…).
+  /// Arbitrary, loosely-typed metadata travelling with the node. Prefer
+  /// [value] for the primary payload; use this for incidental flags.
   final Map<String, Object?> data;
 
   const TreeNode({
     required this.id,
     required this.label,
     this.children = const [],
+    this.value,
     this.icon,
     this.badge,
     this.folder,
@@ -68,20 +80,22 @@ class TreeNode {
   /// Has at least one child right now.
   bool get hasChildren => children.isNotEmpty;
 
-  TreeNode copyWith({
+  TreeNode<T> copyWith({
     TreeNodeId? id,
     String? label,
-    List<TreeNode>? children,
+    List<TreeNode<T>>? children,
+    Object? value = _sentinel,
     IconData? icon,
     Object? badge = _sentinel,
     Object? folder = _sentinel,
     bool? selectable,
     Map<String, Object?>? data,
   }) =>
-      TreeNode(
+      TreeNode<T>(
         id: id ?? this.id,
         label: label ?? this.label,
         children: children ?? this.children,
+        value: value == _sentinel ? this.value : value as T?,
         icon: icon ?? this.icon,
         badge: badge == _sentinel ? this.badge : badge as String?,
         folder: folder == _sentinel ? this.folder : folder as bool?,
@@ -92,7 +106,7 @@ class TreeNode {
   static const Object _sentinel = Object();
 
   @override
-  bool operator ==(Object other) => other is TreeNode && other.id == id;
+  bool operator ==(Object other) => other is TreeNode<T> && other.id == id;
 
   @override
   int get hashCode => id.hashCode;
@@ -103,8 +117,8 @@ class TreeNode {
 /// the ancestor "has a following sibling" flags used to draw the indent
 /// guide-lines (│ ├ └).
 @immutable
-class TreeRow {
-  final TreeNode node;
+class TreeRow<T> {
+  final TreeNode<T> node;
 
   /// Nesting depth (0 for roots).
   final int depth;
@@ -135,13 +149,15 @@ class TreeRow {
 /// Tri-state check status of a node (derived from its leaves).
 enum TreeCheck { none, some, all }
 
-/// Static helpers shared by the controller and the view.
+/// Static helpers shared by the controller and the view. Each is generic over
+/// the node value type [T]; the type argument is normally inferred from the
+/// `List<TreeNode<T>>` you pass in.
 class TreeOps {
   TreeOps._();
 
   /// Depth-first walk; [visit] receives each node and its ancestor path.
-  static void walk(List<TreeNode> roots, void Function(TreeNode node, List<TreeNode> ancestors) visit) {
-    void rec(List<TreeNode> nodes, List<TreeNode> path) {
+  static void walk<T>(List<TreeNode<T>> roots, void Function(TreeNode<T> node, List<TreeNode<T>> ancestors) visit) {
+    void rec(List<TreeNode<T>> nodes, List<TreeNode<T>> path) {
       for (final n in nodes) {
         visit(n, path);
         if (n.children.isNotEmpty) rec(n.children, [...path, n]);
@@ -152,25 +168,25 @@ class TreeOps {
   }
 
   /// Total node count.
-  static int count(List<TreeNode> roots) {
+  static int count<T>(List<TreeNode<T>> roots) {
     var n = 0;
-    walk(roots, (_, __) => n++);
+    walk<T>(roots, (_, __) => n++);
     return n;
   }
 
   /// Find a node by id, or null.
-  static TreeNode? find(List<TreeNode> roots, TreeNodeId id) {
-    TreeNode? hit;
-    walk(roots, (n, _) {
+  static TreeNode<T>? find<T>(List<TreeNode<T>> roots, TreeNodeId id) {
+    TreeNode<T>? hit;
+    walk<T>(roots, (n, _) {
       if (n.id == id) hit = n;
     });
     return hit;
   }
 
   /// Ancestor ids of [id], outermost-first (empty if root or missing).
-  static List<TreeNodeId> ancestorsOf(List<TreeNode> roots, TreeNodeId id) {
+  static List<TreeNodeId> ancestorsOf<T>(List<TreeNode<T>> roots, TreeNodeId id) {
     List<TreeNodeId>? result;
-    void rec(List<TreeNode> nodes, List<TreeNodeId> path) {
+    void rec(List<TreeNode<T>> nodes, List<TreeNodeId> path) {
       for (final n in nodes) {
         if (n.id == id) {
           result = path;
@@ -185,9 +201,9 @@ class TreeOps {
   }
 
   /// All leaf ids beneath (and including, if leaf) [node].
-  static List<TreeNodeId> leafIds(TreeNode node) {
+  static List<TreeNodeId> leafIds<T>(TreeNode<T> node) {
     final out = <TreeNodeId>[];
-    void rec(TreeNode n) {
+    void rec(TreeNode<T> n) {
       if (n.children.isEmpty) {
         out.add(n.id);
       } else {
@@ -200,9 +216,9 @@ class TreeOps {
   }
 
   /// All ids beneath (and including) [node].
-  static List<TreeNodeId> subtreeIds(TreeNode node) {
+  static List<TreeNodeId> subtreeIds<T>(TreeNode<T> node) {
     final out = <TreeNodeId>[];
-    void rec(TreeNode n) {
+    void rec(TreeNode<T> n) {
       out.add(n.id);
       for (final c in n.children) rec(c);
     }
@@ -212,7 +228,7 @@ class TreeOps {
   }
 
   /// Rebuild [nodes], replacing the node matching [id] with `transform(node)`.
-  static List<TreeNode> mapNode(List<TreeNode> nodes, TreeNodeId id, TreeNode Function(TreeNode) transform) {
+  static List<TreeNode<T>> mapNode<T>(List<TreeNode<T>> nodes, TreeNodeId id, TreeNode<T> Function(TreeNode<T>) transform) {
     return [
       for (final n in nodes)
         if (n.id == id)
@@ -220,26 +236,26 @@ class TreeOps {
         else if (n.children.isEmpty)
           n
         else
-          n.copyWith(children: mapNode(n.children, id, transform)),
+          n.copyWith(children: mapNode<T>(n.children, id, transform)),
     ];
   }
 
   /// Rebuild [nodes] with [id] (and its subtree) removed.
-  static List<TreeNode> removeNode(List<TreeNode> nodes, TreeNodeId id) {
-    final out = <TreeNode>[];
+  static List<TreeNode<T>> removeNode<T>(List<TreeNode<T>> nodes, TreeNodeId id) {
+    final out = <TreeNode<T>>[];
     for (final n in nodes) {
       if (n.id == id) continue;
-      out.add(n.children.isEmpty ? n : n.copyWith(children: removeNode(n.children, id)));
+      out.add(n.children.isEmpty ? n : n.copyWith(children: removeNode<T>(n.children, id)));
     }
     return out;
   }
 
   /// Rebuild [nodes], inserting [toAdd] immediately after the node [afterId]
   /// at whatever depth it lives.
-  static List<TreeNode> insertAfter(List<TreeNode> nodes, TreeNodeId afterId, TreeNode toAdd) {
-    final out = <TreeNode>[];
+  static List<TreeNode<T>> insertAfter<T>(List<TreeNode<T>> nodes, TreeNodeId afterId, TreeNode<T> toAdd) {
+    final out = <TreeNode<T>>[];
     for (final n in nodes) {
-      out.add(n.children.isEmpty ? n : n.copyWith(children: insertAfter(n.children, afterId, toAdd)));
+      out.add(n.children.isEmpty ? n : n.copyWith(children: insertAfter<T>(n.children, afterId, toAdd)));
       if (n.id == afterId) out.add(toAdd);
     }
     return out;

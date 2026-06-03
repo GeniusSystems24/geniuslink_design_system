@@ -26,6 +26,13 @@ const DS_ICONS = {
   image:'M3 3h18v18H3z|M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z|M21 15l-5-5L5 21', home:'M3 11l9-8 9 8|M5 10v10h14V10',
   grid:'M3 3h7v7H3z|M14 3h7v7h-7z|M14 14h7v7h-7z|M3 14h7v7H3z', calendar:'M3 4h18v18H3z|M16 2v4|M8 2v4|M3 10h18',
   trend:'M4 18l5-6 4 3 7-9|M16 6h4v4', bars:'M4 21V10|M10 21V4|M16 21v-7|M21 21H3',
+  command:'M6 4a2 2 0 1 1-2 2h12a2 2 0 1 1-2-2v12a2 2 0 1 1 2-2H6a2 2 0 1 1 2 2z',
+  keyboard:'M3 5h18v14H3z|M7 9h.01|M11 9h.01|M15 9h.01|M7 13h.01|M11 13h.01|M15 13h.01|M8 16h8',
+  folder:'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  folderOpen:'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2H3z|M3 9h18l-2 8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+  fileCode:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6|M9 13l-2 2 2 2|M14 13l2 2-2 2',
+  fileImg:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6|M9 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z|M18 18l-4-4-6 5',
+  people:'M17 21v-2a4 4 0 0 0-3-3.87|M9 21v-2a4 4 0 0 1 3-3.87|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z|M22 21v-2a4 4 0 0 0-3-3.87',
 };
 function GLIcon({ name, size = 18, color = 'currentColor', stroke = 1.6 }) {
   const raw = DS_ICONS[name]; if (!raw) return null;
