@@ -2,7 +2,7 @@
 
 # GeniusLink Design System
 
-[![pub package](https://img.shields.io/badge/pub-v2.1.0-4A7CFF.svg)](https://pub.dev/packages/geniuslink_design_system)
+[![pub package](https://img.shields.io/badge/pub-v2.2.0-4A7CFF.svg)](https://pub.dev/packages/geniuslink_design_system)
 [![flutter](https://img.shields.io/badge/Flutter-%E2%89%A53.10-1DB88A.svg)](https://flutter.dev)
 [![style](https://img.shields.io/badge/style-MVC-F97316.svg)](#architecture)
 [![license](https://img.shields.io/badge/license-MIT-64748B.svg)](#license)
@@ -240,60 +240,37 @@ EditableTableController.of(context)?.addRow();
 
 ## 2 · ReadableTable
 
-A **read-only display grid** that shares the EditableTable look (it reuses `EditableTableThemeData` — identical header, hairline grid, surfaces, type ramp) but renders arbitrary **widget** cells: status pills, two-line bilingual text, progress bars, links, anything. Use it for ledgers, lists, matrices and reports — where `EditableTable` edits values, `ReadableTable` *displays* them, adding the interaction layer a display grid needs: selection, keyboard navigation and click-to-sort.
+A **read-only, generic, MVC display grid** that shares the EditableTable look (it reuses `EditableTableThemeData` — identical header, hairline grid, surfaces, type ramp). Where `EditableTable` edits strings, `ReadableTable<T>` *displays* strongly-typed row values — and adds the read-only interaction layer a display grid needs: selection, keyboard navigation and click-to-sort. It's **generic over the row value type `T`**: each row is one `T`, and every `ReadableColumn<T>` renders itself from that value via `cell`, so row code reads `value.field` with no casting.
 
 ### Quick start
 
 ```dart
-ReadableTable(
-  columns: const [
-    ReadableColumn('Code', width: 90, sortable: true),
-    ReadableColumn('Account', flex: 2, sortable: true),
-    ReadableColumn('Balance', align: ReadableAlign.end, sortable: true),
+ReadableTable<Account>(
+  selectionMode: ReadableSelectionMode.multiRow,
+  columns: [
+    ReadableColumn('Code', width: 90, sortable: true,
+      sortKey: (a) => a.code,    cell: (ctx, a) => Text(a.code)),
+    ReadableColumn('Account', flex: 2, sortable: true,
+      sortKey: (a) => a.name,    cell: (ctx, a) => Text(a.name)),
+    ReadableColumn('Balance', align: ReadableAlign.end, sortable: true,
+      sortKey: (a) => a.balance, cell: (ctx, a) => Text(a.fmt)),
   ],
-  rows: [
-    [Text('1001'), Text('Cash Box'), Text('42,500.00')],
-    [Text('1100'), Text('Bank · NCB Main'), Text('186,420.00')],
-  ],
+  rows: accounts,                                   // List<Account>
+  onRowSelectionChanged: (rows) => debugPrint('$rows'),   // List<Account>
 );
 ```
 
-Columns size by `width:` (fixed px) **or** `flex:` (proportional, filling the row). Cells are plain widgets, placed and aligned for you — no horizontal scroll.
+Columns size by `width:` (fixed px) **or** `flex:` (proportional, filling the row). Cells are arbitrary widgets — status pills, two-line bilingual text, progress bars — placed and aligned for you, no horizontal scroll. Provide `columns` + `rows` (the widget owns a controller), or pass a `controller:` to drive/observe it externally.
+
+> **Just a grid of pre-built widgets?** Use `ReadableTable<List<Widget>>` and have each column return `value[i]`. That's exactly how the desktop `GLTable` wrapper keeps its `List<List<Widget>>` API.
 
 ### Selection — five modes
 
-Set `selectionMode:` to one of `ReadableSelectionMode.{none, singleRow, multiRow, singleCell, multiCell}` (default `none` = display only). Pointer: click selects; **Ctrl/⌘-click** toggles; **Shift-click** extends a range (linear for rows, rectangular for cells). Selection is always reported by **original** (pre-sort) row index.
-
-```dart
-ReadableTable(
-  selectionMode: ReadableSelectionMode.multiRow,
-  initialSelectedRows: const {0},
-  onRowSelectionChanged: (rows) => debugPrint('$rows'),   // Set<int>
-  // cell modes instead:
-  // selectionMode: ReadableSelectionMode.multiCell,
-  // onCellSelectionChanged: (cells) {},                  // Set<ReadableCell>
-  columns: columns,
-  rows: rows,
-);
-```
+Set `selectionMode:` to one of `ReadableSelectionMode.{none, singleRow, multiRow, singleCell, multiCell}` (default `none` = display only). Pointer: click selects; **Ctrl/⌘-click** toggles; **Shift-click** extends a range (linear for rows, rectangular for cells). `onRowSelectionChanged` reports the selected **values** (`List<T>`); `onCellSelectionChanged` gives a `Set<ReadableCell>`.
 
 ### Column sort
 
-Mark a column `sortable: true` and click its header to cycle **asc → desc** (an arrow shows the active column). Numeric-looking text sorts numerically, otherwise case-insensitive string sort. For non-text cells (pills, bars…), supply `sortKeyOf` to return a `Comparable` per `(rowIndex, colIndex)`:
-
-```dart
-ReadableTable(
-  sortKeyOf: (row, col) => switch (col) {
-    4 => accounts[row].balance,           // numeric column
-    _ => accounts[row].cells[col],        // strings
-  },
-  initialSortColumn: 4,
-  initialSortAscending: false,
-  onSortChanged: (col, asc) => debugPrint('sort $col $asc'),
-  columns: columns,
-  rows: rows,
-);
-```
+Mark a column `sortable: true` and click its header to cycle **asc → desc** (an arrow marks the active column). Supply `sortKey: (value) => Comparable` per column — numbers sort numerically, strings alphabetically. Sorting reorders the rows **and remaps the selection / cursor** so they follow their rows. `initialSortColumn` / `initialSortAscending` / `onSortChanged` round it out.
 
 ### Keyboard
 
@@ -305,22 +282,54 @@ Focus the table (click it), then — press **?** (or `⌘/Ctrl + /`) for the in-
 | `Space` | Toggle (multi) / select the active row or cell |
 | `⇧ + ↑↓←→` | Extend the selection (multi modes) |
 | `⌘/Ctrl + A` | Select all rows / cells |
-| `Enter` | Activate the active row (`onRowTap`) |
+| `Enter` | Activate the active row (`onRowTap` → value + index) |
 | `Home` / `End` · `⌘+Home/End` | Row edges · grid corners |
 | `Esc` | Clear the selection |
+
+### Driving it — `ReadableTableController<T>`
+
+The controller is the single source of truth; the view is a thin render of it. It exposes intention-revealing operations — **select / add / delete / replace** rows **by index · value · where · firstWhere** — and is published to descendants via a scope (`ReadableTableController.of<T>(context)`).
+
+```dart
+final c = ReadableTableController<Account>(
+  columns: columns, rows: accounts,
+  selectionMode: ReadableSelectionMode.multiRow,
+);
+
+ReadableTable<Account>(controller: c);   // observe / share it
+```
+
+| Group | Operations |
+|---|---|
+| **Select rows** | `selectRowAt(index, {additive, range})` · `selectRowByValue(value, {additive})` · `selectRowsWhere(test, {additive})` · `selectAllRows()` · `clearSelection()` |
+| **Add rows** | `insertRowAt(index, value)` · `addRowWhere(test, value, {after, firstOnly})` · `addRow(value)` *(end)* |
+| **Delete rows** | `deleteRowAt(index)` · `deleteRowsWhere(test)` · `deleteRowByValue(value)` · `deleteSelectedRows()` |
+| **Replace row** | `replaceRowAt(index, value)` · `replaceRowByValue(old, new)` · `replaceRowsWhere(test, update)` · `replaceFirstWhere(test, update)` |
+| **Cells / sort / data** | `selectCellAt(r, c, …)` · `selectAllCells()` · `sortByColumn(ci)` · `clearSort()` · `setRows(values)` |
+
+```dart
+c.selectRowsWhere((a) => a.type == 'Expense');           // select … where
+c.addRowWhere((a) => a.type == 'Asset', newAccount);     // add … where (after match)
+c.deleteRowByValue(oldAccount);                          // delete … by value
+c.replaceFirstWhere((a) => a.type == 'Asset',            // replace … firstWhere
+    (a) => a.copyWith(balance: a.balance * 1.1));
+
+// from inside a custom cell / page:
+ReadableTableController.of<Account>(context)?.deleteSelectedRows();
+```
 
 ### Options
 
 ```dart
-ReadableTable(
-  columns: columns,
-  rows: rows,
+ReadableTable<T>(
+  controller: c,            // or columns + rows
+  selectionMode: ReadableSelectionMode.none,
   showHeader: true,
   zebra: false,             // faint fill on odd rows
   hoverHighlight: true,     // tint the row under the pointer
   rowMinHeight: 52,
   cellPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-  onRowTap: (i) {},         // original index — fires in every mode
+  onRowTap: (value, index) {},
   emptyState: const Text('No rows'),
 );
 ```
@@ -489,7 +498,9 @@ lib/
     │   ├── editable_table_controller.dart    Controller — ChangeNotifier + scope
     │   ├── editable_table_theme.dart         Theme  — ThemeExtension (Editable + Readable)
     │   ├── editable_table.dart               View   — EditableTable widget
-    │   ├── readable_table.dart                View   — ReadableTable (selection · keyboard · sort)
+    │   ├── readable_table_models.dart          Model  — ReadableColumn<T>, cell, enums
+    │   ├── readable_table_controller.dart      Controller — ChangeNotifier + scope
+    │   ├── readable_table.dart                 View   — ReadableTable<T> (generic · MVC)
     │   └── tree_*.dart                        Tree — model · controller · theme · view
     └── navigation/
         └── browser_style_tab_bar*.dart        BrowserStyleTabBar — MVC + overlays + pages

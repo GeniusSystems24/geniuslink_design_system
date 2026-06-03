@@ -5,6 +5,51 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.2.0]
+
+- 2026-06-03
+
+### ♻️ Changed — `ReadableTable` is now generic + MVC
+
+- **Generic over the row value type — `ReadableTable<T>`.** Each row is one
+  strongly-typed `T`; every `ReadableColumn<T>` renders itself from that value
+  via `cell: (context, value) => Widget` and sorts via `sortKey: (value) =>
+  Comparable`. Row code reads `value.field` with no casting. (For a plain grid
+  of pre-built widgets use `ReadableTable<List<Widget>>` and index into it —
+  which is how the desktop `GLTable` wrapper keeps its `List<List<Widget>>` API.)
+- **Rebuilt MVC**, mirroring `EditableTable`: split into
+  `readable_table_models.dart` (Model), `readable_table_controller.dart`
+  (Controller + `ReadableTableScope`) and `readable_table.dart` (View). The
+  view is a thin render of a `ReadableTableController<T>`; pass `columns + rows`
+  (widget owns a controller) or a `controller:` to drive/observe externally.
+- **`ReadableTableController<T>`** is the single source of truth, published to
+  descendants via `ReadableTableController.of<T>(context)`, with intention-
+  revealing operations:
+  - **Select rows** by index · value · where — `selectRowAt`,
+    `selectRowByValue`, `selectRowsWhere`, `selectAllRows`, `clearSelection`.
+  - **Add rows** by index · where · end — `insertRowAt`, `addRowWhere`
+    (`after` / `firstOnly`), `addRow`.
+  - **Delete rows** by index · where · value — `deleteRowAt`,
+    `deleteRowsWhere`, `deleteRowByValue`, `deleteSelectedRows`.
+  - **Replace row** by index · value · where · firstWhere — `replaceRowAt`,
+    `replaceRowByValue`, `replaceRowsWhere`, `replaceFirstWhere`.
+  - plus `selectCellAt` / `selectAllCells`, `sortByColumn` / `clearSort`,
+    `setRows`. Structural edits remap selection by value identity; sort remaps
+    it by position so it follows the rows.
+
+### ⚠️ Migration from 2.1.0
+
+- `ReadableColumn` now requires `cell:` (and takes `sortKey:` instead of the
+  table-level `sortKeyOf`). `ReadableTable.rows` is now `List<T>` (was
+  `List<List<Widget>>`) — pass `ReadableTable<List<Widget>>` with
+  `cell: (ctx, row) => row[i]` to keep the old shape.
+- `onRowSelectionChanged` now yields `List<T>` (selected values) rather than
+  `Set<int>`; `onRowTap` is `(value, index)`. Seed selection/sort on the
+  controller (or via `initialSelected*` / `initialSort*` on the controller-less
+  form).
+
+---
+
 ## [2.1.0]
 
 ### ✨ Added
