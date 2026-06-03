@@ -21,11 +21,11 @@ class BrowserTabsDemo extends StatelessWidget {
       light: light,
       onToggleTheme: onToggleTheme,
       children: [
-        const _Section(
+        _Section(
           title: 'Workspace Tabs',
           desc:
               'Modern browser-style tab strip: the rounded active tab merges with the surface below; inactive tabs are muted with hairline separators. Pinned tabs (icon-only) anchor on the start edge; right-click any tab for close / duplicate / pin actions; drag to reorder; overflow chevrons appear when tabs run off the edge. The ▾ button lists every open tab; closing an unsaved tab prompts before discarding. Resting the pointer on any tab (≈0.5s) raises a mini-page preview — the page’s REAL captured frame, with its current state and data. Add (+), close (×), unsaved dot, truncation, and ←/→/Home/End keyboard nav. Dark/light + RTL.',
-          child: BrowserStyleTabBar(),
+          child: const BrowserStyleTabBar(),
         ),
         _Section(
           title: 'LTR & RTL',
@@ -43,10 +43,10 @@ class BrowserTabsDemo extends StatelessWidget {
             ),
           ),
         ),
-        const _Section(
+        _Section(
           title: 'Documentation',
           desc: 'Anatomy, states and props for the component.',
-          child: _DocsGrid(),
+          child: const _DocsGrid(),
         ),
       ],
     );
@@ -79,7 +79,7 @@ class _Shell extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('GENIUSLINK DESIGN SYSTEM',
+                          Text('GENIUSLINK DESIGN SYSTEM',
                               style: TextStyle(
                                   fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.65, color: BrowserStyleTabBarThemeData.accent)),
                           const SizedBox(height: 10),
@@ -181,7 +181,7 @@ class _Spec extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label.toUpperCase(),
-              style: const TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: BrowserStyleTabBarThemeData.accent)),
+              style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.monoFont, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: BrowserStyleTabBarThemeData.accent)),
           const SizedBox(height: 12),
           child,
         ],
@@ -243,9 +243,9 @@ class _DocsGrid extends StatelessWidget {
           'Right-click context menu',
           'Dirty-close confirmation dialog',
         ])),
-        const _Spec(
+        _Spec(
           label: 'States',
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
+          child: Wrap(spacing: 8, runSpacing: 8, children: const [
             _Pill('Active', tone: 'info'),
             _Pill('Inactive'),
             _Pill('Hover'),

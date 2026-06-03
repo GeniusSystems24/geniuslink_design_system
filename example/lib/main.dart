@@ -66,7 +66,7 @@ class LauncherScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
               children: [
-                const Text('GENIUSLINK DESIGN SYSTEM',
+                Text('GENIUSLINK DESIGN SYSTEM',
                     style: TextStyle(
                         fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.6, color: BrowserStyleTabBarThemeData.accent)),
                 const SizedBox(height: 12),
@@ -136,8 +136,8 @@ class LauncherScreen extends StatelessWidget {
                         onTap: () => _open(context, const EditableTableDemo()),
                       ),
                       _DemoCard(
-                        title: 'Tree',
-                        subtitle: 'Customisable hierarchical tree · MVC · search · rename · checkboxes · undo',
+                        title: 'Account Tree',
+                        subtitle: 'Chart of accounts · MVC tree · code/EN/AR search · roll-up balances · DR/CR',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _TreeThumb(),
                         onTap: () => _open(context, const TreeDemo()),
@@ -279,7 +279,7 @@ class _FigmaThumb extends StatelessWidget {
       color: const Color(0xFF1E1E1E),
       child: Column(children: [
         const _MiniTabs(strip: Color(0xFF1E1E1E), active: Color(0xFF2C2C2C), text: Color(0xFFB3B3B3), labels: ['System', 'App', 'Site'], activeIndex: 1),
-        Expanded(child: Container(color: const Color(0xFF1A1A1A), margin: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Center(child: Container(width: 120, height: 70, decoration: BoxDecoration(color: const Color(0xFF222226), borderRadius: BorderRadius.circular(4)), child: const Stack(children: [
+        Expanded(child: Container(color: const Color(0xFF1A1A1A), margin: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Center(child: Container(width: 120, height: 70, decoration: BoxDecoration(color: const Color(0xFF222226), borderRadius: BorderRadius.circular(4)), child: Stack(children: const [
           Positioned(left: 12, top: 12, child: _Box(34, 34, Color(0xFF7B61FF), circle: true)),
           Positioned(left: 56, top: 16, child: _Box(48, 20, Color(0xFF0ACF83))),
           Positioned(left: 56, top: 42, child: _Box(40, 16, Color(0xFFFF7262))),
@@ -390,7 +390,7 @@ class _ErpConsoleThumb extends StatelessWidget {
               Row(children: [
                 Container(width: 26, height: 9, decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(3)), border: Border.all(color: border))),
                 const SizedBox(width: 2),
-                Container(width: 22, height: 9, decoration: const BoxDecoration(color: Color(0xFFEDEFF3), borderRadius: BorderRadius.vertical(top: Radius.circular(3)))),
+                Container(width: 22, height: 9, decoration: BoxDecoration(color: const Color(0xFFEDEFF3), borderRadius: const BorderRadius.vertical(top: Radius.circular(3)))),
               ]),
               const SizedBox(height: 5),
               // KPI strip
@@ -404,7 +404,7 @@ class _ErpConsoleThumb extends StatelessWidget {
               // table
               Expanded(child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3), border: Border.all(color: border)), child: Column(children: [
                 Container(height: 7, decoration: const BoxDecoration(color: Color(0xFFF1F3F8), borderRadius: BorderRadius.vertical(top: Radius.circular(3)))),
-                for (int i = 0; i < 4; i++) Expanded(child: Container(decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: border, width: 0.5))))),
+                for (int i = 0; i < 4; i++) Expanded(child: Container(decoration: BoxDecoration(border: Border(bottom: BorderSide(color: border, width: 0.5))))),
               ]))),
             ]))),
           ])),

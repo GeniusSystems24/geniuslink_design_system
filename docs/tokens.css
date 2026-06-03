@@ -1,0 +1,91 @@
+/* ============================================================
+   GeniusLink Design System — Tokens (V2)
+   Single import that exposes the full token set. Re-exports the
+   color/type/spacing/radius/shadow base, then ADDS the motion,
+   easing, z-index/overlay and breakpoint tokens that V2 needs.
+
+   Consume from any component:  @import "../design_system/tokens.css";
+   NEVER hardcode a value a token already covers.
+   ============================================================ */
+
+@import url("colors_and_type.css");
+
+:root {
+  /* ====================================================
+     MOTION — durations
+     Brand is a slow, deliberate interface. Keep it subtle.
+     ==================================================== */
+  --gl-dur-instant:  0ms;     /* route changes — no animation */
+  --gl-dur-fast:     100ms;   /* hover tint, icon swaps */
+  --gl-dur-base:     150ms;   /* DEFAULT — color/bg transitions */
+  --gl-dur-moderate: 200ms;   /* expand / collapse, accordions */
+  --gl-dur-slow:     300ms;   /* bottom sheet, dialog enter */
+  --gl-dur-slower:   500ms;   /* skeleton shimmer sweep */
+
+  /* Stagger step for list / message entrance */
+  --gl-stagger:      40ms;
+
+  /* ====================================================
+     MOTION — easing curves
+     Restraint by design: only ease / ease-out / ease-in,
+     plus one "emphasized" curve for sheets & dialogs.
+     No springs, no bounce, no parallax.
+     ==================================================== */
+  --gl-ease-standard:   cubic-bezier(0.4, 0, 0.2, 1);  /* general */
+  --gl-ease-out:        cubic-bezier(0, 0, 0.2, 1);    /* enter / decelerate */
+  --gl-ease-in:         cubic-bezier(0.4, 0, 1, 1);    /* exit / accelerate */
+  --gl-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);    /* sheets, dialogs */
+
+  /* Composed defaults */
+  --gl-transition:      all var(--gl-dur-base) var(--gl-ease-standard);
+  --gl-transition-color: color var(--gl-dur-base) var(--gl-ease-standard),
+                         background-color var(--gl-dur-base) var(--gl-ease-standard),
+                         border-color var(--gl-dur-base) var(--gl-ease-standard);
+
+  /* ====================================================
+     Z-INDEX / OVERLAY LAYERS
+     A strict scale so overlays never fight.
+     ==================================================== */
+  --gl-z-base:     0;
+  --gl-z-raised:   10;    /* cards lifted on hover */
+  --gl-z-sticky:   100;   /* sticky headers / app bars */
+  --gl-z-dropdown: 1000;  /* menus, combo-box overlay */
+  --gl-z-overlay:  2000;  /* scrim behind modals/sheets */
+  --gl-z-modal:    3000;  /* dialogs, bottom sheets */
+  --gl-z-toast:    4000;  /* snackbars / toasts */
+  --gl-z-tooltip:  5000;  /* tooltips — always on top */
+
+  /* ====================================================
+     RESPONSIVE — breakpoints (min-width)
+     ==================================================== */
+  --gl-bp-sm: 480px;    /* large phone */
+  --gl-bp-md: 768px;    /* tablet — tables may collapse to cards below this */
+  --gl-bp-lg: 1024px;   /* small desktop */
+  --gl-bp-xl: 1280px;   /* desktop content cap */
+
+  /* Layout */
+  --gl-content-max: 720px;   /* standard centered form column */
+  --gl-content-wide: 1120px; /* dashboards / master-template detail */
+  --gl-gutter: 24px;         /* grid column gap */
+}
+
+/* ====================================================
+   REDUCED MOTION — accessibility
+   Honour the OS setting: collapse all motion to near-instant
+   and disable the shimmer sweep.
+   ==================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --gl-dur-fast:     0ms;
+    --gl-dur-base:     0ms;
+    --gl-dur-moderate: 0ms;
+    --gl-dur-slow:     0ms;
+    --gl-stagger:      0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

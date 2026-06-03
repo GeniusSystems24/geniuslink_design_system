@@ -6,11 +6,13 @@
 // component group from its own barrel:
 //   • geniuslink_browser_tabs.dart   — BrowserStyleTabBar
 //   • geniuslink_editable_table.dart — EditableTable + typed columns
+//   • geniuslink_readable_table.dart — ReadableTable (read-only display grid)
 //   • geniuslink_tree.dart           — Tree
 //
-// v2.0.0
+// v2.1.0
 // ============================================================
 
 export 'geniuslink_browser_tabs.dart';
 export 'geniuslink_editable_table.dart';
+export 'geniuslink_readable_table.dart';
 export 'geniuslink_tree.dart';

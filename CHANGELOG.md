@@ -5,6 +5,41 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.1.0]
+
+### ✨ Added
+
+- **`ReadableTable`** — a read-only display grid that is the visual sibling of
+  `EditableTable` (it reuses `EditableTableThemeData`, so header / hairline grid /
+  surfaces / type ramp match exactly). It renders arbitrary **widget** cells
+  (status pills, two-line bilingual text, progress bars, links…) with flexible or
+  fixed column widths, optional header / zebra / hover / row-tap. New barrel
+  `geniuslink_readable_table.dart`; re-exported from the unified barrel.
+- **`BrowserStyleTabBar` shell options** (all optional, defaults unchanged):
+  `showChrome`, `fillContent`, `contentPadding`, `scrollContent`,
+  `contentBackground`, `onAddTab` — let the bar be embedded edge-to-edge as a
+  full-window workspace shell that hosts full screens (vs. the standalone card).
+
+---
+
+## [2.0.1]
+
+### 🔄 Changed — example
+
+- **Tree demo rebuilt as “Account Tree.”** `example/lib/tree_demo.dart` now
+  mirrors the GeniusLink web *Account Tree* tool: a five-level chart of accounts
+  with KPI summary cards (Assets / Liabilities / Equity / Net Income), a recursive
+  search that matches **code + English + Arabic** with live in-row highlighting and
+  a match counter, colour-coded account-type filter chips, “Try” query chips,
+  roll-up group balances with proportional share bars, DR / CR nature pills,
+  leaf-count badges, an accounting-equation balance check (A = L + E) and a
+  leaf-opens-ledger strip. State (expansion · selection · query) is still driven by
+  the library's `TreeController`; rows are painted in an account-specific
+  4-column layout via `TreeThemeData` (dark / light). The generic `Tree` widget and
+  its MVC core are unchanged — only the demo was re-skinned.
+
+---
+
 ## [2.0.0]
 
 > 2026-06-02

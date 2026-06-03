@@ -204,7 +204,7 @@ class _ErpConsoleState extends State<ErpConsole> {
             ),
             child: Text(
               tr(_ar, 'FY2024', '٢٠٢٤'),
-              style: const TextStyle(
+              style: TextStyle(
                   fontFamily: BrowserStyleTabBarThemeData.monoFont,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w700,

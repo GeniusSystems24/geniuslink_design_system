@@ -29,11 +29,11 @@ class _ChromeAppState extends State<ChromeApp> {
   late final BrowserStyleTabBarController _ctrl;
 
   final Map<int, _Site> _sites = {
-    1: const _Site('mail.proton.me', 'docs'),
-    2: const _Site('google.com/search?q=flutter+tabs', 'search'),
-    3: const _Site('news.ycombinator.com', 'article'),
-    4: const _Site('analytics.google.com', 'dashboard'),
-    5: const _Site('store.geniuslink.co', 'shop'),
+    1: _Site('mail.proton.me', 'docs'),
+    2: _Site('google.com/search?q=flutter+tabs', 'search'),
+    3: _Site('news.ycombinator.com', 'article'),
+    4: _Site('analytics.google.com', 'dashboard'),
+    5: _Site('store.geniuslink.co', 'shop'),
   };
 
   @override
@@ -126,9 +126,9 @@ class _WebPage extends StatelessWidget {
   Widget _toolbar(BuildContext context, BrowserStyleTabBarThemeData s, String url) {
     return Row(
       children: [
-        const GhostIconButton(Icons.arrow_back, tooltip: 'Back', size: 34, iconSize: 18),
+        GhostIconButton(Icons.arrow_back, tooltip: 'Back', size: 34, iconSize: 18),
         GhostIconButton(Icons.arrow_forward, tooltip: 'Forward', size: 34, iconSize: 18, color: s.fg4),
-        const GhostIconButton(Icons.refresh, tooltip: 'Reload', size: 34, iconSize: 18),
+        GhostIconButton(Icons.refresh, tooltip: 'Reload', size: 34, iconSize: 18),
         const SizedBox(width: 8),
         Expanded(
           child: Container(
@@ -136,7 +136,7 @@ class _WebPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14),
             decoration: BoxDecoration(color: s.inputBg, borderRadius: BorderRadius.circular(999)),
             child: Row(children: [
-              const Icon(Icons.lock, size: 14, color: BrowserStyleTabBarThemeData.success),
+              Icon(Icons.lock, size: 14, color: BrowserStyleTabBarThemeData.success),
               const SizedBox(width: 9),
               Expanded(
                 child: Text(url,
@@ -149,8 +149,8 @@ class _WebPage extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        const GhostIconButton(Icons.extension_outlined, tooltip: 'Extensions', size: 34, iconSize: 18),
-        const GhostIconButton(Icons.more_vert, tooltip: 'Menu', size: 34, iconSize: 18),
+        GhostIconButton(Icons.extension_outlined, tooltip: 'Extensions', size: 34, iconSize: 18),
+        GhostIconButton(Icons.more_vert, tooltip: 'Menu', size: 34, iconSize: 18),
       ],
     );
   }
@@ -314,7 +314,7 @@ class _WebPage extends StatelessWidget {
   Widget _docs(BuildContext context, BrowserStyleTabBarThemeData s) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        const Icon(Icons.mail_outline, size: 20, color: Color(0xFF6D4AFF)),
+        Icon(Icons.mail_outline, size: 20, color: const Color(0xFF6D4AFF)),
         const SizedBox(width: 10),
         Text('Inbox', style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 19, fontWeight: FontWeight.w700, color: s.fg1)),
         const Spacer(),

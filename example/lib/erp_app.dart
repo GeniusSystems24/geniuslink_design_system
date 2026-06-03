@@ -235,7 +235,7 @@ class _ErpAppState extends State<ErpApp> {
         width: 34,
         height: 34,
         alignment: Alignment.center,
-        decoration: BoxDecoration(color: const HSLColor.fromAHSL(1, 250, 0.42, 0.40).toColor(), shape: BoxShape.circle),
+        decoration: BoxDecoration(color: HSLColor.fromAHSL(1, 250, 0.42, 0.40).toColor(), shape: BoxShape.circle),
         child: Text(initials, style: const TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
       );
 }

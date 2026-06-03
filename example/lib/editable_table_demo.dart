@@ -201,7 +201,7 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('GENIUSLINK DESIGN SYSTEM',
+                              Text('GENIUSLINK DESIGN SYSTEM',
                                   style: TextStyle(
                                       fontFamily: EditableTableThemeData.bodyFont,
                                       fontSize: 11,
@@ -346,7 +346,7 @@ class _OptionRow extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: EditableTableThemeData.accent,
+            activeColor: EditableTableThemeData.accent,
           ),
         ],
       ),

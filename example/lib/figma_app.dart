@@ -154,15 +154,15 @@ class _FigmaAppState extends State<FigmaApp> {
           Text(active?.title ?? 'Untitled',
               style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: s.fg1)),
           if (active?.dirty ?? false)
-            const Padding(
-              padding: EdgeInsets.only(left: 8),
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
               child: Text('• Unsaved', style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 12, color: BrowserStyleTabBarThemeData.warning)),
             ),
           const Spacer(),
           // zoom + present + share
           _segment(s, '100%'),
           const SizedBox(width: 10),
-          const GhostIconButton(Icons.play_arrow_rounded, tooltip: 'Present', iconSize: 20),
+          GhostIconButton(Icons.play_arrow_rounded, tooltip: 'Present', iconSize: 20),
           const SizedBox(width: 4),
           Container(
             height: 32,
