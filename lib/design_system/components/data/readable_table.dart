@@ -33,6 +33,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../key_directions.dart';
 import 'editable_table_theme.dart';
 import 'readable_table_models.dart';
 import 'readable_table_controller.dart';
@@ -111,6 +112,12 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
   bool _ownsController = false;
   int _hovered = -1;
   final FocusNode _focus = FocusNode(debugLabel: 'ReadableTable');
+
+  // scroll-on-focus: a key parked on the active row/cell so we can ask the
+  // enclosing Scrollable(s) to reveal it after the frame is laid out.
+  final GlobalKey _activeKey = GlobalKey();
+  int? _lastActiveRow;
+  int? _lastActiveCol;
 
   // change-detection snapshots for the callbacks
   Set<int> _lastSelRows = {};
@@ -191,7 +198,33 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
       widget.onSortChanged?.call(_controller.sortColumn, _controller.sortDir != ReadableSortDir.desc);
     }
     if (mounted) setState(() {});
+
+    // Scroll-on-focus: when keyboard navigation moves the active row/cell,
+    // bring it into view — covering grids with more rows/columns than fit.
+    if (_controller.activeRow != _lastActiveRow || _controller.activeCol != _lastActiveCol) {
+      _lastActiveRow = _controller.activeRow;
+      _lastActiveCol = _controller.activeCol;
+      _ensureActiveVisible();
+    }
   }
+
+  /// Reveals the active row/cell. [Scrollable.ensureVisible] walks up through
+  /// *every* enclosing Scrollable, so one call handles both a vertical row
+  /// scroller and a horizontal column scroller. The two alignment policies
+  /// scroll only as far as needed (top edge if above, bottom edge if below)
+  /// rather than always re-centring — and they are RTL-correct for free, since
+  /// the viewport math runs in the Scrollable's own axis direction.
+  void _ensureActiveVisible() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _activeKey.currentContext;
+      if (!mounted || ctx == null) return;
+      const dur = Duration(milliseconds: 160);
+      const curve = Curves.easeOutCubic;
+      Scrollable.ensureVisible(ctx,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd, duration: dur, curve: curve);
+      Scrollable.ensureVisible(ctx,
+          alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart, duration: dur, curve: curve);
+    });}
 
   bool _setEq(Set<int> a, Set<int> b) => a.length == b.length && a.containsAll(b);
   bool _cellSetEq(Set<ReadableCell> a, Set<ReadableCell> b) => a.length == b.length && a.containsAll(b);
@@ -228,12 +261,10 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
       c.moveActive(1, 0, extend: shift);
       return KeyEventResult.handled;
     }
-    if (k == LogicalKeyboardKey.arrowLeft) {
-      c.moveActive(0, -1, extend: shift);
-      return KeyEventResult.handled;
-    }
-    if (k == LogicalKeyboardKey.arrowRight) {
-      c.moveActive(0, 1, extend: shift);
+    if (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowRight) {
+      // Direction-aware: the right arrow moves the active cell to the right,
+      // mirrored to the previous column when the grid is laid out RTL.
+      c.moveActive(0, horizontalStep(k, Directionality.of(context)), extend: shift);
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.home) {
@@ -454,7 +485,7 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
         child: rowWidget,
       );
     }
-    return rowWidget;
+    return KeyedSubtree(key: rowMode && isActive ? _activeKey : null, child: rowWidget);
   }
 
   Widget _bodyCell(EditableTableThemeData t, int r, int ci, T value, bool rowActive, bool cellMode) {
@@ -495,7 +526,7 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
         child: MouseRegion(cursor: SystemMouseCursors.click, child: box),
       );
     }
-    return _sizedCell(col: col, child: box);
+    return _sizedCell(col: col, child: cellActive ? KeyedSubtree(key: _activeKey, child: box) : box);
   }
 
   Widget _empty(EditableTableThemeData t) {

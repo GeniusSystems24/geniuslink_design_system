@@ -23,6 +23,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import '../key_directions.dart';
 import 'browser_style_tab_bar_theme.dart';
 import 'browser_style_tab_bar_controller.dart';
 import 'tab_models.dart';
@@ -251,10 +252,11 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
     if (ord.isEmpty) return KeyEventResult.handled;
     final i = ord.indexWhere((t) => t.id == _ctrl.activeId);
     var ni = i;
-    if (e.logicalKey == LogicalKeyboardKey.arrowRight) {
-      ni = (i + 1).clamp(0, ord.length - 1);
-    } else if (e.logicalKey == LogicalKeyboardKey.arrowLeft) {
-      ni = (i - 1).clamp(0, ord.length - 1);
+    // Direction-aware: the right arrow always moves to the tab on the right,
+    // which is the previous index when the bar is laid out RTL.
+    final step = horizontalStep(e.logicalKey, Directionality.of(context));
+    if (step != 0) {
+      ni = (i + step).clamp(0, ord.length - 1);
     } else if (e.logicalKey == LogicalKeyboardKey.home) {
       ni = 0;
     } else if (e.logicalKey == LogicalKeyboardKey.end) {

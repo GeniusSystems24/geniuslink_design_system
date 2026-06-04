@@ -18,6 +18,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../key_directions.dart';
 import 'editable_table_models.dart';
 import 'editable_table_columns.dart';
 import 'editable_table_controller.dart';
@@ -239,8 +240,12 @@ class _EditableTableState extends State<EditableTable> {
 
     if (k == LogicalKeyboardKey.arrowUp) return _nav(() => c.moveSelection(-1, 0));
     if (k == LogicalKeyboardKey.arrowDown) return _nav(() => c.moveSelection(1, 0));
-    if (k == LogicalKeyboardKey.arrowLeft) return _nav(() => c.moveSelection(0, -1));
-    if (k == LogicalKeyboardKey.arrowRight) return _nav(() => c.moveSelection(0, 1));
+    if (k == LogicalKeyboardKey.arrowLeft || k == LogicalKeyboardKey.arrowRight) {
+      // Direction-aware: the right arrow selects the cell to the right, which
+      // is the previous column when the grid is laid out RTL.
+      final step = horizontalStep(k, Directionality.of(context));
+      return _nav(() => c.moveSelection(0, step));
+    }
     if (k == LogicalKeyboardKey.home) return _nav(() => c.select(c.selection.row, 0));
     if (k == LogicalKeyboardKey.end) return _nav(() => c.select(c.selection.row, c.colCount - 1));
     if (k == LogicalKeyboardKey.tab) {

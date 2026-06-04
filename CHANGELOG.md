@@ -87,6 +87,47 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ## [2.0.1]
 
+### ♻️ Changed — `EditableTable` is becoming generic (`EditableTable<T>`)
+
+- **Rows can now be a strongly-typed value `T` instead of `Map<String,String>`.**
+  Each `EditableColumn<T>` carries typed accessors — `value: (T row) => String`
+  to read a cell and `setValue: (T row, String raw) => T` to write one (a null
+  `setValue` marks a read-only / computed column). Because `setValue` returns a
+  fresh immutable row, undo/redo snapshots are plain `List<T>` copies. This
+  mirrors the already-shipped `ReadableTable<T>` MVC. The legacy string-map
+  table is simply `T = EditableRow`, reproduced by the `mapColumn(...)` helper,
+  so existing call sites keep working. Reference design shipped as
+  `lib/design_system/components/data/editable_table_generic.dart`; the live
+  `editable_table_*.dart` files fold these signatures in as the migration lands.
+
+### 🐛 Fixed — keyboard arrow directions in RTL (all four components)
+
+- **Arrow keys now resolve to the *visual* direction in both LTR and RTL** for
+  `BrowserStyleTabBar`, `EditableTable`, `ReadableTable` and `Tree`. Previously
+  every handler hardcoded `arrowRight → index + 1`, so in an Arabic (RTL)
+  layout the right arrow moved the highlight *left*, and the Tree's right arrow
+  *collapsed* the node a user was trying to open. A new shared helper
+  `horizontalStep(key, dir)` (and `arrowGoesInto` for the Tree) mirrors the
+  index step under `TextDirection.rtl`; each component threads
+  `Directionality.of(context)` into its existing key handler — no other logic
+  changed. `Home`/`End` stay logical first/last (direction-agnostic by name).
+  File: `lib/design_system/components/key_directions.dart`.
+
+### 🐛 Fixed — scroll-on-focus in `ReadableTable` & `Tree`
+
+- **`ReadableTable` now reveals the focused cell/row.** It previously had no
+  scroll-on-focus, so keyboard navigation could move the active cell completely
+  outside the viewport. A `GlobalKey` parked on the active row/cell drives
+  `Scrollable.ensureVisible` whenever the active position changes — which walks
+  up through *every* enclosing `Scrollable`, so one call reveals it on both the
+  vertical (rows) and horizontal (columns) axes, and is RTL-correct. The two
+  `keepVisibleAtStart` / `keepVisibleAtEnd` policies scroll only as far as
+  needed rather than re-centring.
+- **`Tree` reveals focus on expand / step too.** `_scrollToFocused()` is now
+  also called from the ← / → (focus-into / focus-out) branch, not just
+  ↑ / ↓ / Home / End — so expanding into a deep child or stepping out to a
+  far-up parent keeps the cursor on screen.
+
 ### ⚠️ Changed — Tree is now generic (`Tree<T>` / `TreeNode<T>`)
 
 - **`TreeNode<T>` carries a strongly-typed `value`.** The node schema is now

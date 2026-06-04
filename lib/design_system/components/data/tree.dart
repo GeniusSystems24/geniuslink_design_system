@@ -27,6 +27,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../key_directions.dart';
 import 'tree_controller.dart';
 import 'tree_models.dart';
 import 'tree_theme.dart';
@@ -251,10 +252,16 @@ class _TreeState<T> extends State<Tree<T>> {
         _scrollToFocused();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowRight:
-        _controller.focusInto();
-        return KeyEventResult.handled;
       case LogicalKeyboardKey.arrowLeft:
-        _controller.focusOut();
+        // The arrow that points toward the children expands / steps in; the
+        // other collapses / steps out. The pair swaps under RTL because the
+        // indent mirrors.
+        if (arrowGoesInto(k, Directionality.of(context))) {
+          _controller.focusInto();
+        } else {
+          _controller.focusOut();
+        }
+        _scrollToFocused();
         return KeyEventResult.handled;
       case LogicalKeyboardKey.home:
         _controller.focusFirst();
