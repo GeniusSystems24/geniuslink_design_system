@@ -15,7 +15,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'editable_table_theme.dart' show EditableTableTheme; // shared tokens
+
 
 /// Static builders, one per [ReadableColumnType]. Held in a class purely as a
 /// namespace so the model can reference `ReadableCells.number(...)` etc.
@@ -26,7 +26,7 @@ class ReadableCells {
       const TextStyle(fontFamily: 'JetBrainsMono', fontFeatures: [FontFeature.tabularFigures()], fontSize: 13);
 
   // ── text (optionally bilingual / two-line) ───────────────────────────────
-  static Widget text(String value, {String? secondary, TextAlign? align}) => Builder(
+  static Widget text(String value, {String? secondary}) => Builder(
         builder: (c) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,

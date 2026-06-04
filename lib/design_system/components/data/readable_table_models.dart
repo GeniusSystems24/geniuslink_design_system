@@ -83,8 +83,7 @@ class ReadableCell {
   const ReadableCell(this.row, this.col);
 
   @override
-  bool operator ==(Object other) =>
-      other is ReadableCell && other.row == row && other.col == col;
+  bool operator ==(Object other) => other is ReadableCell && other.row == row && other.col == col;
   @override
   int get hashCode => Object.hash(row, col);
 
@@ -167,13 +166,7 @@ class ReadableColumn<T> {
         align: align,
         sortable: sortable,
         sortKey: (v) => value(v),
-        cell: (ctx, v) => ReadableCells.text(value(v),
-            secondary: secondary?.call(v),
-            align: align == ReadableAlign.start
-                ? TextAlign.start
-                : align == ReadableAlign.center
-                    ? TextAlign.center
-                    : TextAlign.end),
+        cell: (ctx, v) => ReadableCells.text(value(v), secondary: secondary?.call(v)),
       );
 
   /// Right-aligned monospace number with grouping + [decimals].
@@ -193,8 +186,7 @@ class ReadableColumn<T> {
         align: ReadableAlign.end,
         sortable: sortable,
         sortKey: (v) => value(v),
-        cell: (ctx, v) => ReadableCells.number(value(v),
-            decimals: decimals, suffix: suffix, colorSign: colorSign),
+        cell: (ctx, v) => ReadableCells.number(value(v), decimals: decimals, suffix: suffix, colorSign: colorSign),
       );
 
   /// A coloured status/type pill drawn from a small enum-like set. [color]
@@ -293,7 +285,6 @@ class ReadableColumn<T> {
         width: width,
         flex: flex,
         sortKey: (v) => text(v),
-        cell: (ctx, v) => ReadableCells.link(text(v),
-            onTap: onTap == null ? null : () => onTap(v)),
+        cell: (ctx, v) => ReadableCells.link(text(v), onTap: onTap == null ? null : () => onTap(v)),
       );
 }
