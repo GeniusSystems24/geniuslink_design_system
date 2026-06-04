@@ -22,6 +22,7 @@
 // ============================================================
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'readable_table_models.dart';
 
 class ReadableTableController<T> extends ChangeNotifier {
@@ -285,6 +286,71 @@ class ReadableTableController<T> extends ChangeNotifier {
         if (i >= 0 && i < _rows.length) _rows.removeAt(i);
       }
     });
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // COPY — selection → tab-separated values (spreadsheet-ready)
+  // ════════════════════════════════════════════════════════════
+
+  /// Plain-text value of cell (row, col), via the column's [copyText] →
+  /// [sortKey] → toString fallback chain. (Cells render as widgets, so the
+  /// copy path needs its own flat accessor.)
+  String cellText(int row, int col) {
+    if (row < 0 || row >= _rows.length || col < 0 || col >= columns.length) return '';
+    final c = columns[col];
+    final v = _rows[row];
+    final raw = c.copyText?.call(v) ?? c.sortKey?.call(v) ?? v;
+    return _sanitize(raw.toString());
+  }
+
+  /// Strip tabs/newlines that would corrupt the TSV grid (cells are single
+  /// fields). Spreadsheets re-wrap on paste, so collapsing to spaces is safe.
+  String _sanitize(String s) => s.replaceAll('\t', ' ').replaceAll(RegExp(r'[\r\n]+'), ' ');
+
+  /// Serialize the current selection to a TSV string:
+  ///   • row modes  → every column of each selected row (in row & column order)
+  ///   • cell modes → the bounding rectangle of the selected cells; cells
+  ///     inside the rectangle but not selected are emitted as empty fields, so
+  ///     the block pastes into a spreadsheet with the right shape.
+  /// Returns '' when nothing is selected.
+  String copySelectionAsTsv({bool includeHeader = false}) {
+    final rowsBuf = <String>[];
+    if (_isCellMode) {
+      if (_selCells.isEmpty) return '';
+      final rs = _selCells.map((c) => c.row).toSet().toList()..sort();
+      final cs = _selCells.map((c) => c.col).toSet().toList()..sort();
+      final minR = rs.first, maxR = rs.last, minC = cs.first, maxC = cs.last;
+      final picked = {for (final c in _selCells) (c.row * 100000 + c.col)};
+      if (includeHeader) {
+        rowsBuf.add([for (var c = minC; c <= maxC; c++) _sanitize(columns[c].label)].join('\t'));
+      }
+      for (var r = minR; r <= maxR; r++) {
+        final line = <String>[];
+        for (var c = minC; c <= maxC; c++) {
+          line.add(picked.contains(r * 100000 + c) ? cellText(r, c) : '');
+        }
+        rowsBuf.add(line.join('\t'));
+      }
+    } else {
+      if (_selRows.isEmpty) return '';
+      final rs = _selRows.toList()..sort();
+      if (includeHeader) {
+        rowsBuf.add([for (final c in columns) _sanitize(c.label)].join('\t'));
+      }
+      for (final r in rs) {
+        rowsBuf.add([for (var c = 0; c < columns.length; c++) cellText(r, c)].join('\t'));
+      }
+    }
+    return rowsBuf.join('\n');
+  }
+
+  /// Copy the current selection to the system clipboard as TSV. Returns the
+  /// number of rows written (0 ⇒ nothing selected).
+  Future<int> copySelectionToClipboard({bool includeHeader = false}) async {
+    final tsv = copySelectionAsTsv(includeHeader: includeHeader);
+    if (tsv.isEmpty) return 0;
+    await Clipboard.setData(ClipboardData(text: tsv));
+    return '\n'.allMatches(tsv).length + 1;
   }
 
   // ════════════════════════════════════════════════════════════

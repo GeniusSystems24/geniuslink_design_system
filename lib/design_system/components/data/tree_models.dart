@@ -149,6 +149,20 @@ class TreeRow<T> {
 /// Tri-state check status of a node (derived from its leaves).
 enum TreeCheck { none, some, all }
 
+/// What a [Tree] lets the user select via clicks / keyboard (independent of the
+/// checkbox layer, which is always available when `showCheckboxes` is on).
+enum TreeSelectionMode {
+  /// No click-selection layer (display / navigation only).
+  none,
+
+  /// Exactly one node at a time (the classic behaviour).
+  single,
+
+  /// Any number of nodes — Ctrl/⌘-click toggles one, Shift-click selects the
+  /// contiguous visible range from the anchor, plain click resets to one.
+  multi,
+}
+
 /// Static helpers shared by the controller and the view. Each is generic over
 /// the node value type [T]; the type argument is normally inferred from the
 /// `List<TreeNode<T>>` you pass in.

@@ -27,19 +27,29 @@ class TreeController<T> extends ChangeNotifier {
     Set<TreeNodeId>? expanded,
     Set<TreeNodeId>? checked,
     TreeNodeId? selected,
+    Set<TreeNodeId>? selection,
+    this.selectionMode = TreeSelectionMode.single,
     this.historyLimit = 200,
   })  : _roots = List.unmodifiable(roots),
         _expanded = {...?expanded},
         _checked = {...?checked},
+        _selection = {...?selection, if (selected != null) selected},
         _selected = selected {
     _focused = selected;
+    _anchor = selected;
   }
 
   final int historyLimit;
 
+  /// What clicks / keyboard selection do. Mutable so a host can flip
+  /// single ↔ multi at runtime (e.g. entering a “select” mode).
+  TreeSelectionMode selectionMode;
+
   List<TreeNode<T>> _roots;
   final Set<TreeNodeId> _expanded;
   final Set<TreeNodeId> _checked; // fully-checked LEAVES (branches derive)
+  final Set<TreeNodeId> _selection; // click/keyboard selection (multi)
+  TreeNodeId? _anchor; // range anchor for Shift-select
   TreeNodeId? _selected;
   TreeNodeId? _focused;
   String _query = '';
@@ -62,8 +72,24 @@ class TreeController<T> extends ChangeNotifier {
   bool get filtering => _query.trim().isNotEmpty;
 
   bool isExpanded(TreeNodeId id) => _expanded.contains(id);
-  bool isSelected(TreeNodeId id) => _selected == id;
+  bool isSelected(TreeNodeId id) => _selection.contains(id) || _selected == id;
   TreeNode<T>? node(TreeNodeId id) => TreeOps.find<T>(_roots, id);
+
+  /// Every selected node id (click/keyboard selection). In single mode this is
+  /// at most one; in multi mode any number. Empty when nothing is selected.
+  Set<TreeNodeId> get selection => Set<TreeNodeId>.from(_selection);
+
+  /// The selected nodes' values, in visible (top-to-bottom) order — for group
+  /// actions (delete, move, export…).
+  List<TreeNode<T>> get selectedNodes {
+    final order = <TreeNode<T>>[];
+    for (final r in visibleRows()) {
+      if (_selection.contains(r.node.id)) order.add(r.node);
+    }
+    return order;
+  }
+
+  int get selectionCount => _selection.length;
 
   /// The strongly-typed value behind [id], or null.
   T? valueOf(TreeNodeId id) => node(id)?.value;
@@ -210,6 +236,69 @@ class TreeController<T> extends ChangeNotifier {
     if (n == null || !n.selectable) return;
     _selected = id;
     _focused = id;
+    _anchor = id;
+    _selection
+      ..clear()
+      ..add(id);
+    notifyListeners();
+  }
+
+  /// Pointer/keyboard selection honouring modifier keys and [selectionMode]:
+  ///   • plain     → select only [id] (resets the set)
+  ///   • toggle    → Ctrl/⌘-click: add/remove [id], keep the rest (multi only)
+  ///   • range     → Shift-click: select the contiguous visible range from the
+  ///                 anchor to [id] (multi only)
+  /// Falls back to single behaviour when [selectionMode] isn't multi.
+  void selectWith(TreeNodeId id, {bool toggle = false, bool range = false}) {
+    final n = node(id);
+    if (n == null || !n.selectable || selectionMode == TreeSelectionMode.none) return;
+    if (selectionMode == TreeSelectionMode.single) {
+      select(id);
+      return;
+    }
+    if (range && _anchor != null) {
+      final rows = visibleRows();
+      final a = rows.indexWhere((r) => r.node.id == _anchor);
+      final b = rows.indexWhere((r) => r.node.id == id);
+      if (a >= 0 && b >= 0) {
+        final lo = a < b ? a : b, hi = a < b ? b : a;
+        _selection.clear();
+        for (var i = lo; i <= hi; i++) {
+          if (rows[i].node.selectable) _selection.add(rows[i].node.id);
+        }
+      }
+    } else if (toggle) {
+      if (_selection.contains(id)) {
+        _selection.remove(id);
+      } else {
+        _selection.add(id);
+      }
+      _anchor = id;
+    } else {
+      _selection
+        ..clear()
+        ..add(id);
+      _anchor = id;
+    }
+    _selected = id;
+    _focused = id;
+    notifyListeners();
+  }
+
+  /// Select every selectable, currently-visible node (multi mode).
+  void selectAllVisible() {
+    if (selectionMode != TreeSelectionMode.multi) return;
+    _selection
+      ..clear()
+      ..addAll(visibleRows().where((r) => r.node.selectable).map((r) => r.node.id));
+    notifyListeners();
+  }
+
+  /// Clear the click/keyboard selection (leaves checkboxes alone).
+  void clearSelection() {
+    if (_selection.isEmpty && _selected == null) return;
+    _selection.clear();
+    _selected = null;
     notifyListeners();
   }
 
@@ -359,10 +448,33 @@ class TreeController<T> extends ChangeNotifier {
     final gone = TreeOps.find<T>(_roots, id) == null;
     if (gone) {
       _checked.removeAll(_checked.where((c) => TreeOps.find<T>(_roots, c) == null).toList());
+      _selection.remove(id);
       if (_selected == id) _selected = ancestors.isNotEmpty ? ancestors.last : null;
       if (_focused == id) _focused = _selected;
       if (_editing == id) _editing = null;
     }
+  }
+
+  /// Remove every node in the current multi-selection (and their subtrees), as
+  /// a single undoable step. Ancestors are dropped from the work-list so a
+  /// parent + child selected together don't double-remove. Returns the count.
+  int removeSelected() {
+    if (_selection.isEmpty) return 0;
+    // Keep only the topmost selected nodes (skip any whose ancestor is selected).
+    final ids = _selection.where((id) {
+      final anc = TreeOps.ancestorsOf<T>(_roots, id).toSet();
+      return !anc.any(_selection.contains);
+    }).toList();
+    var next = _roots.toList();
+    for (final id in ids) {
+      next = TreeOps.removeNode<T>(next, id);
+    }
+    _apply(next);
+    _selection.clear();
+    _checked.removeAll(_checked.where((c) => TreeOps.find<T>(_roots, c) == null).toList());
+    if (_selected != null && TreeOps.find<T>(_roots, _selected!) == null) _selected = null;
+    _focused = _selected;
+    return ids.length;
   }
 
   /// Duplicate [id] (with a fresh id subtree) as the next sibling.

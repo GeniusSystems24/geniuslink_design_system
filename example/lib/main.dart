@@ -1,25 +1,21 @@
 // ============================================================
-// GeniusLink — BrowserStyleTabBar example app.
-// A launcher that opens the SAME component dressed as three very different
-// products — proving the tab strip is fully reusable across themes & content:
-//   • ERP system   — light SaaS, built-in accounting pages
-//   • Figma editor — dark design tool, custom canvas pages
-//   • Chrome        — web browser, custom website pages
-// plus the documentation gallery.
+// GeniusLink Design System — component examples app.
+// A launcher with ONE example screen per component, plus one all-in-one:
+//   • All Components  — the ERP Console: Tree + BrowserStyleTabBar + EditableTable together
+//   • BrowserStyleTabBar — the tab-strip showcase (pin, drag-reorder, overflow, hover thumbnails)
+//   • EditableTable   — the Excel-style data-entry grid
+//   • ReadableTable   — the read-only display grid
+//   • Tree            — the chart-of-accounts tree
 //
-// Every screen registers its own BrowserStyleTabBarThemeData; the component
-// reads it via BrowserStyleTabBarThemeData.of(context). Pages drive the strip
-// through BrowserStyleTabBarController.of(context), and the hover preview
-// shows each page's REAL captured frame.
+// Every screen registers its own ThemeExtension; each component reads it via
+// <Component>ThemeData.of(context). All screens run live in Light/Dark and
+// EN / AR (RTL).
 //
 //   Run:  cd geniuslink_design_system_flutter/example && flutter pub get && flutter run -d chrome
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
-import 'erp_app.dart';
-import 'figma_app.dart';
-import 'chrome_app.dart';
 import 'browser_tabs_demo.dart';
 import 'editable_table_demo.dart';
 import 'readable_table_demo.dart';
@@ -34,7 +30,7 @@ class ExampleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'GeniusLink · BrowserStyleTabBar',
+      title: 'GeniusLink · Component Examples',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.light,
@@ -71,15 +67,15 @@ class LauncherScreen extends StatelessWidget {
                     style: TextStyle(
                         fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.6, color: BrowserStyleTabBarThemeData.accent)),
                 const SizedBox(height: 12),
-                Text('BrowserStyleTabBar',
+                Text('Component Examples',
                     style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: s.fg1)),
                 const SizedBox(height: 10),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 620),
                   child: Text(
-                    'One reusable tab strip — themed and filled three different ways. '
-                    'Open each to try pinned tabs, drag-reorder, the unsaved-close guard, '
-                    'the tab-list dropdown, and the live page thumbnails on hover.',
+                    'One example screen per component — BrowserStyleTabBar, EditableTable, '
+                    'ReadableTable and the Tree — plus an all-in-one console that runs them '
+                    'together. Open any to try it live in Light / Dark and EN / AR (RTL).',
                     style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14.5, height: 1.55, color: s.fg3),
                   ),
                 ),
@@ -95,57 +91,36 @@ class LauncherScreen extends StatelessWidget {
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
                       _DemoCard(
-                        title: 'ERP Console — All-in-one',
-                        subtitle: 'Tree sidebar + BrowserTabs + EditableTable in one console · 6 screens · Light/Dark · EN/AR (RTL)',
+                        title: 'All Components — ERP Console',
+                        subtitle: 'Tree navigator + BrowserStyleTabBar + EditableTable working together in one console · Light/Dark · EN/AR (RTL)',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _ErpConsoleThumb(),
                         onTap: () => _open(context, const ErpConsole()),
                       ),
                       _DemoCard(
-                        title: 'ERP System',
-                        subtitle: 'Light SaaS workspace · accounting pages · pinned reference · unsaved journal',
+                        title: 'BrowserStyleTabBar',
+                        subtitle: 'Tab strip · pin, drag-reorder, unsaved-close guard, overflow menu, live hover thumbnails · state-preserving pages',
                         accent: BrowserStyleTabBarThemeData.accent,
                         preview: const _ErpThumb(),
-                        onTap: () => _open(context, const ErpApp()),
-                      ),
-                      _DemoCard(
-                        title: 'Figma-style Editor',
-                        subtitle: 'Dark design tool · canvas pages · pages mutate & mark dirty',
-                        accent: const Color(0xFF7B61FF),
-                        preview: const _FigmaThumb(),
-                        onTap: () => _open(context, const FigmaApp()),
-                      ),
-                      _DemoCard(
-                        title: 'Chrome-style Browser',
-                        subtitle: 'Web window · omnibox · links open new tabs from the page',
-                        accent: const Color(0xFF4285F4),
-                        preview: const _ChromeThumb(),
-                        onTap: () => _open(context, const ChromeApp()),
-                      ),
-                      _DemoCard(
-                        title: 'Documentation',
-                        subtitle: 'Anatomy, states, props & the LTR / RTL specimens',
-                        accent: s.fg2,
-                        preview: const _DocsThumb(),
                         onTap: () => _open(context, const _GalleryRoute()),
                       ),
                       _DemoCard(
                         title: 'EditableTable',
-                        subtitle: 'Customisable Excel-style data-entry grid · MVC · sort · undo · totals',
+                        subtitle: 'Excel-style data-entry grid · typed generic rows · resize & reorder columns · copy as TSV · sort · undo',
                         accent: BrowserStyleTabBarThemeData.success,
                         preview: const _EditableTableThumb(),
                         onTap: () => _open(context, const EditableTableDemo()),
                       ),
                       _DemoCard(
                         title: 'ReadableTable',
-                        subtitle: 'Read-only display grid · 5 selection modes · keyboard nav · click-to-sort · rich cells',
+                        subtitle: 'Read-only display grid · typed column kinds · resize / reorder · multi-select & copy · keyboard nav · scroll-on-focus',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _ReadableTableThumb(),
                         onTap: () => _open(context, const ReadableTableDemo()),
                       ),
                       _DemoCard(
-                        title: 'Account Tree',
-                        subtitle: 'Chart of accounts · MVC tree · code/EN/AR search · roll-up balances · DR/CR',
+                        title: 'Tree',
+                        subtitle: 'Chart-of-accounts tree · single & multi-select · add / remove nodes · code/EN/AR search · roll-up balances',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _TreeThumb(),
                         onTap: () => _open(context, const TreeDemo()),
@@ -273,41 +248,6 @@ class _ErpThumb extends StatelessWidget {
           Container(width: 80, height: 8, color: const Color(0xFF0F172A)),
           const SizedBox(height: 8),
           for (int i = 0; i < 3; i++) Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [Container(width: 30, height: 6, color: const Color(0xFFE2E8F0)), const SizedBox(width: 8), Expanded(child: Container(height: 6, color: const Color(0xFFEEF1F7)))])),
-        ]))),
-      ]),
-    );
-  }
-}
-
-class _FigmaThumb extends StatelessWidget {
-  const _FigmaThumb();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFF1E1E1E),
-      child: Column(children: [
-        const _MiniTabs(strip: Color(0xFF1E1E1E), active: Color(0xFF2C2C2C), text: Color(0xFFB3B3B3), labels: ['System', 'App', 'Site'], activeIndex: 1),
-        Expanded(child: Container(color: const Color(0xFF1A1A1A), margin: const EdgeInsets.fromLTRB(8, 0, 8, 8), child: Center(child: Container(width: 120, height: 70, decoration: BoxDecoration(color: const Color(0xFF222226), borderRadius: BorderRadius.circular(4)), child: Stack(children: const [
-          Positioned(left: 12, top: 12, child: _Box(34, 34, Color(0xFF7B61FF), circle: true)),
-          Positioned(left: 56, top: 16, child: _Box(48, 20, Color(0xFF0ACF83))),
-          Positioned(left: 56, top: 42, child: _Box(40, 16, Color(0xFFFF7262))),
-        ]))))),
-      ]),
-    );
-  }
-}
-
-class _ChromeThumb extends StatelessWidget {
-  const _ChromeThumb();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFDEE1E6),
-      child: Column(children: [
-        const _MiniTabs(strip: Color(0xFFDEE1E6), active: Colors.white, text: Color(0xFF5F6368), labels: ['Mail', 'Search', 'News'], activeIndex: 1),
-        Expanded(child: Container(color: Colors.white, child: Column(children: [
-          Container(height: 22, margin: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xFFF1F3F4), borderRadius: BorderRadius.circular(999)), padding: const EdgeInsets.symmetric(horizontal: 8), child: Row(children: [const Icon(Icons.lock, size: 9, color: Color(0xFF0ACF83)), const SizedBox(width: 5), Container(width: 90, height: 5, color: const Color(0xFFBDC1C6))])),
-          Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [for (int i = 0; i < 2; i++) Padding(padding: const EdgeInsets.only(bottom: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: 60, height: 5, color: const Color(0xFFE2E8F0)), const SizedBox(height: 4), Container(width: 120, height: 7, color: const Color(0xFF1A0DAB))]))]))),
         ]))),
       ]),
     );
@@ -533,32 +473,8 @@ class _TreeThumb extends StatelessWidget {
   }
 }
 
-class _DocsThumb extends StatelessWidget {
-  const _DocsThumb();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: const Color(0xFFF7F8FA),
-      padding: const EdgeInsets.all(14),
-      child: GridView.count(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [for (int i = 0; i < 6; i++) Container(decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFE2E8F0)), borderRadius: BorderRadius.circular(6)))],
-      ),
-    );
-  }
-}
+// (removed unused launcher thumbnails: _FigmaThumb, _ChromeThumb, _DocsThumb, _Box)
 
-class _Box extends StatelessWidget {
-  final double w, h;
-  final Color c;
-  final bool circle;
-  const _Box(this.w, this.h, this.c, {this.circle = false});
-  @override
-  Widget build(BuildContext context) => Container(width: w, height: h, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(circle ? 999 : 4)));
-}
 
 // ── wraps a pushed demo with a floating "back to launcher" button ──
 class _BackScaffold extends StatelessWidget {

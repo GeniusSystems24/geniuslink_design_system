@@ -224,7 +224,8 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
           alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd, duration: dur, curve: curve);
       Scrollable.ensureVisible(ctx,
           alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart, duration: dur, curve: curve);
-    });}
+    });
+  }
 
   bool _setEq(Set<int> a, Set<int> b) => a.length == b.length && a.containsAll(b);
   bool _cellSetEq(Set<ReadableCell> a, Set<ReadableCell> b) => a.length == b.length && a.containsAll(b);
@@ -243,6 +244,11 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
 
     if (mod && k == LogicalKeyboardKey.keyA) {
       c.selectAll();
+      return KeyEventResult.handled;
+    }
+    if (mod && k == LogicalKeyboardKey.keyC) {
+      // Copy selection → clipboard as TSV (rows or the cell rectangle).
+      c.copySelectionToClipboard();
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.f1 || (mod && k == LogicalKeyboardKey.slash) || event.character == '?') {

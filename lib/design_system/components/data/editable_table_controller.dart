@@ -19,6 +19,7 @@
 
 import 'dart:async';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'editable_table_models.dart';
 
 class EditableTableController extends ChangeNotifier {
@@ -244,6 +245,65 @@ class EditableTableController extends ChangeNotifier {
   }
 
   bool get hasClipboard => _clip != null;
+
+  // ── clipboard (multi row / multi cell → OS clipboard as TSV) ───────────────
+  // Selection-based copy: a single cell, a rectangle of cells, a single row, or
+  // many rows all serialize to tab-separated values so the result pastes
+  // straight into a spreadsheet. Tabs/newlines inside a value are flattened so
+  // they can't break the grid.
+  String _san(String s) => s.replaceAll('\t', ' ').replaceAll(RegExp(r'[\r\n]+'), ' ');
+
+  /// Whole rows (every column), in ascending row order.
+  String rowsAsTsv(Iterable<int> rowIndices, {bool includeHeader = false}) {
+    final rs = rowIndices.where((r) => r >= 0 && r < rowCount).toSet().toList()..sort();
+    if (rs.isEmpty) return '';
+    final buf = <String>[];
+    if (includeHeader) buf.add([for (final c in columns) _san(c.label)].join('\t'));
+    for (final r in rs) {
+      buf.add([for (var c = 0; c < colCount; c++) _san(cellValue(r, c))].join('\t'));
+    }
+    return buf.join('\n');
+  }
+
+  /// A rectangle covering [cells]; cells inside the bounding box but not in the
+  /// set are emitted as empty fields, so the block keeps its shape on paste.
+  String cellsAsTsv(Iterable<CellRef> cells) {
+    final list = cells.toList();
+    if (list.isEmpty) return '';
+    final rs = list.map((c) => c.row).toList()..sort();
+    final cs = list.map((c) => c.col).toList()..sort();
+    final minR = rs.first, maxR = rs.last, minC = cs.first, maxC = cs.last;
+    final picked = {for (final c in list) (c.row * 100000 + c.col)};
+    final buf = <String>[];
+    for (var r = minR; r <= maxR; r++) {
+      final line = <String>[];
+      for (var c = minC; c <= maxC; c++) {
+        line.add(picked.contains(r * 100000 + c) ? _san(cellValue(r, c)) : '');
+      }
+      buf.add(line.join('\t'));
+    }
+    return buf.join('\n');
+  }
+
+  /// Copy whole rows to the system clipboard as TSV. Returns rows written.
+  Future<int> copyRowsToClipboard(Iterable<int> rowIndices, {bool includeHeader = false}) async {
+    final tsv = rowsAsTsv(rowIndices, includeHeader: includeHeader);
+    if (tsv.isEmpty) return 0;
+    await Clipboard.setData(ClipboardData(text: tsv));
+    return '\n'.allMatches(tsv).length + 1;
+  }
+
+  /// Copy a cell rectangle to the system clipboard as TSV.
+  Future<bool> copyCellsToClipboard(Iterable<CellRef> cells) async {
+    final tsv = cellsAsTsv(cells);
+    if (tsv.isEmpty) return false;
+    await Clipboard.setData(ClipboardData(text: tsv));
+    return true;
+  }
+
+  /// Convenience: copy the current single-cell selection to the OS clipboard.
+  Future<void> copySelectionToClipboard() =>
+      copyCellsToClipboard([_sel]);
 
   void _flashHint(String msg) {
     _flash = msg;

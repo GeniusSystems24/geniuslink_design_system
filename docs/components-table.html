@@ -362,7 +362,7 @@ function ExcelGrid() {
   const totalW = COLS.reduce((s, c) => s + c.w, 0) + 40 + ACT_W;
 
   return (
-    <div style={{ width: '80%' }}>
+    <div style={{ width: '100%' }}>
       {/* hidden native pickers driven by the suffix buttons */}
       <input ref={dateProxy} type="date" tabIndex={-1} onChange={e => { if (e.target.value) commit(null, e.target.value); }} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none', left: 0, top: 0 }} />
       <input ref={timeProxy} type="time" tabIndex={-1} onChange={e => { if (e.target.value) commit(null, e.target.value); }} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none', left: 0, top: 0 }} />

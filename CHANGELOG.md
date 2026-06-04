@@ -5,87 +5,99 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
-## [2.2.0]
+## [2.9.0]
 
-- 2026-06-03
+### 📘 Changed — example app: one screen per component + one all-in-one
 
-### ♻️ Changed — `ReadableTable` is now generic + MVC
+- **The example launcher is consolidated to five screens.** Previously it
+  carried three BrowserStyleTabBar product skins (ERP / Figma / Chrome) plus a
+  separate docs card. It now shows exactly one example per component —
+  **BrowserStyleTabBar**, **EditableTable**, **ReadableTable**, **Tree** — plus
+  an **All Components** screen (the ERP Console running Tree + tab bar +
+  EditableTable together). The orphaned `erp_app.dart`, `figma_app.dart` and
+  `chrome_app.dart` screens were removed. Subtitles now surface the new
+  capabilities (generic rows, column resize/reorder, typed ReadableTable
+  columns, TSV copy, tree multi-select & add/remove, state-preserving tabs).
 
-- **Generic over the row value type — `ReadableTable<T>`.** Each row is one
-  strongly-typed `T`; every `ReadableColumn<T>` renders itself from that value
-  via `cell: (context, value) => Widget` and sorts via `sortKey: (value) =>
-  Comparable`. Row code reads `value.field` with no casting. (For a plain grid
-  of pre-built widgets use `ReadableTable<List<Widget>>` and index into it —
-  which is how the desktop `GLTable` wrapper keeps its `List<List<Widget>>` API.)
-- **Rebuilt MVC**, mirroring `EditableTable`: split into
-  `readable_table_models.dart` (Model), `readable_table_controller.dart`
-  (Controller + `ReadableTableScope`) and `readable_table.dart` (View). The
-  view is a thin render of a `ReadableTableController<T>`; pass `columns + rows`
-  (widget owns a controller) or a `controller:` to drive/observe externally.
-- **`ReadableTableController<T>`** is the single source of truth, published to
-  descendants via `ReadableTableController.of<T>(context)`, with intention-
-  revealing operations:
-  - **Select rows** by index · value · where — `selectRowAt`,
-    `selectRowByValue`, `selectRowsWhere`, `selectAllRows`, `clearSelection`.
-  - **Add rows** by index · where · end — `insertRowAt`, `addRowWhere`
-    (`after` / `firstOnly`), `addRow`.
-  - **Delete rows** by index · where · value — `deleteRowAt`,
-    `deleteRowsWhere`, `deleteRowByValue`, `deleteSelectedRows`.
-  - **Replace row** by index · value · where · firstWhere — `replaceRowAt`,
-    `replaceRowByValue`, `replaceRowsWhere`, `replaceFirstWhere`.
-  - plus `selectCellAt` / `selectAllCells`, `sortByColumn` / `clearSort`,
-    `setRows`. Structural edits remap selection by value identity; sort remaps
-    it by position so it follows the rows.
+### ⚡ Changed — `BrowserStyleTabBar` preserves page state across switches
 
-### ⚠️ Migration from 2.1.0
+- **Switching tabs no longer rebuilds pages.** Previously only the active tab's
+  page was built, so changing tabs disposed it and rebuilt the next from
+  scratch — losing scroll offset, form input and controllers, and re-running all
+  build work on every visit. Now every tab's page is built once and kept mounted
+  in an `IndexedStack`; switching only changes the visible index. Each page is
+  wrapped in `_KeepAliveTabPage` (an `AutomaticKeepAliveClientMixin`) so it
+  survives offstage even inside a lazy list. Opt back into the cheap,
+  single-page build with `BrowserStyleTabBar(lazyPages: true)`. The hover
+  thumbnail `RepaintBoundary` now wraps the stack — only the visible page
+  paints, so the captured frame is always the current tab.
 
-- `ReadableColumn` now requires `cell:` (and takes `sortKey:` instead of the
-  table-level `sortKeyOf`). `ReadableTable.rows` is now `List<T>` (was
-  `List<List<Widget>>`) — pass `ReadableTable<List<Widget>>` with
-  `cell: (ctx, row) => row[i]` to keep the old shape.
-- `onRowSelectionChanged` now yields `List<T>` (selected values) rather than
-  `Set<int>`; `onRowTap` is `(value, index)`. Seed selection/sort on the
-  controller (or via `initialSelected*` / `initialSort*` on the controller-less
-  form).
+### ✨ Added — `removeSelected()` for group delete in `Tree`
 
----
+- **The `Tree`'s structural ops now cover multi-selection delete.** `addChild`,
+  `addSibling`, `remove` and `duplicate` already existed; new `removeSelected()`
+  deletes every node in the current multi-selection (and their subtrees) as a
+  single undoable step, dropping any node whose ancestor is also selected so a
+  parent + child don't double-remove. Like every structural op it routes through
+  `_apply`, so add / remove / removeSelected are all ⌘Z-undoable. `remove` also
+  now prunes the deleted id from the new selection set.
 
-## [2.1.0]
+### ✨ Added — single & multi-select in `Tree`
 
-### ✨ Added
+- **`Tree` now supports a configurable click/keyboard selection model.** A
+  `TreeSelectionMode` (none / single / multi) plus a selection set and a Shift
+  anchor on `TreeController`. `selectWith(id, toggle, range)` handles
+  modifier-aware selection — plain click resets to one, Ctrl/⌘-click toggles,
+  Shift-click (and Shift+↑/↓) selects the contiguous visible range — with
+  `selectAllVisible` (⌘A) and `clearSelection`. `selectedNodes` exposes the
+  selection in visible order for group actions (delete / move / export). The
+  existing tri-state checkbox layer (`_checked`) composes alongside in multi
+  mode.
 
-- **`ReadableTable`** — a read-only display grid that is the visual sibling of
-  `EditableTable` (it reuses `EditableTableThemeData`, so header / hairline grid /
-  surfaces / type ramp match exactly). It renders arbitrary **widget** cells
-  (status pills, two-line bilingual text, progress bars, links…) with flexible or
-  fixed column widths, and adds the read-only interaction layer a display grid
-  needs:
-  - **Selection** — five modes via `ReadableSelectionMode`:
-    `none · singleRow · multiRow · singleCell · multiCell`. Pointer: click
-    selects, Ctrl/⌘-click toggles, Shift-click extends a range (linear for rows,
-    rectangular for cells). `onRowSelectionChanged` / `onCellSelectionChanged`
-    report **original** (pre-sort) indices; `initialSelectedRows` /
-    `initialSelectedCells` seed it.
-  - **Keyboard** — arrows move the active row/cell, Shift+arrows extend a
-    multi-selection, Space toggles, Enter activates (`onRowTap`), ⌘/Ctrl+A selects
-    all, Esc clears, Home/End + ⌘/Ctrl+Home/End jump to row edges / grid corners,
-    and `?` (or ⌘/Ctrl+/) opens an in-widget shortcut cheatsheet.
-  - **Column sort** — mark a column `sortable: true`; click its header to cycle
-    asc → desc (numeric-looking text sorts numerically, else case-insensitive
-    string). `sortKeyOf` provides keys for non-text cells; `initialSortColumn` /
-    `initialSortAscending` / `onSortChanged` round it out.
-  - Defaults reproduce a plain, non-interactive ledger — adopting it for
-    display-only tables is a no-op until a mode is opted into.
-  - New barrel `geniuslink_readable_table.dart`; re-exported from the unified
-    barrel. New example `example/lib/readable_table_demo.dart` + launcher card.
-- **`BrowserStyleTabBar` shell options** (all optional, defaults unchanged):
-  `showChrome`, `fillContent`, `contentPadding`, `scrollContent`,
-  `contentBackground`, `onAddTab` — let the bar be embedded edge-to-edge as a
-  full-window workspace shell that hosts full screens (vs. the standalone card).
+### ✨ Added — copy rows & cells to the clipboard as TSV
 
----
+- **Selection-based copy in `ReadableTable` & `EditableTable`.** A single row,
+  multiple rows, a single cell or a cell rectangle now serialize to
+  tab-separated values (tabs between columns, newlines between rows) and go to
+  the real system clipboard via `Clipboard.setData`, so the result pastes
+  straight into Sheets / Excel / Numbers. Cell copies emit the bounding
+  rectangle with un-selected interior cells left blank so the block keeps its
+  shape; tabs/newlines inside a value are flattened so one cell can't spill into
+  neighbouring fields. New `rowsAsTsv` / `cellsAsTsv` serializers +
+  `copyRowsToClipboard` / `copyCellsToClipboard` on each controller, wired to
+  ⌘/Ctrl + C in both tables' key handlers.
 
-## [2.0.1]
+### ✨ Added — typed column kinds in `ReadableTable`
+
+- **`ReadableTable` now supports the same diversity of column types as
+  `EditableTable`.** A `ReadableColumnType` enum plus `ReadableColumn.<kind>`
+  factories — `text` (optionally bilingual / two-line), `number` (grouped,
+  signed-colour, fixed decimals), `enumBadge` (coloured pill), `date`, `time`,
+  `color` (swatch + hex), `progress` (labelled bar) and `link` — let a call
+  site declare a column's intent and get consistent formatting, alignment and a
+  typed sort key, instead of hand-writing a `cell` builder each time. The
+  renderers live in new `readable_table_cells.dart` (`ReadableCells.*`),
+  theme-driven and intl-free. The original unnamed `ReadableColumn` constructor
+  with a custom `cell` keeps working unchanged.
+
+### ✨ Added — column reordering in `ReadableTable` & `EditableTable`
+
+- **Columns can be reordered by dragging their headers.** Visual order is an
+  `order` index list on the controller; `moveColumn(from, to)` rearranges it and
+  the header + every body row read `columnAt(visualIndex)`, so a drop rearranges
+  the whole grid at once. The header is a horizontal `ReorderableListView` with
+  an explicit grip handle (`buildDefaultDragHandles: false`), which supplies the
+  drag, drop indicator and RTL-correct geometry for free.
+
+### ✨ Added — column resizing in `ReadableTable` & `EditableTable`
+
+- **Columns can be resized by dragging a header handle.** Each header cell
+  carries a `PositionedDirectional` resize handle on its inline-end edge;
+  dragging drives `resizeColumn(index, delta)` on the controller and the
+  header + every body row size from `widthOf(index)`, so the grid reflows in a
+  single frame. Width is clamped (min 64 / max 460 by default) and a
+  double-tap resets the column. RTL-correct: the handle sits on the visual left
+  and the drag delta is mirrored.
 
 ### ♻️ Changed — `EditableTable` is becoming generic (`EditableTable<T>`)
 
@@ -178,6 +190,88 @@ This project adheres to [Semantic Versioning](https://semver.org).
   4-column layout via `TreeThemeData` (dark / light).
 
 ---
+
+
+## [2.2.0]
+
+- 2026-06-03
+
+### ♻️ Changed — `ReadableTable` is now generic + MVC
+
+- **Generic over the row value type — `ReadableTable<T>`.** Each row is one
+  strongly-typed `T`; every `ReadableColumn<T>` renders itself from that value
+  via `cell: (context, value) => Widget` and sorts via `sortKey: (value) =>
+  Comparable`. Row code reads `value.field` with no casting. (For a plain grid
+  of pre-built widgets use `ReadableTable<List<Widget>>` and index into it —
+  which is how the desktop `GLTable` wrapper keeps its `List<List<Widget>>` API.)
+- **Rebuilt MVC**, mirroring `EditableTable`: split into
+  `readable_table_models.dart` (Model), `readable_table_controller.dart`
+  (Controller + `ReadableTableScope`) and `readable_table.dart` (View). The
+  view is a thin render of a `ReadableTableController<T>`; pass `columns + rows`
+  (widget owns a controller) or a `controller:` to drive/observe externally.
+- **`ReadableTableController<T>`** is the single source of truth, published to
+  descendants via `ReadableTableController.of<T>(context)`, with intention-
+  revealing operations:
+  - **Select rows** by index · value · where — `selectRowAt`,
+    `selectRowByValue`, `selectRowsWhere`, `selectAllRows`, `clearSelection`.
+  - **Add rows** by index · where · end — `insertRowAt`, `addRowWhere`
+    (`after` / `firstOnly`), `addRow`.
+  - **Delete rows** by index · where · value — `deleteRowAt`,
+    `deleteRowsWhere`, `deleteRowByValue`, `deleteSelectedRows`.
+  - **Replace row** by index · value · where · firstWhere — `replaceRowAt`,
+    `replaceRowByValue`, `replaceRowsWhere`, `replaceFirstWhere`.
+  - plus `selectCellAt` / `selectAllCells`, `sortByColumn` / `clearSort`,
+    `setRows`. Structural edits remap selection by value identity; sort remaps
+    it by position so it follows the rows.
+
+### ⚠️ Migration from 2.1.0
+
+- `ReadableColumn` now requires `cell:` (and takes `sortKey:` instead of the
+  table-level `sortKeyOf`). `ReadableTable.rows` is now `List<T>` (was
+  `List<List<Widget>>`) — pass `ReadableTable<List<Widget>>` with
+  `cell: (ctx, row) => row[i]` to keep the old shape.
+- `onRowSelectionChanged` now yields `List<T>` (selected values) rather than
+  `Set<int>`; `onRowTap` is `(value, index)`. Seed selection/sort on the
+  controller (or via `initialSelected*` / `initialSort*` on the controller-less
+  form).
+
+---
+
+## [2.1.0]
+
+### ✨ Added
+
+- **`ReadableTable`** — a read-only display grid that is the visual sibling of
+  `EditableTable` (it reuses `EditableTableThemeData`, so header / hairline grid /
+  surfaces / type ramp match exactly). It renders arbitrary **widget** cells
+  (status pills, two-line bilingual text, progress bars, links…) with flexible or
+  fixed column widths, and adds the read-only interaction layer a display grid
+  needs:
+  - **Selection** — five modes via `ReadableSelectionMode`:
+    `none · singleRow · multiRow · singleCell · multiCell`. Pointer: click
+    selects, Ctrl/⌘-click toggles, Shift-click extends a range (linear for rows,
+    rectangular for cells). `onRowSelectionChanged` / `onCellSelectionChanged`
+    report **original** (pre-sort) indices; `initialSelectedRows` /
+    `initialSelectedCells` seed it.
+  - **Keyboard** — arrows move the active row/cell, Shift+arrows extend a
+    multi-selection, Space toggles, Enter activates (`onRowTap`), ⌘/Ctrl+A selects
+    all, Esc clears, Home/End + ⌘/Ctrl+Home/End jump to row edges / grid corners,
+    and `?` (or ⌘/Ctrl+/) opens an in-widget shortcut cheatsheet.
+  - **Column sort** — mark a column `sortable: true`; click its header to cycle
+    asc → desc (numeric-looking text sorts numerically, else case-insensitive
+    string). `sortKeyOf` provides keys for non-text cells; `initialSortColumn` /
+    `initialSortAscending` / `onSortChanged` round it out.
+  - Defaults reproduce a plain, non-interactive ledger — adopting it for
+    display-only tables is a no-op until a mode is opted into.
+  - New barrel `geniuslink_readable_table.dart`; re-exported from the unified
+    barrel. New example `example/lib/readable_table_demo.dart` + launcher card.
+- **`BrowserStyleTabBar` shell options** (all optional, defaults unchanged):
+  `showChrome`, `fillContent`, `contentPadding`, `scrollContent`,
+  `contentBackground`, `onAddTab` — let the bar be embedded edge-to-edge as a
+  full-window workspace shell that hosts full screens (vs. the standalone card).
+
+---
+
 
 ## [2.0.0]
 

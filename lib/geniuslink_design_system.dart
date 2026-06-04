@@ -9,10 +9,10 @@
 //   • geniuslink_readable_table.dart — ReadableTable (read-only display grid)
 //   • geniuslink_tree.dart           — Tree
 //
-// v2.1.0
+// v2.2.0
 // ============================================================
 
 export 'geniuslink_browser_tabs.dart';
 export 'geniuslink_editable_table.dart';
-export 'geniuslink_readable_table.dart';
+export 'geniuslink_readable_table.dart' hide EditableTableThemeData;
 export 'geniuslink_tree.dart';

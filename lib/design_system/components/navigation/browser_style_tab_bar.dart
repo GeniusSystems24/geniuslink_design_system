@@ -60,6 +60,12 @@ class BrowserStyleTabBar extends StatefulWidget {
   /// when the hosted page manages its own scrolling.
   final bool scrollContent;
 
+  /// When false (default) every tab's page is built once and kept mounted in an
+  /// [IndexedStack], so switching tabs preserves each page's state (scroll,
+  /// input, controllers) with no rebuild. Set true to build only the active
+  /// page (cheaper, but pages reset when revisited).
+  final bool lazyPages;
+
   /// Background of the content surface (defaults to the theme `surface`).
   final Color? contentBackground;
 
@@ -74,6 +80,7 @@ class BrowserStyleTabBar extends StatefulWidget {
     this.pageBuilder,
     this.showChrome = true,
     this.fillContent = false,
+    this.lazyPages = false,
     this.contentPadding = const EdgeInsets.all(24),
     this.scrollContent = true,
     this.contentBackground,
@@ -551,30 +558,82 @@ class _BrowserStyleTabBarState extends State<BrowserStyleTabBar> {
       );
     }
 
-    // KeyedSubtree keeps each tab's page state distinct across switches.
-    final page = KeyedSubtree(
-      key: ValueKey('tabpage-content-${activeTab.id}'),
-      child: widget.pageBuilder?.call(context, activeTab) ?? GLTabPage(tab: activeTab),
-    );
+    // ── State preservation across tab switches ──────────────────────────────
+    // Build EVERY tab's page once and keep them all mounted in an IndexedStack,
+    // showing only the active one. Switching tabs changes the visible index —
+    // it does NOT rebuild or dispose the other pages, so each tab keeps its
+    // scroll offset, form input, expansion state, controllers, etc. Each page is
+    // wrapped in a stable ValueKey so its Element/State is reused, and in a
+    // keep-alive so an offstage page inside a lazy list still survives.
+    //
+    // When [lazyPages] is true we fall back to building only the active page
+    // (the old behaviour) for hosts that prefer cheap-but-stateless tabs.
+    final ordered = _ctrl.ordered;
+    final activeIndex = ordered.indexWhere((t) => t.id == activeTab.id).clamp(0, ordered.length - 1);
 
-    final Widget body = widget.scrollContent
-        ? SingleChildScrollView(
-            key: PageStorageKey('tabpage-${activeTab.id}'),
-            padding: widget.contentPadding,
-            child: page,
-          )
-        : Padding(padding: widget.contentPadding, child: page);
+    Widget pageFor(BrowserTab t) {
+      final raw = widget.pageBuilder?.call(context, t) ?? GLTabPage(tab: t);
+      final page = KeyedSubtree(key: ValueKey('tabpage-content-${t.id}'), child: raw);
+      final body = widget.scrollContent
+          ? SingleChildScrollView(
+              key: PageStorageKey('tabpage-${t.id}'),
+              padding: widget.contentPadding,
+              child: page,
+            )
+          : Padding(padding: widget.contentPadding, child: page);
+      return widget.fillContent ? SizedBox.expand(child: body) : body;
+    }
+
+    final Widget surface;
+    if (widget.lazyPages) {
+      // Old behaviour: only the active page exists in the tree.
+      final body = pageFor(activeTab);
+      surface = widget.fillContent ? body : ConstrainedBox(constraints: const BoxConstraints(maxHeight: 440), child: body);
+    } else {
+      final stack = IndexedStack(
+        index: activeIndex,
+        sizing: StackFit.loose,
+        children: [
+          for (final t in ordered)
+            // Keep offstage pages alive AND stop their animations/ticking while
+            // hidden, without tearing down their state.
+            _KeepAliveTabPage(key: ValueKey('keepalive-${t.id}'), child: pageFor(t)),
+        ],
+      );
+      surface = widget.fillContent ? stack : ConstrainedBox(constraints: const BoxConstraints(maxHeight: 440), child: stack);
+    }
 
     // RepaintBoundary lets us capture the REAL rendered page (with its live
-    // state/data) into the hover thumbnail.
-    final boundaryChild = widget.fillContent
-        ? SizedBox.expand(child: body)
-        : ConstrainedBox(constraints: const BoxConstraints(maxHeight: 440), child: body);
-
+    // state/data) into the hover thumbnail. It wraps the stack; only the visible
+    // (active) page is painted, so the capture is always the current tab.
     return Container(
       decoration: decoration,
-      child: RepaintBoundary(key: _boundaryKey, child: boundaryChild),
+      child: RepaintBoundary(key: _boundaryKey, child: surface),
     );
+  }
+}
+
+/// Keeps a tab page mounted (state-preserving) even while it sits offstage in
+/// the [IndexedStack]. `wantKeepAlive` ensures it survives if the page is ever
+/// nested inside a lazy list; the page's State, controllers and scroll
+/// positions persist across tab switches with no rebuild.
+class _KeepAliveTabPage extends StatefulWidget {
+  final Widget child;
+  const _KeepAliveTabPage({super.key, required this.child});
+
+  @override
+  State<_KeepAliveTabPage> createState() => _KeepAliveTabPageState();
+}
+
+class _KeepAliveTabPageState extends State<_KeepAliveTabPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
