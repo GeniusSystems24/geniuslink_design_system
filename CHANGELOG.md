@@ -5,6 +5,51 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.3.0]
+
+### ✨ Added — `NavigationSidebar` (the GeniusLink web nav, ported MVC)
+
+- **A fifth component: a themeable, responsive app navigation sidebar.** A
+  faithful Flutter port of the web `components-navigation-sidebar.html`, built to
+  the same Model → Controller → View → Theme split as the rest of the kit. One
+  data model renders in **three modes** the host picks from the available width:
+  - **expanded** — a full-width labelled tree with `│ ├ └` connector guides,
+    badges, two-key shortcut hints and disclosure chevrons; the active leaf fills
+    with the accent and its ancestor modules auto-expand.
+  - **rail** — an icon-only column; hovering a module opens a grouped **flyout**
+    (an `Overlay` + `CompositedTransformFollower`, RTL-aware) listing its
+    sub-destinations.
+  - **drawer** — an off-canvas panel that slides over the content with a scrim
+    for small screens; a destination tap navigates **and** dismisses.
+- **Model** (`navigation_sidebar_models.dart`) — immutable `NavSection<T>` bands
+  of a `NavNode<T>` tree, generic over a typed `value`. A node's visual **role**
+  (`direct` · `module` · `group` · `item`) is *derived* from its depth + whether
+  it has children (`NavNodeRole.of`), so the same recursion paints any depth.
+  `NavBadge` (count / status, four tones), `NavSidebarBreakpoints.modeFor(width)`
+  and `NavOps` (walk · find · ancestorsOf · subtreeHasBadge · leafIds) round it
+  out.
+- **Controller** (`navigation_sidebar_controller.dart`) — a `ChangeNotifier`
+  single source of truth holding the active id, the expanded-module set
+  (auto-opening the active node's ancestors), the collapsed (rail) flag and the
+  drawer-open flag. Ops: `navigate` (sets active + reveals + closes the drawer),
+  `toggleNode` / `expandAll` / `collapseAll`, `toggleCollapsed`, `open/close/
+  toggleDrawer`, plus an optional search filter (`setQuery` / `matchSet`) and
+  `replaceSections`. Published to descendants via
+  `NavigationSidebarController.of<T>(context)`.
+- **View** (`navigation_sidebar.dart`) — a thin render of the controller with
+  `header` / `footer` slot builders, `showGuides`, `railFlyouts`, `drawerTitle`
+  and an `onNavigate` host hook. RTL-mirrored throughout
+  (`EdgeInsetsDirectional` / `PositionedDirectional` / `BorderDirectional`).
+- **Theme** (`navigation_sidebar_theme.dart`) — `NavigationSidebarThemeData`
+  `ThemeExtension` with `.light` / `.dark` presets (lerped), the brand + semantic
+  palette, role metrics, connector geometry, motion and `badgeColors(tone)`.
+- New barrel `geniuslink_navigation_sidebar.dart`, re-exported from the unified
+  barrel. New example `example/lib/navigation_sidebar_demo.dart` (the full shell —
+  app bar + sidebar + faux page — with live Light/Dark, LTR/RTL and a
+  device-width simulator) + a launcher card.
+
+---
+
 ## [2.2.0]
 
 ### ♻️ Changed — `ReadableTable` is now generic + MVC

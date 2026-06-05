@@ -15,7 +15,7 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-
+import 'editable_table_theme.dart' show EditableTableTheme; // shared tokens
 
 /// Static builders, one per [ReadableColumnType]. Held in a class purely as a
 /// namespace so the model can reference `ReadableCells.number(...)` etc.

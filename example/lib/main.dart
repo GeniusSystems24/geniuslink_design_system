@@ -20,6 +20,7 @@ import 'browser_tabs_demo.dart';
 import 'editable_table_demo.dart';
 import 'readable_table_demo.dart';
 import 'tree_demo.dart';
+import 'navigation_sidebar_demo.dart';
 import 'erp_console.dart';
 import 'shell_kit.dart';
 
@@ -124,6 +125,13 @@ class LauncherScreen extends StatelessWidget {
                         accent: const Color(0xFF4A7CFF),
                         preview: const _TreeThumb(),
                         onTap: () => _open(context, const TreeDemo()),
+                      ),
+                      _DemoCard(
+                        title: 'NavigationSidebar',
+                        subtitle: 'App nav rail · expanded tree + collapsed rail with flyouts + mobile drawer · badges · responsive · Light/Dark · LTR/RTL',
+                        accent: const Color(0xFF4A7CFF),
+                        preview: const _NavSidebarThumb(),
+                        onTap: () => _open(context, const NavigationSidebarDemo()),
                       ),
                     ],
                   );
@@ -469,6 +477,80 @@ class _TreeThumb extends StatelessWidget {
           )),
         ]),
       ),
+    );
+  }
+}
+
+class _NavSidebarThumb extends StatelessWidget {
+  const _NavSidebarThumb();
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF4A7CFF);
+    const border = Color(0xFFE2E8F0);
+    Widget eyebrow() => Container(width: 22, height: 3, margin: const EdgeInsets.only(bottom: 5, top: 3), color: const Color(0xFFC2C6D6));
+    Widget navRow({bool sel = false, bool box = false, double indent = 0}) => Container(
+          height: 11,
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: sel ? accent : Colors.transparent,
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Row(children: [
+            SizedBox(width: 6.0 * indent),
+            Container(
+              width: 7,
+              height: 7,
+              decoration: BoxDecoration(
+                color: sel ? Colors.white : (box ? Colors.transparent : const Color(0xFFBDC1C6)),
+                border: box ? Border.all(color: const Color(0xFFC2C6D6)) : null,
+                borderRadius: BorderRadius.circular(box ? 2 : 3.5),
+              ),
+            ),
+            const SizedBox(width: 5),
+            Expanded(child: Container(height: 3, color: sel ? Colors.white : const Color(0xFFD7DCE6))),
+          ]),
+        );
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      child: Column(children: [
+        // app bar
+        Container(height: 16, color: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 7), child: Row(children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(2.5))),
+          const SizedBox(width: 6),
+          Expanded(child: Container(height: 6, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3)))),
+          const SizedBox(width: 6),
+          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0x294A7CFF), shape: BoxShape.circle)),
+        ])),
+        Container(height: 1, color: border),
+        Expanded(child: Row(children: [
+          // sidebar
+          Container(width: 78, color: Colors.white, padding: const EdgeInsets.fromLTRB(8, 9, 8, 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            eyebrow(),
+            navRow(),
+            navRow(),
+            eyebrow(),
+            navRow(),
+            navRow(indent: 1, sel: true),
+            navRow(indent: 1, box: true),
+            navRow(),
+          ])),
+          Container(width: 1, color: border),
+          // page
+          Expanded(child: Container(color: const Color(0xFFF7F8FA), padding: const EdgeInsets.all(9), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(width: 40, height: 8, decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 9),
+            Row(children: [
+              for (int i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 6),
+                Expanded(child: Container(height: 26, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), border: Border.all(color: border)))),
+              ],
+            ]),
+            const SizedBox(height: 6),
+            Expanded(child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), border: Border.all(color: border)))),
+          ]))),
+        ])),
+      ]),
     );
   }
 }
