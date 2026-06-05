@@ -108,13 +108,13 @@ class NavigationSidebarThemeData extends ThemeExtension<NavigationSidebarThemeDa
     surface: Color(0xFF1E2025),
     inputBg: Color(0xFF33353A),
     hover: Color(0xFF2F3540),
-    border: Color(0x6643464F),
+    border: Color(0x66434654),
     borderStrong: Color(0xFF434654),
     guide: Color(0xFF434654),
     fg1: Color(0xFFE2E2E9),
     fg2: Color(0xFFC3C6D7),
     fg3: Color(0xFF8D90A0),
-    fg4: Color(0xFF5A5D68),
+    fg4: Color(0xFF44474E),
   );
 
   static const NavigationSidebarThemeData light = NavigationSidebarThemeData(
@@ -124,11 +124,11 @@ class NavigationSidebarThemeData extends ThemeExtension<NavigationSidebarThemeDa
     hover: Color(0xFFEEF1F7),
     border: Color(0xFFE2E8F0),
     borderStrong: Color(0xFFC2C6D6),
-    guide: Color(0xFFD7DCE6),
+    guide: Color(0xFFC2C6D6),
     fg1: Color(0xFF0F172A),
     fg2: Color(0xFF424754),
     fg3: Color(0xFF64748B),
-    fg4: Color(0xFFAEB4C2),
+    fg4: Color(0xFFC2C6D6),
   );
 
   /// Reads the registered extension, or falls back to [dark].

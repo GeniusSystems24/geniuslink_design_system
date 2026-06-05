@@ -1,7 +1,20 @@
 name: geniuslink_design_system
-description: GeniusLink Design System for Flutter — a themeable, MVC widget kit (BrowserStyleTabBar, EditableTable with typed columns, ReadableTable, Tree) with light/dark + LTR/RTL support.
-publish_to: "none"
-version: 2.2.0
+description: GeniusLink Design System for Flutter — a themeable, MVC widget kit (BrowserStyleTabBar, EditableTable with typed columns, ReadableTable, Tree, NavigationSidebar) with light/dark + LTR/RTL support.
+# publish_to: "none"
+version: 2.3.0
+
+repository: https://github.com/GeniusSystems24/geniuslink_design_system
+issue_tracker: https://github.com/GeniusSystems24/geniuslink_design_system/issues
+
+screenshots:
+  - description: Browser-style workspace tabs with preview and tab-list dropdown.
+    path: snapshots/2.png
+  - description: Context menu actions for close, duplicate, and pin behavior.
+    path: snapshots/3.png
+  - description: RTL tab layout with mirrored controls.
+    path: snapshots/1.png
+  - description: Animated preview of tab interactions.
+    path: snapshots/preview.gif
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

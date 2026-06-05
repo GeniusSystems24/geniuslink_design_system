@@ -376,7 +376,7 @@ class _NavigationSidebarState<T> extends State<NavigationSidebar<T>> {
         // elbow stub into the node
         PositionedDirectional(
           start: lx,
-          top: childH / 2 - 0.75,
+          top: childH / 2,
           width: NavigationSidebarThemeData.elbow,
           height: 1.5,
           child: ColoredBox(color: t.guide),
@@ -421,6 +421,7 @@ class _NavigationSidebarState<T> extends State<NavigationSidebar<T>> {
                   key: ValueKey('rail-${node.id}'),
                   node: node,
                   active: node.hasChildren ? _controller.ownsActive(node.id) : _controller.isActive(node.id),
+                  activeId: _controller.active,
                   flyouts: widget.railFlyouts,
                   rtl: _rtl,
                   onNavigate: _go,
@@ -648,6 +649,7 @@ class _NavRowState<T> extends State<_NavRow<T>> {
 class _RailItem<T> extends StatefulWidget {
   final NavNode<T> node;
   final bool active;
+  final NavNodeId? activeId;
   final bool flyouts;
   final bool rtl;
   final ValueChanged<NavNode<T>> onNavigate;
@@ -656,6 +658,7 @@ class _RailItem<T> extends StatefulWidget {
     super.key,
     required this.node,
     required this.active,
+    required this.activeId,
     required this.flyouts,
     required this.rtl,
     required this.onNavigate,
@@ -691,6 +694,7 @@ class _RailItemState<T> extends State<_RailItem<T>> {
   void _showFlyout() {
     if (!widget.flyouts || !widget.node.hasChildren || _entry != null) return;
     final t = NavigationSidebarThemeData.of(context);
+    final themeData = Theme.of(context);
     const flyW = 248.0;
     _entry = OverlayEntry(
       builder: (ctx) {
@@ -702,18 +706,21 @@ class _RailItemState<T> extends State<_RailItem<T>> {
             targetAnchor: widget.rtl ? Alignment.topLeft : Alignment.topRight,
             followerAnchor: widget.rtl ? Alignment.topRight : Alignment.topLeft,
             offset: Offset(widget.rtl ? -10.0 : 10.0, -4),
-            child: MouseRegion(
-              onEnter: (_) => _overFlyout = true,
-              onExit: (_) {
-                _overFlyout = false;
-                _scheduleClose();
-              },
-              child: Directionality(
-                textDirection: widget.rtl ? TextDirection.rtl : TextDirection.ltr,
-                child: _RailFlyout<T>(node: widget.node, theme: t, onNavigate: (n) {
-                  widget.onNavigate(n);
-                  _removeFlyout();
-                }),
+            child: Theme(
+              data: themeData,
+              child: MouseRegion(
+                onEnter: (_) => _overFlyout = true,
+                onExit: (_) {
+                  _overFlyout = false;
+                  _scheduleClose();
+                },
+                child: Directionality(
+                  textDirection: widget.rtl ? TextDirection.rtl : TextDirection.ltr,
+                  child: _RailFlyout<T>(node: widget.node, theme: t, activeId: widget.activeId, onNavigate: (n) {
+                    widget.onNavigate(n);
+                    _removeFlyout();
+                  }),
+                ),
               ),
             ),
           ),
@@ -805,8 +812,9 @@ class _RailItemState<T> extends State<_RailItem<T>> {
 class _RailFlyout<T> extends StatelessWidget {
   final NavNode<T> node;
   final NavigationSidebarThemeData theme;
+  final NavNodeId? activeId;
   final ValueChanged<NavNode<T>> onNavigate;
-  const _RailFlyout({required this.node, required this.theme, required this.onNavigate});
+  const _RailFlyout({required this.node, required this.theme, required this.activeId, required this.onNavigate});
 
   @override
   Widget build(BuildContext context) {
@@ -873,15 +881,16 @@ class _RailFlyout<T> extends StatelessWidget {
   }
 
   Widget _flyoutRow(NavigationSidebarThemeData t, NavNode<T> leaf) {
-    return _FlyoutRow<T>(leaf: leaf, theme: t, onTap: () => onNavigate(leaf));
+    return _FlyoutRow<T>(leaf: leaf, theme: t, active: leaf.id == activeId, onTap: () => onNavigate(leaf));
   }
 }
 
 class _FlyoutRow<T> extends StatefulWidget {
   final NavNode<T> leaf;
   final NavigationSidebarThemeData theme;
+  final bool active;
   final VoidCallback onTap;
-  const _FlyoutRow({required this.leaf, required this.theme, required this.onTap});
+  const _FlyoutRow({required this.leaf, required this.theme, required this.active, required this.onTap});
 
   @override
   State<_FlyoutRow<T>> createState() => _FlyoutRowState<T>();
@@ -893,6 +902,7 @@ class _FlyoutRowState<T> extends State<_FlyoutRow<T>> {
   @override
   Widget build(BuildContext context) {
     final t = widget.theme;
+    final active = widget.active;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hover = true),
@@ -904,22 +914,41 @@ class _FlyoutRowState<T> extends State<_FlyoutRow<T>> {
           height: 34,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
-            color: _hover ? t.hover : Colors.transparent,
+            color: active ? t.accentFill(0.10) : (_hover ? t.hover : Colors.transparent),
             borderRadius: BorderRadius.circular(NavigationSidebarThemeData.radiusMd),
           ),
           child: Row(
             children: [
-              Icon(widget.leaf.icon ?? Icons.circle, size: 15, color: t.fg3),
+              Container(
+                width: 24,
+                height: 24,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: active ? NavigationSidebarThemeData.accent : t.border),
+                ),
+                child: Icon(
+                  widget.leaf.icon ?? Icons.circle,
+                  size: 13,
+                  color: active ? NavigationSidebarThemeData.accent : t.fg3,
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   widget.leaf.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12.5, color: t.fg1, fontFamily: NavigationSidebarThemeData.bodyFont),
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                    color: active ? NavigationSidebarThemeData.accent : t.fg1,
+                    fontFamily: NavigationSidebarThemeData.bodyFont,
+                  ),
                 ),
               ),
               if (widget.leaf.badge != null) _NavBadgeChip(badge: widget.leaf.badge!, small: true),
+              if (widget.leaf.shortcut != null) ...[const SizedBox(width: 6), _ShortcutHint(keys: widget.leaf.shortcut!)],
             ],
           ),
         ),

@@ -44,9 +44,14 @@ This project adheres to [Semantic Versioning](https://semver.org).
   `ThemeExtension` with `.light` / `.dark` presets (lerped), the brand + semantic
   palette, role metrics, connector geometry, motion and `badgeColors(tone)`.
 - New barrel `geniuslink_navigation_sidebar.dart`, re-exported from the unified
-  barrel. New example `example/lib/navigation_sidebar_demo.dart` (the full shell —
-  app bar + sidebar + faux page — with live Light/Dark, LTR/RTL and a
-  device-width simulator) + a launcher card.
+  barrel. New example `example/lib/navigation_sidebar_demo.dart` — a faithful
+  reproduction of the web workbench: an app bar (cube logo · optically-centered
+  command-search · workspace dropdown · user menu), the sidebar with a footer
+  **ThemeToggle** (segmented Dark/Light) + a **"Need help?"** card, a working
+  **command palette** (`/` search over every tab, grouped by module), and a
+  workbench strip that flips LTR/RTL and simulates Fill/Desktop/Tablet/Mobile
+  widths — plus a launcher card. Colours, radii, row metrics and connector
+  geometry are matched 1:1 to `colors_and_type.css` / the web `NavigationSidebar.jsx`.
 
 ---
 
