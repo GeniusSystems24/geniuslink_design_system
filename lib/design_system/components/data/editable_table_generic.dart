@@ -27,6 +27,11 @@ enum SortDir { none, asc, desc }
 /// How a column edits & renders.
 enum EditableColumnType { text, number, select, date, checkbox, computed, readonly }
 
+/// What pointer / keyboard SELECTION does in the grid — a layer independent of
+/// the editing cursor. Mirrors `ReadableTable`'s five modes so a typed editable
+/// grid offers the same selection diversity (rows / cells, single / multi).
+enum EditableSelectionMode { none, singleRow, multiRow, singleCell, multiCell }
+
 /// An immutable cell address (row + visual? no — LOGICAL column index).
 @immutable
 class CellRef {
@@ -241,6 +246,7 @@ class EditableTableController<T> extends ChangeNotifier {
     required List<EditableColumn<T>> columns,
     required List<T> rows,
     this.newRow,
+    this.selectionMode = EditableSelectionMode.none,
   })  : columns = List.unmodifiable(columns),
         _rows = List<T>.from(rows) {
     _order.addAll(List<int>.generate(columns.length, (i) => i));
@@ -263,6 +269,15 @@ class EditableTableController<T> extends ChangeNotifier {
   final Map<int, double> _widthOverride = {};
   static const double columnMinWidth = 64;
   static const double columnMaxWidth = 520;
+
+  // ── selection layer (independent of the editing cursor) ──
+  /// What clicks / keyboard selection do. Mutable so a host can flip mode at
+  /// runtime (e.g. a segmented control).
+  EditableSelectionMode selectionMode;
+  final Set<int> _selRows = {};
+  final Set<CellRef> _selCells = {};
+  int _anchorRow = 0;
+  int _anchorCol = 0;
 
   final List<List<T>> _past = [];
   final List<List<T>> _future = [];
@@ -330,6 +345,8 @@ class EditableTableController<T> extends ChangeNotifier {
       ..clear()
       ..addAll(next);
     _clampSelection();
+    _selRows.removeWhere((r) => r >= _rows.length);
+    _selCells.removeWhere((c) => c.row >= _rows.length || c.col >= colCount);
     notifyListeners();
   }
 
@@ -512,6 +529,149 @@ class EditableTableController<T> extends ChangeNotifier {
     return sum;
   }
 
+  // ════════════════════════════════════════════════════════════
+  // SELECTION — rows / cells, single / multi (independent of the cursor)
+  // ════════════════════════════════════════════════════════════
+
+  bool get selectionIsRowMode =>
+      selectionMode == EditableSelectionMode.singleRow || selectionMode == EditableSelectionMode.multiRow;
+  bool get selectionIsCellMode =>
+      selectionMode == EditableSelectionMode.singleCell || selectionMode == EditableSelectionMode.multiCell;
+  bool get selectionIsMulti =>
+      selectionMode == EditableSelectionMode.multiRow || selectionMode == EditableSelectionMode.multiCell;
+  bool get selectionEnabled => selectionMode != EditableSelectionMode.none;
+  bool get hasSelection => _selRows.isNotEmpty || _selCells.isNotEmpty;
+
+  Set<int> get selectedRowIndices => {..._selRows};
+  List<T> get selectedRows => (_selRows.toList()..sort()).map((i) => _rows[i]).toList();
+  Set<CellRef> get selectedCells => {..._selCells};
+  int get selectedCount => selectionIsCellMode ? _selCells.length : _selRows.length;
+  bool isRowInSelection(int r) => _selRows.contains(r);
+  bool isCellInSelection(int r, int c) => _selCells.contains(CellRef(r, c));
+
+  /// Swap the selection mode at runtime; clears any existing selection.
+  void setSelectionMode(EditableSelectionMode mode) {
+    if (mode == selectionMode) return;
+    selectionMode = mode;
+    _selRows.clear();
+    _selCells.clear();
+    notifyListeners();
+  }
+
+  /// Select the row at [index]. [additive] toggles it (multi), [range] extends
+  /// from the anchor to [index]. Also moves the editing cursor onto the row.
+  void selectRow(int index, {bool additive = false, bool range = false}) {
+    if (!selectionIsRowMode || index < 0 || index >= rowCount) return;
+    _sel = CellRef(index, _sel.col);
+    if (selectionMode == EditableSelectionMode.singleRow) {
+      _selRows
+        ..clear()
+        ..add(index);
+      _anchorRow = index;
+    } else if (range) {
+      final lo = index < _anchorRow ? index : _anchorRow;
+      final hi = index < _anchorRow ? _anchorRow : index;
+      if (!additive) _selRows.clear();
+      for (var r = lo; r <= hi; r++) {
+        _selRows.add(r);
+      }
+    } else if (additive) {
+      _selRows.contains(index) ? _selRows.remove(index) : _selRows.add(index);
+      _anchorRow = index;
+    } else {
+      _selRows
+        ..clear()
+        ..add(index);
+      _anchorRow = index;
+    }
+    notifyListeners();
+  }
+
+  /// Select the cell at ([row], [col]). [additive] toggles it (multi), [range]
+  /// extends a rectangle from the anchor. Also moves the editing cursor.
+  void selectCell(int row, int col, {bool additive = false, bool range = false}) {
+    if (!selectionIsCellMode || row < 0 || row >= rowCount || col < 0 || col >= colCount) return;
+    _sel = CellRef(row, col);
+    if (selectionMode == EditableSelectionMode.singleCell) {
+      _selCells
+        ..clear()
+        ..add(CellRef(row, col));
+      _anchorRow = row;
+      _anchorCol = col;
+    } else if (range) {
+      final r0 = row < _anchorRow ? row : _anchorRow;
+      final r1 = row < _anchorRow ? _anchorRow : row;
+      final c0 = col < _anchorCol ? col : _anchorCol;
+      final c1 = col < _anchorCol ? _anchorCol : col;
+      if (!additive) _selCells.clear();
+      for (var r = r0; r <= r1; r++) {
+        for (var c = c0; c <= c1; c++) {
+          _selCells.add(CellRef(r, c));
+        }
+      }
+    } else if (additive) {
+      final cell = CellRef(row, col);
+      _selCells.contains(cell) ? _selCells.remove(cell) : _selCells.add(cell);
+      _anchorRow = row;
+      _anchorCol = col;
+    } else {
+      _selCells
+        ..clear()
+        ..add(CellRef(row, col));
+      _anchorRow = row;
+      _anchorCol = col;
+    }
+    notifyListeners();
+  }
+
+  /// Re-apply the selection at the cursor cell — keyboard nav uses this so the
+  /// highlight follows the active cell ([range] extends from the anchor).
+  void selectActive({bool additive = false, bool range = false}) {
+    if (selectionIsRowMode) {
+      selectRow(_sel.row, additive: additive, range: range);
+    } else if (selectionIsCellMode) {
+      selectCell(_sel.row, _sel.col, additive: additive, range: range);
+    }
+  }
+
+  /// Select everything (multi modes only).
+  void selectAll() {
+    if (selectionMode == EditableSelectionMode.multiRow) {
+      _selRows
+        ..clear()
+        ..addAll(List<int>.generate(rowCount, (i) => i));
+    } else if (selectionMode == EditableSelectionMode.multiCell) {
+      _selCells.clear();
+      for (var r = 0; r < rowCount; r++) {
+        for (var c = 0; c < colCount; c++) {
+          _selCells.add(CellRef(r, c));
+        }
+      }
+    } else {
+      return;
+    }
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    if (_selRows.isEmpty && _selCells.isEmpty) return;
+    _selRows.clear();
+    _selCells.clear();
+    notifyListeners();
+  }
+
+  /// Delete every selected row (row modes) as one undoable step.
+  void deleteSelectedRows() {
+    if (_selRows.isEmpty) return;
+    final doomed = _selRows.toList()..sort((a, b) => b.compareTo(a));
+    final next = List<T>.from(_rows);
+    for (final i in doomed) {
+      if (i >= 0 && i < next.length) next.removeAt(i);
+    }
+    _selRows.clear();
+    _apply(next);
+  }
+
   // ── clipboard (TSV) ──
   String _san(String s) => s.replaceAll('\t', ' ').replaceAll(RegExp(r'[\r\n]+'), ' ');
 
@@ -559,8 +719,25 @@ class EditableTableController<T> extends ChangeNotifier {
     return true;
   }
 
-  /// Copy the current single-cell selection to the OS clipboard.
-  Future<void> copySelectionToClipboard() => copyCellsToClipboard([_sel]);
+  /// Serialize the current SELECTION (rows or a cell rectangle, per mode) to
+  /// TSV; falls back to the active cursor cell when nothing is selected.
+  String selectionAsTsv({bool includeHeader = false}) {
+    if (selectionIsRowMode && _selRows.isNotEmpty) return rowsAsTsv(_selRows, includeHeader: includeHeader);
+    if (selectionIsCellMode && _selCells.isNotEmpty) return cellsAsTsv(_selCells);
+    return cellsAsTsv([_sel]);
+  }
+
+  /// Copy the current selection (or the active cell) to the clipboard as TSV.
+  /// Returns the number of lines written.
+  Future<int> copySelectionTsvToClipboard({bool includeHeader = false}) async {
+    final tsv = selectionAsTsv(includeHeader: includeHeader);
+    if (tsv.isEmpty) return 0;
+    await Clipboard.setData(ClipboardData(text: tsv));
+    return tsv.split('\n').length;
+  }
+
+  /// Copy the current selection (cursor cell when nothing is selected).
+  Future<void> copySelectionToClipboard() => copySelectionTsvToClipboard();
 
   // ── undo / redo ──
   void undo() {

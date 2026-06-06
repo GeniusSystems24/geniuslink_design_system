@@ -173,6 +173,10 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
         c.redo();
         return KeyEventResult.handled;
       }
+      if (low == 'a') {
+        c.selectAll();
+        return KeyEventResult.handled;
+      }
       if (k == LogicalKeyboardKey.enter) {
         c.addRow();
         return KeyEventResult.handled;
@@ -195,14 +199,17 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
     final step = horizontalStep(k, dir);
     if (step != 0) {
       c.moveSelection(0, step);
+      if (c.selectionEnabled) c.selectActive(range: shift);
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.arrowDown) {
       c.moveSelection(1, 0);
+      if (c.selectionEnabled) c.selectActive(range: shift);
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.arrowUp) {
       c.moveSelection(-1, 0);
+      if (c.selectionEnabled) c.selectActive(range: shift);
       return KeyEventResult.handled;
     }
     if (k == LogicalKeyboardKey.tab) {
@@ -536,6 +543,7 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
   // ── data row ──
   Widget _dataRow(EditableTableThemeData t, int r) {
     final selRow = _controller.selection.row == r;
+    final rowSel = _controller.isRowInSelection(r);
     final cells = <Widget>[];
     if (widget.showRowNumbers) {
       cells.add(Container(
@@ -543,15 +551,24 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
         height: EditableTableThemeData.rowHeight,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: selRow ? t.selectionFill() : t.bg,
+          color: rowSel ? t.selectionFill(0.16) : (selRow ? t.selectionFill() : t.bg),
           border: Border(right: BorderSide(color: t.borderStrong), bottom: BorderSide(color: t.border)),
         ),
-        child: Text('${r + 1}',
-            style: TextStyle(
-                fontFamily: EditableTableThemeData.monoFont,
-                fontSize: 11,
-                fontWeight: selRow ? FontWeight.w700 : FontWeight.w400,
-                color: selRow ? EditableTableThemeData.accent : t.fg3)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (rowSel) ...[
+              Icon(Icons.check_rounded, size: 11, color: EditableTableThemeData.accent),
+              const SizedBox(width: 2),
+            ],
+            Text('${r + 1}',
+                style: TextStyle(
+                    fontFamily: EditableTableThemeData.monoFont,
+                    fontSize: 11,
+                    fontWeight: (selRow || rowSel) ? FontWeight.w700 : FontWeight.w400,
+                    color: (selRow || rowSel) ? EditableTableThemeData.accent : t.fg3)),
+          ],
+        ),
       ));
     }
     for (var v = 0; v < _controller.colCount; v++) {
@@ -562,7 +579,7 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
         width: EditableTableThemeData.actionsWidth,
         height: EditableTableThemeData.rowHeight,
         decoration: BoxDecoration(
-          color: selRow ? t.selectionFill(0.06) : t.surface,
+          color: rowSel ? t.selectionFill(0.12) : (selRow ? t.selectionFill(0.06) : t.surface),
           border: Border(bottom: BorderSide(color: t.border)),
         ),
         child: Row(
@@ -596,6 +613,7 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
     final col = _controller.columns[ci];
     final width = _controller.widthOf(v);
     final active = _controller.isSelected(r, ci);
+    final inSel = _controller.isRowInSelection(r) || _controller.isCellInSelection(r, ci);
     final editing = active && _controller.editing;
     final raw = _controller.cellText(r, ci);
     final invalid = col.errorFor(raw, _controller.rowAt(r)) != null;
@@ -663,6 +681,16 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
       behavior: HitTestBehavior.opaque,
       onTap: () {
         _gridFocus.requestFocus();
+        if (_controller.selectionEnabled) {
+          final shift = HardwareKeyboard.instance.isShiftPressed;
+          final mod = HardwareKeyboard.instance.isMetaPressed || HardwareKeyboard.instance.isControlPressed;
+          if (_controller.selectionIsRowMode) {
+            _controller.selectRow(r, additive: mod, range: shift);
+          } else {
+            _controller.selectCell(r, ci, additive: mod, range: shift);
+          }
+          return;
+        }
         if (active && !editing) {
           _activateActive();
         } else {
@@ -679,7 +707,9 @@ class _EditableTableState<T> extends State<EditableTable<T>> {
         alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
         padding: editing ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: active ? t.selectionFill() : t.surface,
+          color: active
+              ? t.selectionFill()
+              : (inSel ? t.selectionFill(0.14) : t.surface),
           border: Border(right: BorderSide(color: t.border), bottom: BorderSide(color: t.border)),
         ),
         foregroundDecoration: active

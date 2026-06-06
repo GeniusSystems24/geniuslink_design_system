@@ -92,6 +92,7 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
   bool _rtl = false;
   late EditableTableController<InvoiceRow> _controller;
   int _newSeq = 0;
+  String _tsvPreview = '';
 
   @override
   void initState() {
@@ -99,6 +100,7 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
     _controller = EditableTableController<InvoiceRow>(
       columns: _columns(),
       rows: _seed(),
+      selectionMode: EditableSelectionMode.multiRow,
       newRow: () {
         _newSeq++;
         return InvoiceRow(
@@ -264,6 +266,25 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
   double get _grandTotal => _controller.rows.fold(0.0, (s, r) => s + r.net);
   int get _paidCount => _controller.rows.where((r) => r.paid).length;
 
+  String _selectionSummary() {
+    final c = _controller;
+    if (c.selectionMode == EditableSelectionMode.none) return 'Selection off';
+    if (c.selectionIsCellMode) {
+      return c.selectedCells.map((s) => '${c.rowAt(s.row).id}·${EditableTableFormat.columnLetter(s.col)}').take(8).join('  ');
+    }
+    return c.selectedRows.map((r) => r.id).take(10).join('  ');
+  }
+
+  Future<void> _copySelection() async {
+    final n = await _controller.copySelectionTsvToClipboard(includeHeader: _controller.selectionIsRowMode);
+    setState(() => _tsvPreview = n == 0 ? '' : _controller.selectionAsTsv(includeHeader: _controller.selectionIsRowMode));
+    if (mounted && n > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Copied $n line(s) as TSV'), duration: const Duration(seconds: 2)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final ext = _light ? EditableTableThemeData.light : EditableTableThemeData.dark;
@@ -315,8 +336,9 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
                               Text(
                                 'A strongly-typed grid — each row is an immutable InvoiceRow, edited through '
                                 'value / setValue accessors (no Map). Click a cell and type to edit; Tab / Enter '
-                                'commit and move; drag a header edge to resize; long-press a header to reorder; '
-                                '⌘C copies the cell as TSV. Toggle RTL to see the arrow keys follow the visual direction.',
+                                'commit and move; drag a header edge to resize; long-press a header to reorder. '
+                                'Pick a selection mode (rows / cells, single / multi) then click · Shift-click · '
+                                '⌘/Ctrl-click to select; ⌘C copies the selection as TSV. Toggle RTL to see arrows follow the visual direction.',
                                 style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 14, height: 1.5, color: t.fg3),
                               ),
                             ],
@@ -344,12 +366,24 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
                     ),
                     const SizedBox(height: 22),
 
+                    // ── selection-mode picker ──
+                    Row(
+                      children: [
+                        Text('SELECT',
+                            style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 10.5, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: t.fg3)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _ModePicker(mode: _controller.selectionMode, onChanged: (m) => _controller.setSelectionMode(m))),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
                     // ── live typed-data inspector ──
                     _Inspector(
                       t: t,
                       lines: [
-                        _InspectorLine('Rows', '${_controller.rowCount}  ·  $_paidCount paid'),
-                        _InspectorLine('Grand net total', '${EditableTableFormat.formatNumber(_grandTotal)} SAR'),
+                        _InspectorLine('Rows', '${_controller.rowCount}  ·  $_paidCount paid  ·  net ${EditableTableFormat.formatNumber(_grandTotal)} SAR'),
+                        _InspectorLine('Selection',
+                            _controller.selectionMode == EditableSelectionMode.none ? 'off' : '${_controller.selectedCount} selected   ${_selectionSummary()}'),
                         _InspectorLine('Active cell',
                             'row ${sel.row + 1} · ${EditableTableFormat.columnLetter(sel.col)} (${_controller.columns[sel.col].label})'),
                         _InspectorLine('Active InvoiceRow',
@@ -363,20 +397,25 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
                       spacing: 9,
                       runSpacing: 9,
                       children: [
+                        _OpButton(icon: Icons.copy_all_rounded, label: 'Copy selection (TSV)', onTap: _copySelection),
+                        _OpButton(icon: Icons.select_all_rounded, label: 'Select all', onTap: () => _controller.selectAll()),
+                        _OpButton(icon: Icons.deselect_rounded, label: 'Clear selection', onTap: () => _controller.clearSelection()),
+                        _OpButton(
+                            icon: Icons.delete_sweep_outlined,
+                            label: 'Delete selected rows',
+                            onTap: () => _controller.deleteSelectedRows()),
                         _OpButton(icon: Icons.add_rounded, label: 'Add row', onTap: () => _controller.addRow()),
-                        _OpButton(
-                            icon: Icons.copy_all_rounded,
-                            label: 'Copy all rows (TSV)',
-                            onTap: () => _controller.copyRowsToClipboard(
-                                List<int>.generate(_controller.rowCount, (i) => i),
-                                includeHeader: true)),
-                        _OpButton(
-                            icon: Icons.payments_outlined,
-                            label: 'Mark all paid',
-                            onTap: () => _controller.setRows([for (final r in _controller.rows) r.copyWith(paid: true)])),
-                        _OpButton(icon: Icons.restart_alt_rounded, label: 'Reset', onTap: () => _controller.setRows(_seed())),
+                        _OpButton(icon: Icons.restart_alt_rounded, label: 'Reset', onTap: () {
+                          _controller.setRows(_seed());
+                          setState(() => _tsvPreview = '');
+                        }),
                       ],
                     ),
+
+                    if (_tsvPreview.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _TsvPreview(t: t, tsv: _tsvPreview),
+                    ],
                     const SizedBox(height: 18),
 
                     // ── the typed table (wrapped in the chosen direction) ──
@@ -459,11 +498,12 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     const tips = [
       ['Edit', 'Click a cell + type, or double-click / Enter. Tab → · Enter ↓ commit & move.'],
+      ['Select', 'Pick a mode above, then click · Shift-click (range) · ⌘/Ctrl-click (toggle) · ⌘A all.'],
       ['Resize', 'Drag a header\'s trailing edge. Double-tap the grip to reset.'],
       ['Reorder', 'Long-press a header and drag it onto another (blue drop line).'],
       ['Sort', 'Click a header to sort by its typed key (asc → desc).'],
-      ['Copy', '⌘/Ctrl + C copies the active cell · the ▣ toolbar button copies every row as TSV.'],
-      ['Keyboard', 'Arrows / Tab move (RTL-mirrored) · F2 edit · Space toggles Paid · ⌘Z undo.'],
+      ['Copy', '⌘/Ctrl + C copies the selection (rows or a cell rectangle) as TSV.'],
+      ['Keyboard', 'Arrows / Tab move (RTL-mirrored) · Shift+arrows extend · Space toggles Paid · ⌘Z undo.'],
     ];
     return Container(
       padding: const EdgeInsets.all(16),
@@ -569,6 +609,97 @@ class _MiniToggle extends StatelessWidget {
                 style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: t.fg1)),
           ]),
         ),
+      ),
+    );
+  }
+}
+
+// ── 5-mode selection picker (segmented) ──
+class _ModePicker extends StatelessWidget {
+  final EditableSelectionMode mode;
+  final ValueChanged<EditableSelectionMode> onChanged;
+  const _ModePicker({required this.mode, required this.onChanged});
+
+  static const _labels = {
+    EditableSelectionMode.none: 'None',
+    EditableSelectionMode.singleRow: 'Single Row',
+    EditableSelectionMode.multiRow: 'Multi Row',
+    EditableSelectionMode.singleCell: 'Single Cell',
+    EditableSelectionMode.multiCell: 'Multi Cell',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final t = EditableTableThemeData.of(context);
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: t.bg,
+        borderRadius: BorderRadius.circular(EditableTableThemeData.radiusLg),
+        border: Border.all(color: t.border),
+      ),
+      child: Row(
+        children: [
+          for (final m in EditableSelectionMode.values)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onChanged(m),
+                child: AnimatedContainer(
+                  duration: EditableTableThemeData.durFast,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 9),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: mode == m ? EditableTableThemeData.accent : Colors.transparent,
+                    borderRadius: BorderRadius.circular(EditableTableThemeData.radiusMd),
+                  ),
+                  child: Text(_labels[m]!,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          fontFamily: EditableTableThemeData.bodyFont,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: mode == m ? Colors.white : t.fg2)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── clipboard TSV preview card ──
+class _TsvPreview extends StatelessWidget {
+  final EditableTableThemeData t;
+  final String tsv;
+  const _TsvPreview({required this.t, required this.tsv});
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.bg,
+        borderRadius: BorderRadius.circular(EditableTableThemeData.radiusLg),
+        border: Border.all(color: t.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.content_paste_rounded, size: 14, color: EditableTableThemeData.accent),
+            const SizedBox(width: 7),
+            Text('CLIPBOARD (TSV) — tabs shown as ⇥',
+                style: TextStyle(
+                    fontFamily: EditableTableThemeData.bodyFont, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: t.fg3)),
+          ]),
+          const SizedBox(height: 10),
+          SelectableText(
+            tsv.replaceAll('\t', ' ⇥ '),
+            style: TextStyle(fontFamily: EditableTableThemeData.monoFont, fontSize: 11.5, height: 1.5, color: t.fg2),
+          ),
+        ],
       ),
     );
   }

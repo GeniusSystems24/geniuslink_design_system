@@ -268,6 +268,18 @@ EditableTable<InvoiceRow>(controller: c); // inline edit · sort · resize · re
 
 Typed column constructors — `NumericColumn` (clamp + decimals), `DropdownColumn` (strict options), `DateColumn`, `CheckboxColumn`, `ComputedColumn` (read-only, derived) — declare a column's kind and editing affordance. The legacy map table is simply `T = EditableRow` via `mapColumn('key', 'Label')`. See `example/lib/editable_table_demo.dart` for a full `EditableTable<InvoiceRow>` with all kinds, resize / reorder, TSV copy and an RTL toggle.
 
+**Selection layer.** Beyond the editing cursor, `EditableTableController<T>` carries the same five selection modes as `ReadableTable` — `EditableSelectionMode.{none, singleRow, multiRow, singleCell, multiCell}`. Click selects; **Shift-click** extends a range / rectangle, **⌘/Ctrl-click** toggles, **⌘/Ctrl+A** selects all, and **⌘/Ctrl+C** copies the selection (rows or a cell rectangle) as TSV.
+
+```dart
+final c = EditableTableController<InvoiceRow>(columns: cols, rows: seed,
+    selectionMode: EditableSelectionMode.multiRow);
+c.setSelectionMode(EditableSelectionMode.multiCell);   // flip at runtime
+c.selectRow(2, range: true);  c.selectCell(0, 1, additive: true);
+c.selectAll();  c.clearSelection();  c.deleteSelectedRows();
+c.selectedRows;  c.selectedCells;  c.selectedCount;     // reads
+await c.copySelectionTsvToClipboard(includeHeader: true);
+```
+
 ### Options
 
 ```dart

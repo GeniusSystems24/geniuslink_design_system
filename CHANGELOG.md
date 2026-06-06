@@ -150,6 +150,14 @@ This project adheres to [Semantic Versioning](https://semver.org).
   **instead of** the map-backed table, since both declare the same names). New
   files: `editable_table_generic.dart` (model + controller) and
   `editable_table_generic_view.dart` (the widget).
+- **A full selection layer** lives on `EditableTableController<T>`, independent
+  of the editing cursor — the same five modes as `ReadableTable`
+  (`EditableSelectionMode.{none, singleRow, multiRow, singleCell, multiCell}`),
+  with Shift-range / ⌘-toggle / ⌘A-all pointer + keyboard selection and a
+  selection-aware ⌘C (rows or a cell rectangle → TSV). The
+  `EditableTable<InvoiceRow>` example exposes all five modes via a segmented
+  control with a live selection readout, Select-all / Clear / Delete-selected /
+  Copy-selection buttons and a TSV preview.
 
 ### 📘 Changed — example screens exercise every new capability
 
