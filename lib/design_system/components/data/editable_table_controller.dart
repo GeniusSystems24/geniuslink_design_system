@@ -29,6 +29,7 @@ class EditableTableController extends ChangeNotifier {
     this.historyLimit = 200,
   })  : columns = List.unmodifiable(columns),
         _rows = [...?rows?.map((r) => Map<String, String>.from(r))] {
+    _order.addAll(List<int>.generate(columns.length, (i) => i));
     if (_rows.isEmpty) _rows.add(blankRow());
   }
 
@@ -47,6 +48,16 @@ class EditableTableController extends ChangeNotifier {
 
   final List<List<EditableRow>> _past = [];
   final List<List<EditableRow>> _future = [];
+
+  // Column layout: visual→logical order (drag-to-reorder) + per-column width
+  // overrides (drag-to-resize). Selection / sort stay in stable LOGICAL indices
+  // while the header paints in visual order.
+  final List<int> _order = [];
+  final Map<int, double> _widthOverride = {};
+
+  /// Min / max a column can be dragged to (px).
+  static const double columnMinWidth = 64;
+  static const double columnMaxWidth = 520;
 
   // ── reads ──────────────────────────────────────────────────
   List<EditableRow> get rows => List.unmodifiable(_rows);
@@ -85,6 +96,58 @@ class EditableTableController extends ChangeNotifier {
 
   /// A fresh blank row honouring each column's [EditableColumn.blankValue].
   EditableRow blankRow() => {for (final c in columns) c.key: c.blankValue};
+
+  // ════════════════════════════════════════════════════════════
+  // COLUMN LAYOUT — visual order (reorder) + width overrides (resize)
+  // ════════════════════════════════════════════════════════════
+
+  /// The current visual order as a list of LOGICAL column indices.
+  List<int> get columnOrder => List<int>.unmodifiable(_order);
+
+  /// The logical column index shown at visual position [visual].
+  int logicalColumnAt(int visual) =>
+      _order.isEmpty ? visual : _order[visual.clamp(0, _order.length - 1)];
+
+  /// The column shown at visual position [visual].
+  EditableColumn columnAt(int visual) => columns[logicalColumnAt(visual)];
+
+  /// The effective width of the column at visual position [visual]: a drag
+  /// override if any, else the column's declared [EditableColumn.width].
+  double widthOf(int visual) {
+    final li = logicalColumnAt(visual);
+    return _widthOverride[li] ?? columns[li].width;
+  }
+
+  /// Whether the column at [visual] currently has a drag-resize override.
+  bool hasWidthOverride(int visual) => _widthOverride.containsKey(logicalColumnAt(visual));
+
+  /// Resize the column at visual position [visual] by [delta] px, clamped to
+  /// [columnMinWidth]..[columnMaxWidth]. Pass an RTL-mirrored delta from the view.
+  void resizeColumn(int visual, double delta,
+      {double min = columnMinWidth, double max = columnMaxWidth}) {
+    final li = logicalColumnAt(visual);
+    final base = _widthOverride[li] ?? columns[li].width;
+    _widthOverride[li] = (base + delta).clamp(min, max);
+    notifyListeners();
+  }
+
+  /// Drop the resize override for the column at [visual] (double-tap the handle).
+  void resetColumnWidth(int visual) {
+    if (_widthOverride.remove(logicalColumnAt(visual)) != null) notifyListeners();
+  }
+
+  /// Move the column at visual position [fromVisual] to [toVisual] (header
+  /// drag-and-drop). Only the visual order changes; logical indices — and so
+  /// the selection, sort column and cell values — are untouched.
+  void moveColumn(int fromVisual, int toVisual) {
+    if (_order.isEmpty) return;
+    final from = fromVisual.clamp(0, _order.length - 1);
+    final to = toVisual.clamp(0, _order.length - 1);
+    if (from == to) return;
+    final li = _order.removeAt(from);
+    _order.insert(to, li);
+    notifyListeners();
+  }
 
   // ── snapshot / history plumbing ────────────────────────────
   List<EditableRow> _clone() => _rows.map((r) => Map<String, String>.from(r)).toList();

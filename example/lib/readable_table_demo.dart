@@ -331,7 +331,7 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
                       ],
                     ),
                     const SizedBox(height: 14),
-                    Text('Tip — click the table, then use the keyboard. Click any sortable header to sort.',
+                    Text('Tip — click the table, then use the keyboard. Click any sortable header to sort, drag a header edge to resize (double-tap to reset), and long-press a header to reorder. ⌘C copies the selection as TSV.',
                         style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 12.5, color: t.fg3)),
                   ],
                 ),

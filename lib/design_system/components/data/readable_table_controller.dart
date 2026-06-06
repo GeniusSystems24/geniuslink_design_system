@@ -36,6 +36,7 @@ class ReadableTableController<T> extends ChangeNotifier {
     bool sortAscending = true,
   })  : columns = List.unmodifiable(columns),
         _rows = [...?rows] {
+    _order.addAll(List<int>.generate(columns.length, (i) => i));
     _selRows.addAll(selectedRows ?? const {});
     _selCells.addAll(selectedCells ?? const {});
     if (sortColumn != null && sortColumn >= 0 && sortColumn < columns.length) {
@@ -63,6 +64,16 @@ class ReadableTableController<T> extends ChangeNotifier {
   int? _sortCol;
   ReadableSortDir _sortDir = ReadableSortDir.none;
 
+  // Column layout: a visual→logical order list (drag-to-reorder) and per-column
+  // width overrides (drag-to-resize), both keyed so selection / sort logic can
+  // keep working in stable LOGICAL indices while the header paints visually.
+  final List<int> _order = [];
+  final Map<int, double> _widthOverride = {};
+
+  /// Min / max a column can be dragged to (px).
+  static const double columnMinWidth = 64;
+  static const double columnMaxWidth = 520;
+
   // ── reads ──────────────────────────────────────────────────
   List<T> get rows => List.unmodifiable(_rows);
   int get rowCount => _rows.length;
@@ -81,6 +92,61 @@ class ReadableTableController<T> extends ChangeNotifier {
 
   bool isRowSelected(int index) => _selRows.contains(index);
   bool isCellSelected(int row, int col) => _selCells.contains(ReadableCell(row, col));
+
+  // ════════════════════════════════════════════════════════════
+  // COLUMN LAYOUT — visual order (reorder) + width overrides (resize)
+  // ════════════════════════════════════════════════════════════
+
+  /// The current visual order as a list of LOGICAL column indices.
+  List<int> get columnOrder => List<int>.unmodifiable(_order);
+
+  /// The logical column index shown at visual position [visual].
+  int logicalColumnAt(int visual) =>
+      _order.isEmpty ? visual : _order[visual.clamp(0, _order.length - 1)];
+
+  /// The column shown at visual position [visual].
+  ReadableColumn<T> columnAt(int visual) => columns[logicalColumnAt(visual)];
+
+  /// The effective width of the column at visual position [visual]: a drag
+  /// override if any, else the column's declared fixed [ReadableColumn.width].
+  /// Returns null when the column should flex (no override, no fixed width).
+  double? widthOf(int visual) {
+    final li = logicalColumnAt(visual);
+    return _widthOverride[li] ?? columns[li].width;
+  }
+
+  /// Whether the column at [visual] currently has a drag-resize override.
+  bool hasWidthOverride(int visual) => _widthOverride.containsKey(logicalColumnAt(visual));
+
+  /// Resize the column at visual position [visual] by [delta] px (drag), clamped
+  /// to [columnMinWidth]..[columnMaxWidth]. A flex column becomes fixed-width on
+  /// first resize. Pass an RTL-mirrored delta from the view.
+  void resizeColumn(int visual, double delta,
+      {double min = columnMinWidth, double max = columnMaxWidth}) {
+    final li = logicalColumnAt(visual);
+    final base = _widthOverride[li] ?? columns[li].width ?? 160.0;
+    _widthOverride[li] = (base + delta).clamp(min, max);
+    notifyListeners();
+  }
+
+  /// Drop the resize override for the column at [visual] (double-tap the handle
+  /// to restore its declared width / flex).
+  void resetColumnWidth(int visual) {
+    if (_widthOverride.remove(logicalColumnAt(visual)) != null) notifyListeners();
+  }
+
+  /// Move the column at visual position [fromVisual] to [toVisual] (header
+  /// drag-and-drop). Only the visual order changes; logical indices — and so
+  /// the selection, sort column and cell addresses — are untouched.
+  void moveColumn(int fromVisual, int toVisual) {
+    if (_order.isEmpty) return;
+    final from = fromVisual.clamp(0, _order.length - 1);
+    var to = toVisual.clamp(0, _order.length - 1);
+    if (from == to) return;
+    final li = _order.removeAt(from);
+    _order.insert(to, li);
+    notifyListeners();
+  }
 
   bool get _isRowMode =>
       selectionMode == ReadableSelectionMode.singleRow || selectionMode == ReadableSelectionMode.multiRow;

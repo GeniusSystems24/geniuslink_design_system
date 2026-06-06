@@ -471,8 +471,8 @@ class _EditableTableState extends State<EditableTable> {
   double get _totalWidth {
     var w = 0.0;
     if (widget.showRowNumbers) w += EditableTableThemeData.gutterWidth;
-    for (final c in _controller.columns) {
-      w += c.width;
+    for (var v = 0; v < _controller.columns.length; v++) {
+      w += _controller.widthOf(v);
     }
     if (widget.showActions) w += EditableTableThemeData.actionsWidth;
     return w;
@@ -597,38 +597,8 @@ class _EditableTableState extends State<EditableTable> {
     if (widget.showRowNumbers) {
       cells.add(_headerCell(t, width: EditableTableThemeData.gutterWidth, child: const SizedBox()));
     }
-    for (var ci = 0; ci < _controller.columns.length; ci++) {
-      final col = _controller.columns[ci];
-      final sorted = _controller.sortColumn == ci && _controller.sortDir != SortDir.none;
-      cells.add(_headerCell(
-        t,
-        width: col.width,
-        active: _controller.selection.col == ci,
-        onTap: () => _controller.sortByColumn(ci),
-        child: Row(
-          mainAxisAlignment: col.align == CellAlign.end ? MainAxisAlignment.end : MainAxisAlignment.start,
-          children: [
-            Flexible(
-              child: Text(
-                '${EditableTableFormat.columnLetter(ci)} · ${col.label}${col.required ? ' *' : ''}',
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontFamily: EditableTableThemeData.bodyFont,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.5,
-                    color: _controller.selection.col == ci ? EditableTableThemeData.accent : t.fg3),
-              ),
-            ),
-            if (sorted)
-              Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: Icon(_controller.sortDir == SortDir.asc ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 11, color: EditableTableThemeData.accent),
-              ),
-          ],
-        ),
-      ));
+    for (var v = 0; v < _controller.columns.length; v++) {
+      cells.add(_columnHeader(t, v));
     }
     if (widget.showActions) {
       cells.add(_headerCell(
@@ -673,6 +643,129 @@ class _EditableTableState extends State<EditableTable> {
     );
   }
 
+  /// One reorderable + resizable column header at visual position [v]. The
+  /// header drags onto another to reorder, drops show a blue indicator, the
+  /// trailing edge carries a resize handle, and a tap sorts. Logical state
+  /// (sort / selection) stays keyed by the column's stable logical index.
+  Widget _columnHeader(EditableTableThemeData t, int v) {
+    final li = _controller.logicalColumnAt(v);
+    final col = _controller.columns[li];
+    final width = _controller.widthOf(v);
+    final sorted = _controller.sortColumn == li && _controller.sortDir != SortDir.none;
+    final active = _controller.selection.col == li;
+
+    Widget buildInner() => Material(
+          color: active ? t.selectionFill() : t.bg,
+          child: InkWell(
+            onTap: () => _controller.sortByColumn(li),
+            mouseCursor: SystemMouseCursors.click,
+            child: Container(
+              alignment: Alignment.centerLeft,
+              width: width,
+              height: EditableTableThemeData.headerHeight,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                mainAxisAlignment: col.align == CellAlign.end ? MainAxisAlignment.end : MainAxisAlignment.start,
+                children: [
+                  Flexible(
+                    child: Text(
+                      '${EditableTableFormat.columnLetter(v)} · ${col.label}${col.required ? ' *' : ''}',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontFamily: EditableTableThemeData.bodyFont,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                          color: active ? EditableTableThemeData.accent : t.fg3),
+                    ),
+                  ),
+                  if (sorted)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: Icon(_controller.sortDir == SortDir.asc ? Icons.arrow_upward : Icons.arrow_downward,
+                          size: 11, color: EditableTableThemeData.accent),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    final draggable = LongPressDraggable<int>(
+      data: v,
+      axis: Axis.horizontal,
+      feedback: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: width,
+          height: EditableTableThemeData.headerHeight,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            color: t.surface,
+            border: Border.all(color: EditableTableThemeData.accent),
+            borderRadius: BorderRadius.circular(EditableTableThemeData.radiusSm),
+            boxShadow: EditableTableThemeData.popShadow,
+          ),
+          child: Text(col.label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontFamily: EditableTableThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, color: t.fg1)),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: buildInner()),
+      child: buildInner(),
+    );
+
+    return SizedBox(
+      width: width,
+      child: DragTarget<int>(
+        onWillAcceptWithDetails: (d) => d.data != v,
+        onAcceptWithDetails: (d) => _controller.moveColumn(d.data, v),
+        builder: (ctx, candidate, rejected) => Stack(
+          children: [
+            draggable,
+            if (candidate.isNotEmpty)
+              PositionedDirectional(
+                top: 0,
+                bottom: 0,
+                start: 0,
+                width: 3,
+                child: Container(color: EditableTableThemeData.accent),
+              ),
+            PositionedDirectional(top: 0, bottom: 0, end: -5, width: 11, child: _resizeHandle(t, v)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The drag-to-resize grip on a header cell's trailing (inline-end) edge.
+  /// Double-tap restores the declared width; the drag delta is RTL-mirrored.
+  Widget _resizeHandle(EditableTableThemeData t, int v) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onDoubleTap: () => _controller.resetColumnWidth(v),
+        onHorizontalDragUpdate: (d) {
+          final rtl = Directionality.of(context) == TextDirection.rtl;
+          _controller.resizeColumn(v, rtl ? -d.delta.dx : d.delta.dx);
+        },
+        child: Center(
+          child: Container(
+            width: 2,
+            height: EditableTableThemeData.headerHeight * 0.6,
+            decoration: BoxDecoration(
+              color: _controller.hasWidthOverride(v) ? EditableTableThemeData.accent : t.borderStrong,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   // ── data row ───────────────────────────────────────────────
   Widget _row(EditableTableThemeData t, int r) {
     final isSelRow = _controller.selection.row == r;
@@ -705,8 +798,8 @@ class _EditableTableState extends State<EditableTable> {
       ));
     }
 
-    for (var ci = 0; ci < _controller.columns.length; ci++) {
-      cells.add(_dataCell(t, r, ci));
+    for (var v = 0; v < _controller.columns.length; v++) {
+      cells.add(_dataCell(t, r, v));
     }
 
     if (widget.showActions) {
@@ -720,8 +813,10 @@ class _EditableTableState extends State<EditableTable> {
     );
   }
 
-  Widget _dataCell(EditableTableThemeData t, int r, int ci) {
+  Widget _dataCell(EditableTableThemeData t, int r, int v) {
+    final ci = _controller.logicalColumnAt(v);
     final col = _controller.columns[ci];
+    final width = _controller.widthOf(v);
     final active = _controller.isSelected(r, ci);
     final isEditing = active && _controller.editing;
     final value = _controller.cellValue(r, ci); // raw stored (for editing/validation)
@@ -785,7 +880,7 @@ class _EditableTableState extends State<EditableTable> {
       child: MouseRegion(
         cursor: col.isReadOnly ? SystemMouseCursors.basic : SystemMouseCursors.cell,
         child: Container(
-          width: col.width,
+          width: width,
           height: EditableTableThemeData.rowHeight,
           alignment: alignEnd ? Alignment.centerRight : Alignment.centerLeft,
           padding: isEditing ? EdgeInsets.zero : const EdgeInsets.symmetric(horizontal: 10),
@@ -931,14 +1026,15 @@ class _EditableTableState extends State<EditableTable> {
     if (widget.showRowNumbers) {
       cells.add(SizedBox(width: EditableTableThemeData.gutterWidth, height: EditableTableThemeData.footerHeight));
     }
-    for (var ci = 0; ci < _controller.columns.length; ci++) {
-      final col = _controller.columns[ci];
-      var label = ci == 0 ? widget.totalsLabel : '';
+    for (var v = 0; v < _controller.columns.length; v++) {
+      final col = _controller.columnAt(v);
+      final width = _controller.widthOf(v);
+      var label = v == 0 ? widget.totalsLabel : '';
       if (col.includeInTotal) {
         label = EditableTableFormat.formatNumber(_controller.columnTotal(col));
       }
       cells.add(Container(
-        width: col.width,
+        width: width,
         height: EditableTableThemeData.footerHeight,
         alignment: col.align == CellAlign.end ? Alignment.centerRight : Alignment.centerLeft,
         padding: const EdgeInsets.symmetric(horizontal: 10),

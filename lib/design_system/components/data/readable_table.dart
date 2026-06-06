@@ -307,8 +307,10 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
         ReadableAlign.start => Alignment.centerLeft,
       };
 
-  Widget _sizedCell({required ReadableColumn<T> col, required Widget child}) {
-    return col.width != null ? SizedBox(width: col.width, child: child) : Expanded(flex: col.flex, child: child);
+  Widget _sizedCell({required int visual, required Widget child}) {
+    final w = _controller.widthOf(visual);
+    if (w != null) return SizedBox(width: w, child: child);
+    return Expanded(flex: _controller.columnAt(visual).flex, child: child);
   }
 
   // ── build ──────────────────────────────────────────────────
@@ -357,37 +359,17 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
       ),
       child: Row(
         children: [
-          for (var ci = 0; ci < _controller.colCount; ci++) _headerCell(t, ci),
+          for (var v = 0; v < _controller.colCount; v++) _headerCell(t, v),
         ],
       ),
     );
   }
 
-  Widget _headerCell(EditableTableThemeData t, int ci) {
-    final col = _controller.columns[ci];
-    final sorted = _controller.sortColumn == ci && _controller.sortDir != ReadableSortDir.none;
+  Widget _headerCell(EditableTableThemeData t, int v) {
+    final li = _controller.logicalColumnAt(v);
+    final col = _controller.columns[li];
+    final sorted = _controller.sortColumn == li && _controller.sortDir != ReadableSortDir.none;
     final asc = _controller.sortDir == ReadableSortDir.asc;
-
-    final label = Text(
-      col.label.toUpperCase(),
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontFamily: EditableTableThemeData.bodyFont,
-        fontSize: 10,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.5,
-        color: sorted ? EditableTableThemeData.accent : t.fg3,
-      ),
-    );
-
-    final arrow = col.sortable
-        ? Icon(
-            sorted ? (asc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded) : Icons.unfold_more_rounded,
-            size: 13,
-            color: sorted ? EditableTableThemeData.accent : t.fg4,
-          )
-        : null;
 
     final mainAxis = switch (col.align) {
       ReadableAlign.end => MainAxisAlignment.end,
@@ -395,28 +377,117 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
       ReadableAlign.start => MainAxisAlignment.start,
     };
 
-    Widget content = Padding(
-      padding: widget.cellPadding,
-      child: Row(
-        mainAxisAlignment: mainAxis,
-        children: [
-          Flexible(child: label),
-          if (arrow != null) ...[const SizedBox(width: 5), arrow],
-        ],
-      ),
-    );
-
-    if (col.sortable) {
-      content = MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _controller.sortByColumn(ci),
-          child: content,
+    Widget buildContent() {
+      final label = Text(
+        col.label.toUpperCase(),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontFamily: EditableTableThemeData.bodyFont,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          color: sorted ? EditableTableThemeData.accent : t.fg3,
         ),
       );
+      final arrow = col.sortable
+          ? Icon(
+              sorted ? (asc ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded) : Icons.unfold_more_rounded,
+              size: 13,
+              color: sorted ? EditableTableThemeData.accent : t.fg4,
+            )
+          : null;
+      Widget content = Container(
+        color: t.bg,
+        padding: widget.cellPadding,
+        child: Row(
+          mainAxisAlignment: mainAxis,
+          children: [
+            Flexible(child: label),
+            if (arrow != null) ...[const SizedBox(width: 5), arrow],
+          ],
+        ),
+      );
+      if (col.sortable) {
+        content = MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _controller.sortByColumn(li),
+            child: content,
+          ),
+        );
+      }
+      return content;
     }
-    return _sizedCell(col: col, child: content);
+
+    final draggable = LongPressDraggable<int>(
+      data: v,
+      axis: Axis.horizontal,
+      feedback: Material(
+        color: Colors.transparent,
+        child: Container(
+          padding: widget.cellPadding,
+          decoration: BoxDecoration(
+            color: t.surface,
+            border: Border.all(color: EditableTableThemeData.accent),
+            borderRadius: BorderRadius.circular(EditableTableThemeData.radiusSm),
+            boxShadow: EditableTableThemeData.popShadow,
+          ),
+          child: Text(col.label.toUpperCase(),
+              style: TextStyle(
+                  fontFamily: EditableTableThemeData.bodyFont,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                  color: t.fg1)),
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.35, child: buildContent()),
+      child: buildContent(),
+    );
+
+    return _sizedCell(
+      visual: v,
+      child: DragTarget<int>(
+        onWillAcceptWithDetails: (d) => d.data != v,
+        onAcceptWithDetails: (d) => _controller.moveColumn(d.data, v),
+        builder: (ctx, candidate, rejected) => Stack(
+          children: [
+            draggable,
+            if (candidate.isNotEmpty)
+              PositionedDirectional(
+                  top: 0, bottom: 0, start: 0, width: 3, child: Container(color: EditableTableThemeData.accent)),
+            PositionedDirectional(top: 0, bottom: 0, end: -5, width: 11, child: _resizeHandle(t, v)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Drag-to-resize grip on a header cell's trailing edge (double-tap resets).
+  Widget _resizeHandle(EditableTableThemeData t, int v) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onDoubleTap: () => _controller.resetColumnWidth(v),
+        onHorizontalDragUpdate: (d) {
+          final rtl = Directionality.of(context) == TextDirection.rtl;
+          _controller.resizeColumn(v, rtl ? -d.delta.dx : d.delta.dx);
+        },
+        child: Center(
+          child: Container(
+            width: 2,
+            height: 16,
+            decoration: BoxDecoration(
+              color: _controller.hasWidthOverride(v) ? EditableTableThemeData.accent : t.borderStrong,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _row(EditableTableThemeData t, int r) {
@@ -460,7 +531,7 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          for (var ci = 0; ci < c.colCount; ci++) _bodyCell(t, r, ci, value, isActive, cellMode),
+          for (var v = 0; v < c.colCount; v++) _bodyCell(t, r, v, value, isActive, cellMode),
         ],
       ),
     );
@@ -494,9 +565,10 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
     return KeyedSubtree(key: rowMode && isActive ? _activeKey : null, child: rowWidget);
   }
 
-  Widget _bodyCell(EditableTableThemeData t, int r, int ci, T value, bool rowActive, bool cellMode) {
+  Widget _bodyCell(EditableTableThemeData t, int r, int v, T value, bool rowActive, bool cellMode) {
     final c = _controller;
-    final col = c.columns[ci];
+    final ci = c.logicalColumnAt(v);
+    final col = c.columnAt(v);
     final cellSelected = cellMode && c.isCellSelected(r, ci);
     final cellActive = cellMode && rowActive && c.activeCol == ci;
 
@@ -532,7 +604,7 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
         child: MouseRegion(cursor: SystemMouseCursors.click, child: box),
       );
     }
-    return _sizedCell(col: col, child: cellActive ? KeyedSubtree(key: _activeKey, child: box) : box);
+    return _sizedCell(visual: v, child: cellActive ? KeyedSubtree(key: _activeKey, child: box) : box);
   }
 
   Widget _empty(EditableTableThemeData t) {

@@ -2,12 +2,14 @@
 
 # GeniusLink Design System
 
-[![pub package](https://img.shields.io/badge/pub-v2.3.0-4A7CFF.svg)](https://pub.dev/packages/geniuslink_design_system)
+[![pub package](https://img.shields.io/badge/pub-v2.4.0-4A7CFF.svg)](https://pub.dev/packages/geniuslink_design_system)
 [![flutter](https://img.shields.io/badge/Flutter-%E2%89%A53.10-1DB88A.svg)](https://flutter.dev)
 [![style](https://img.shields.io/badge/style-MVC-F97316.svg)](#architecture)
 [![license](https://img.shields.io/badge/license-MIT-64748B.svg)](#license)
 
 A themeable, **MVC** Flutter widget kit ported from the GeniusLink web design system. Five production-grade, self-contained components — a browser-style **tab bar**, an Excel-style **editable table** with nine typed column kinds, a read-only **readable table** with selection + sort, a customisable **tree**, and a responsive app **navigation sidebar** — all theme-aware (light **+** dark) and bilingual (LTR **+** RTL).
+
+Both tables now ship **resizable + reorderable columns**, **typed `ReadableTable` column kinds**, and **TSV clipboard copy** (rows / cells paste straight into a spreadsheet); the `Tree` adds a **single / multi-select** layer with add & remove; and `BrowserStyleTabBar` **preserves each tab's page state** across switches. Keyboard arrows resolve to the **visual** direction in RTL, and keyboard focus **scrolls into view** in the table + tree.
 
 > 📺 **Visual tour:** open [`doc/showcase.html`](doc/showcase.html) in a browser for a designed walkthrough of every part and feature.
 
@@ -19,7 +21,11 @@ A themeable, **MVC** Flutter widget kit ported from the GeniusLink web design sy
 - 🎨 **Self-contained theming** — each component carries its own `ThemeExtension` with ready-made `.light` / `.dark` presets. No global token file required.
 - 🏛️ **Strict MVC** — immutable models, a `ChangeNotifier` controller as the single source of truth, and a thin view. Drive any component from outside, or from its own page content via an `InheritedNotifier` scope.
 - ⌨️ **Full keyboard control** — spreadsheet navigation, inline editing, copy/cut/paste, undo/redo, and an in-widget shortcuts reference.
-- 🌍 **RTL + dark** everywhere — mirrors via `Directionality` + `EdgeInsetsDirectional`.
+- 📐 **Resizable + reorderable columns** — drag a header edge to resize (RTL-mirrored, double-tap to reset), drag a header to reorder; both tables.
+- 📋 **TSV clipboard copy** — a row, many rows, a cell or a cell rectangle serialize to tab-separated values and paste into Sheets / Excel / Numbers.
+- ✅ **Tree single / multi-select** — Shift-range, Ctrl/⌘-toggle, tri-state checkboxes; group add / remove.
+- ♻️ **State-preserving tabs** — every tab page is built once and kept alive, so scroll / input / controllers survive switching.
+- 🌍 **RTL + dark** everywhere — mirrors via `Directionality` + `EdgeInsetsDirectional`, and arrow keys follow the **visual** direction.
 - 🔌 **Zero third-party dependencies** — pure Flutter + Material.
 
 ## Install
@@ -206,6 +212,38 @@ Press the **⌨ button** in the toolbar (or `⌘/Ctrl + /`) for the in-widget ch
 | `⌘+Enter` · `⌘+D` · `⌘+⌫` | Add row · duplicate row · delete row |
 | `⌘+C / X / V` · `⌘+Z / ⇧Z` | Copy / cut / paste cell · undo / redo |
 
+Arrow keys resolve to the **visual** direction — in an RTL (`Directionality.rtl`) layout the right arrow moves to the cell on the right (the *previous* column). Navigating to an off-screen cell scrolls it fully into view (both axes) via `Scrollable.ensureVisible`.
+
+### Column resize & reorder
+
+Both `EditableTable` and `ReadableTable` carry the same column-layout API on their controller, and the header is the UI for it:
+
+- **Resize** — drag a header cell's trailing (inline-end) edge; the grid reflows live. Width is clamped to `columnMinWidth … columnMaxWidth` (64 … 520 px) and **double-tapping the handle resets** the column. The drag delta is **RTL-mirrored** (the handle sits on the visual left in RTL).
+- **Reorder** — **long-press a header and drag** it onto another; a blue indicator marks the drop, and the whole grid (header, body, footer) rearranges at once. Only the *visual* order changes — sort, selection and cell values stay keyed by each column's stable **logical** index.
+
+```dart
+final c = EditableTableController(columns: cols, rows: seed);
+c.resizeColumn(2, 40);          // widen the 3rd visual column by 40px
+c.resetColumnWidth(2);          // back to its declared width
+c.moveColumn(4, 1);             // drag column 5 → position 2
+c.widthOf(0);                   // effective width of the 1st visual column
+c.columnOrder;                  // [logical…] in current visual order
+```
+
+### Copy to the clipboard (TSV)
+
+Beyond the single-cell `⌘C/⌘X/⌘V`, the controller serializes whole rows or a cell rectangle to **tab-separated values** so the result pastes straight into a spreadsheet. Tabs/newlines inside a value are flattened so one cell can't spill into its neighbours.
+
+```dart
+await c.copyRowsToClipboard([0, 2, 3], includeHeader: true);  // 3 rows → TSV
+await c.copyCellsToClipboard([CellRef(0,1), CellRef(0,2), CellRef(1,1)]);
+final tsv = c.rowsAsTsv([0, 1]);   // serialize without touching the clipboard
+```
+
+### Generic rows — `EditableTable<T>`
+
+A typed-row variant (`EditableTable<T>` / `EditableColumn<T>`) lets each row be a strongly-typed immutable value instead of a `Map<String,String>` — every column carries `value: (T) => String` and `setValue: (T, raw) => T` accessors, mirroring the shipped `ReadableTable<T>` pattern (a null `setValue` marks a read-only / computed column; the legacy map table is simply `T = EditableRow` via `mapColumn(...)`). The reference design lives in `lib/design_system/components/data/editable_table_generic.dart`.
+
 ### Options
 
 ```dart
@@ -227,13 +265,16 @@ EditableTable(
 
 ```dart
 final c = EditableTableController(columns: columns, rows: seed);
-c.addRow();
+c.addRow();                       // append a blank row
+c.insertRowAt(2);                 // blank row at index 2
 c.duplicateSelectedRow();
-c.sortByColumn(1);
-c.undo();
-final picked = c.checkedLeafIds;          // Tree analogue; here use c.rows
+c.deleteRowAt(3);
+c.sortByColumn(1);                // cycles asc → desc
+c.setRows(loadedRows);            // replace all rows (one undo step)
+c.undo();  c.redo();              // c.canUndo / c.canRedo
+final rows = c.rows;             // List<EditableRow> — the current data
 
-EditableTable(controller: c);             // observe / share it
+EditableTable(controller: c);     // observe / share it
 
 // from inside a custom cell / page:
 EditableTableController.of(context)?.addRow();
@@ -266,6 +307,23 @@ ReadableTable<Account>(
 Columns size by `width:` (fixed px) **or** `flex:` (proportional, filling the row). Cells are arbitrary widgets — status pills, two-line bilingual text, progress bars — placed and aligned for you, no horizontal scroll. Provide `columns` + `rows` (the widget owns a controller), or pass a `controller:` to drive/observe it externally.
 
 > **Just a grid of pre-built widgets?** Use `ReadableTable<List<Widget>>` and have each column return `value[i]`. That's exactly how the desktop `GLTable` wrapper keeps its `List<List<Widget>>` API.
+
+### Typed column kinds
+
+Beyond the unnamed `ReadableColumn(cell: …)` constructor, named factories declare a column's **intent** and get consistent formatting, alignment and a typed sort key for free — the same diversity of kinds as `EditableTable`, read-only:
+
+```dart
+ReadableColumn.text('Account', value: (a) => a.name, secondary: (a) => a.nameAr),  // optional 2nd line / bilingual
+ReadableColumn.number('Balance', value: (a) => a.balance, decimals: 2, colorSign: true),
+ReadableColumn.enumBadge('Type', value: (a) => a.type, color: typeColor),           // coloured pill
+ReadableColumn.date('Opened', value: (a) => a.opened),
+ReadableColumn.time('At', value: (a) => a.time),
+ReadableColumn.color('Tag', hex: (a) => a.hex),                                      // swatch + hex
+ReadableColumn.progress('Used', value: (a) => a.ratio),                              // labelled bar
+ReadableColumn.link('Doc', text: (a) => a.ref, onTap: (a) => open(a)),
+```
+
+The renderers live in `readable_table_cells.dart` (`ReadableCells.*`) — theme-driven and intl-free. The original custom-`cell` constructor keeps working unchanged.
 
 ### Selection — five modes
 
@@ -321,6 +379,22 @@ c.replaceFirstWhere((a) => a.type == 'Asset',            // replace … firstWhe
 ReadableTableController.of<Account>(context)?.deleteSelectedRows();
 ```
 
+### Column resize & reorder · copy (TSV)
+
+The controller carries the same column-layout API as `EditableTable` — **drag a header edge to resize** (RTL-mirrored, double-tap to reset, clamped 64…520 px) and **long-press a header to reorder** it (a blue indicator marks the drop). Only the visual order changes; selection, sort and cell addresses stay keyed by logical index.
+
+```dart
+c.resizeColumn(1, 30);  c.resetColumnWidth(1);
+c.moveColumn(3, 0);     c.columnOrder;   c.widthOf(0);
+```
+
+The current selection — a row, many rows, a cell or a cell rectangle — copies to the system clipboard as **tab-separated values** (wired to `⌘/Ctrl + C`). Unselected interior cells in a rectangle are emitted blank so the block keeps its shape; per-column `copyText:` supplies the flat string a widget cell can't.
+
+```dart
+await c.copySelectionToClipboard(includeHeader: true);   // → Sheets / Excel
+final tsv = c.copySelectionAsTsv();                       // without the clipboard
+```
+
 ### Options
 
 ```dart
@@ -343,7 +417,7 @@ Defaults reproduce a plain, non-interactive ledger (`selectionMode: none`, no ke
 
 ## 3 · Tree
 
-A customisable **generic** hierarchical tree / outline — file explorers, category outlines, layer panels, a chart of accounts. Every node is `TreeNode<T>` carrying a strongly-typed `value`, so row code reads `node.value` with no casting. Indent guide-lines, disclosure twisties, inline rename, search-with-highlight, tri-state checkboxes, full keyboard nav, a context menu, and undo/redo.
+A customisable **generic** hierarchical tree / outline — file explorers, category outlines, layer panels, a chart of accounts. Every node is `TreeNode<T>` carrying a strongly-typed `value`, so row code reads `node.value` with no casting. Indent guide-lines, disclosure twisties, click / keyboard **selection** (single or multi), inline rename, search-with-highlight, tri-state checkboxes, a context menu, and undo/redo.
 
 ### Quick start
 
@@ -363,6 +437,24 @@ Tree(
   onSelected: (node) => debugPrint('opened ${node.id}'),
 );
 ```
+
+Provide `roots` + `initiallyExpanded` (the widget owns a controller), or pass a `controller:` to drive / observe it externally (and to opt into multi-select — see below).
+
+### The node — `TreeNode<T>`
+
+Immutable schema; a host composes a `List<TreeNode<T>>`, each with its own `children`, to describe the whole tree:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `id` | `String` | **Required.** Stable, unique identity (path / uuid / db id). |
+| `label` | `String` | **Required.** Display text — also what rename and search match. |
+| `children` | `List<TreeNode<T>>` | Child nodes. Empty for a leaf. |
+| `value` | `T?` | Strongly-typed host payload (`node.value` is a `T`, no cast). |
+| `icon` | `IconData?` | Leading-icon override (else inferred: folder / leaf). |
+| `badge` | `String?` | Trailing badge text (a count, a status…). |
+| `folder` | `bool?` | Force folder/leaf. `null` ⇒ folder iff it currently has children. |
+| `selectable` | `bool` | When `false` the row can't be selected (still shown / expandable). |
+| `data` | `Map<String, Object?>` | Incidental metadata; prefer `value` for the payload. |
 
 ### Typed nodes — `Tree<T>`
 
@@ -385,6 +477,42 @@ See `example/lib/tree_demo.dart` + `account_tree_data.dart` for a full typed
 chart-of-accounts, and `docs/components-tree.html` for an interactive gallery
 with three value types (`Account`, `FileMeta`, `Person`).
 
+### Selection — single or multi
+
+A click / keyboard **selection layer** sits on the controller, independent of the checkbox layer. Set `TreeController.selectionMode` to one of `TreeSelectionMode.{none, single, multi}` (default `single`) — it's a mutable field, so a host can flip into a "select mode" at runtime. Because the mode lives on the controller, multi-select means **passing a `controller:`**:
+
+```dart
+final t = TreeController<Account>(
+  roots: roots,
+  selectionMode: TreeSelectionMode.multi,
+);
+
+Tree<Account>(controller: t, onSelected: (n) {});
+```
+
+Pointer / keyboard: a plain click resets to one node; **Ctrl/⌘-click toggles** a node; **Shift-click** (and `Shift + ↑/↓`) selects the contiguous visible range from the anchor; `⌘/Ctrl + A` selects every visible node. Read the result for group actions:
+
+```dart
+t.selection;          // Set<TreeNodeId> — every selected id
+t.selectedNodes;      // List<TreeNode<T>> in visible (top-to-bottom) order
+t.selectionCount;     // int
+t.selectWith(id, toggle: true);          // toggle one (multi)
+t.selectWith(id, range: true);           // extend the range to id
+t.selectAllVisible();                    // multi only
+t.removeSelected();   // delete every selected node + subtree (one undo step) → count
+t.clearSelection();
+```
+
+`removeSelected()` drops any node whose ancestor is also selected (so a parent + child don't double-remove) and is a single undoable step.
+
+### Checkboxes
+
+Independent of selection, turn on `showCheckboxes: true` for a **tri-state** check column — checking a folder checks all descendant leaves; a partially-checked folder shows a dash. `onCheckedChanged` reports the checked **leaf** ids; read them any time via `controller.checkedLeafIds`.
+
+### Search
+
+With `showSearch: true` (and the toolbar), typing filters the tree to matching labels **plus their ancestors** (so matches stay reachable) and highlights the hit. Drive it from code with `controller.setQuery('cash')`; `controller.filtering` / `matchCount` report state. `/` or `⌘/Ctrl + F` focuses the field, `Esc` clears it.
+
 ### Options & hooks
 
 ```dart
@@ -395,7 +523,7 @@ Tree(
   showCheckboxes: false,    // tri-state checks; onCheckedChanged gives leaf ids
   showFooter: true,
   showGuides: true,         // the │ ├ └ indent guides
-  dense: false,
+  dense: false,             // compact row height
   editable: true,           // inline rename (F2 / double-click) + structural edits
   iconBuilder: (row) => row.node.isFolder ? Icons.folder : Icons.description,
   trailingBuilder: (context, row) => null,   // inject host widgets per row
@@ -405,8 +533,8 @@ Tree(
   ],
   onSelected: (n) {},
   onActivated: (n) {},        // double-click / Enter on a leaf
-  onCheckedChanged: (ids) {},
-  onChanged: (roots) {},      // structural change
+  onCheckedChanged: (ids) {}, // Set<TreeNodeId> of checked leaves
+  onChanged: (roots) {},      // structural change (add / remove / rename / move)
 );
 ```
 
@@ -414,22 +542,51 @@ Tree(
 
 ```dart
 final t = TreeController(roots: roots, expanded: {'src'}, selected: 'main');
-t.addChild('src', label: 'new.dart');
-t.expandAll();
-t.beginEdit('main');     // inline rename
-t.undo();
 
-// from inside row content:
-TreeController.of(context)?.addChild(parentId);
+// structural edits (all undoable, all route through onChanged):
+t.addChild('src', label: 'new.dart');     // → new id; expands, selects, renames
+t.addChild('src', folder: true);          // empty folder
+t.addSibling('main', label: 'next.dart');
+t.duplicate('main');                       // fresh-id subtree as next sibling
+t.remove('button');
+t.removeSelected();                        // group delete (multi)
+
+// expansion / editing / history:
+t.expandAll();  t.collapseAll();  t.toggle('ui');
+t.beginEdit('main');                       // inline rename
+t.undo();  t.redo();   // t.canUndo / t.canRedo
+
+// from inside row content (trailingBuilder / labelBuilder / a page):
+TreeController.of<Account>(context)?.addChild(parentId);
 ```
 
-Keyboard (focus the tree body): `↑ ↓` move · `→ ←` expand/step-in / collapse/step-out · `Home`/`End` jump · `Enter` toggle a group / activate a leaf · `Space` check · `F2` rename · `Delete` remove · `/` (or `⌘F`) focus search · `Esc` clear search · `*` / `\` expand / collapse all · `⌘Z` undo (`⇧` redo) · `?` shortcuts cheatsheet.
+`TreeController.of<T>(context)` returns the host controller (or `null` outside a tree), so any row widget can drive the tree.
+
+### Keyboard
+
+Focus the tree body, then — press **?** for the in-widget cheatsheet:
+
+| | |
+|---|---|
+| `↑ ↓` | Move the cursor between visible rows |
+| `→ ←` | Expand / step into a child · collapse / step out (RTL-mirrored) |
+| `Home` / `End` | First / last visible row |
+| `Enter` | Toggle a folder · activate a leaf (`onActivated`) |
+| `Space` | Check / uncheck (when `showCheckboxes`) |
+| `⇧ + ↑↓` · `⌘/Ctrl-click` · `⇧-click` | Extend / toggle / range-select (multi) |
+| `⌘/Ctrl + A` | Select all visible (multi) |
+| `F2` · `Delete` | Rename · remove the focused node (`editable`) |
+| `/` or `⌘/Ctrl + F` · `Esc` | Focus search · clear it |
+| `*` / `\` | Expand all / collapse all |
+| `⌘/Ctrl + Z` / `⇧Z` | Undo / redo |
+
+Navigating to an off-screen row (move, expand-into, or step-out) scrolls it into view, and arrow directions follow the **visual** direction in RTL.
 
 ---
 
 ## 4 · BrowserStyleTabBar
 
-A browser-style workspace tab strip — pinned / closable / dirty tabs, drag-to-reorder, a context menu, an overflow dropdown, a dirty-close confirm dialog, and **live mini-page previews** (the page's real captured frame on hover). Renders only the strip and drives the active-screen body.
+A browser-style workspace tab strip — pinned / closable / dirty tabs, drag-to-reorder, a context menu, an overflow dropdown, a dirty-close confirm dialog, and **live mini-page previews** (the page's real captured frame on hover). It renders the strip **and** the active page below it, and (by default) **keeps every page's state alive** across tab switches.
 
 ### Quick start
 
@@ -451,19 +608,73 @@ BrowserStyleTabBar(
 );
 ```
 
+Provide `tabsState` (the widget owns a controller), or pass a `controller:` to drive / observe it externally. `pageBuilder` supplies the content for each tab (used both in the active surface and, scaled, in the hover preview); omit it to get the built-in `GLTabPage` per kind.
+
+### The tab — `BrowserTab`
+
+```dart
+BrowserTab({
+  required int id,        // stable identity
+  required String title,
+  required GLTabKind kind, // ledger · doc · store · chart · user · globe
+  bool dirty = false,     // unsaved-changes dot + close-confirm
+  bool pinned = false,    // icon-only, anchored on the start edge
+});
+```
+
+`GLTabKind` drives the leading icon, the preview layout and the default page; pinned tabs render icon-only and sort to the start; a `dirty` tab shows an unsaved dot and triggers a confirm dialog on close.
+
+### State-preserving pages
+
+By default every tab's page is **built once and kept mounted** in an `IndexedStack`, so switching tabs preserves scroll position, form input and controllers with **no rebuild** — switching only changes the visible index (each page is held alive even offstage). Opt into the cheaper build-only-the-active-page behaviour — pages reset when revisited — with `lazyPages: true`.
+
+```dart
+BrowserStyleTabBar(controller: c, pageBuilder: buildPage);          // state survives switching
+BrowserStyleTabBar(controller: c, pageBuilder: buildPage, lazyPages: true); // rebuild on each visit
+```
+
+### Embedding options
+
+```dart
+BrowserStyleTabBar(
+  controller: c,
+  pageBuilder: buildPage,
+  showChrome: true,         // the bordered, rounded card. false = edge-to-edge in an app shell
+  fillContent: false,       // true = page fills all height (full-window workspace); false caps at 440px
+  scrollContent: true,      // wrap the page in a vertical scroll view (false = page scrolls itself)
+  contentPadding: const EdgeInsets.all(24),
+  contentBackground: null,  // defaults to the theme surface
+  onAddTab: null,           // intercept the + button (else the controller's add())
+);
+```
+
 ### Driving it — `BrowserStyleTabBarController`
 
 ```dart
 final tabs = BrowserStyleTabBarController(tabs: [...], activeId: 2);
-tabs.add(title: 'New report', kind: GLTabKind.chart);
-tabs.setDirty(myId, true);
+
+tabs.add(title: 'New report', kind: GLTabKind.chart);  // → new id; activates
 tabs.select(otherId);
+tabs.setDirty(myId, true);
+tabs.togglePin(myId);
+tabs.rename(myId, 'Q3 Trial Balance');
+tabs.duplicate(myId);
+tabs.reorder(fromId, toId);
+tabs.close(myId);  tabs.closeOthers(myId);  tabs.closeToRight(myId);
+
+// reads:
+tabs.tabs;  tabs.activeTab;  tabs.length;  tabs.ordered;  // pinned-first order
+tabs.canCloseOthers(id);  tabs.canCloseRight(id);
 
 // any page can drive the strip:
 BrowserStyleTabBarController.of(context)?.add(title: 'Detail', kind: GLTabKind.doc);
 ```
 
-Ops: `select · add · close · closeOthers · closeToRight · duplicate · togglePin · reorder · setDirty · rename · mutate`. `of(context)` returns **null** outside a tab bar, so pages stay reusable stand-alone.
+Full op set: `select · add · close · closeOthers · closeToRight · duplicate · togglePin · setPinned · reorder · setDirty · rename · mutate` (an escape hatch — edit inside the callback, it notifies after). `of(context)` returns **null** outside a tab bar, so pages stay reusable stand-alone; `read(context)` is the non-listening variant for callbacks / `initState`.
+
+### Keyboard
+
+Focus the strip: `← →` move between tabs (visual direction, RTL-aware), `Home` / `End` jump to the first / last tab. Right-click (or long-press) any tab for the context menu — close, close others, close to the right, duplicate, pin / unpin.
 
 ---
 

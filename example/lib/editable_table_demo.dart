@@ -220,7 +220,8 @@ class _EditableTableDemoState extends State<EditableTableDemo> {
                               Text(
                                 'Customisable, Excel-style data-entry grid — built MVC. Full keyboard control '
                                 '(press the ⌨ button or ⌘/ for the cheatsheet), optional delete confirmation, '
-                                'Tab-to-grow, per-column chip renderers and row-aware validation.',
+                                'Tab-to-grow, per-column chip renderers and row-aware validation. '
+                                'Drag a header edge to resize a column (double-tap to reset); long-press a header to reorder it.',
                                 style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 14, height: 1.5, color: t.fg3),
                               ),
                             ],

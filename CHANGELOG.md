@@ -133,7 +133,7 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
-## [Unreleased]
+## [2.4.0]
 
 ### 📘 Changed — example app: one screen per component + one all-in-one
 
@@ -211,21 +211,26 @@ This project adheres to [Semantic Versioning](https://semver.org).
 ### ✨ Added — column reordering in `ReadableTable` & `EditableTable`
 
 - **Columns can be reordered by dragging their headers.** Visual order is an
-  `order` index list on the controller; `moveColumn(from, to)` rearranges it and
-  the header + every body row read `columnAt(visualIndex)`, so a drop rearranges
-  the whole grid at once. The header is a horizontal `ReorderableListView` with
-  an explicit grip handle (`buildDefaultDragHandles: false`), which supplies the
-  drag, drop indicator and RTL-correct geometry for free.
+  `order` index list on the controller; `moveColumn(fromVisual, toVisual)`
+  rearranges it and the header + every body row (and the footer) read
+  `columnAt(visualIndex)`, so a drop rearranges the whole grid at once — while
+  sort, selection and cell addresses stay keyed by each column's stable
+  **logical** index. Each header cell is a `Draggable<int>`/`DragTarget<int>`
+  pair (a `LongPressDraggable` on `ReadableTable` so a tap still sorts); the drop
+  paints a `PositionedDirectional` accent indicator, RTL-correct for free.
+  `columnOrder` exposes the current logical order.
 
 ### ✨ Added — column resizing in `ReadableTable` & `EditableTable`
 
 - **Columns can be resized by dragging a header handle.** Each header cell
   carries a `PositionedDirectional` resize handle on its inline-end edge;
-  dragging drives `resizeColumn(index, delta)` on the controller and the
-  header + every body row size from `widthOf(index)`, so the grid reflows in a
-  single frame. Width is clamped (min 64 / max 460 by default) and a
-  double-tap resets the column. RTL-correct: the handle sits on the visual left
-  and the drag delta is mirrored.
+  dragging drives `resizeColumn(visualIndex, delta)` on the controller and the
+  header + every body row size from `widthOf(visualIndex)`, so the grid reflows in a
+  single frame. Width is clamped (`columnMinWidth` 64 / `columnMaxWidth` 520) and a
+  double-tap on the handle (`resetColumnWidth`) restores the column's declared
+  width (or flex, on `ReadableTable`). RTL-correct: the handle sits on the visual
+  left and the drag delta is mirrored. `hasWidthOverride(visual)` reports whether
+  a column has been hand-sized.
 
 ### ♻️ Changed — `EditableTable` is becoming generic (`EditableTable<T>`)
 
