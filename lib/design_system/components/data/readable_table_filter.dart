@@ -70,6 +70,135 @@ enum ReadableFilterOp {
   isNotEmpty,
 }
 
+// ============================================================
+// FILTER TREE — a node is a leaf [ReadableFilter] condition or a nested
+// [ReadableFilterGroup]. Groups combine their children by [ReadableFilterJoin]
+// (all = AND, any = OR) and may nest arbitrarily, so the editor can express
+// `A AND (B OR (C AND D))`. The controller evaluates the whole tree per row.
+// ============================================================
+
+/// Common interface for a node in a filter tree.
+abstract class ReadableFilterNode {
+  const ReadableFilterNode();
+
+  /// Evaluate this node against [row] using [columns]. An inactive node
+  /// (incomplete / disabled leaf, or an empty group) matches everything.
+  bool matches<T>(List<ReadableColumn<T>> columns, T row);
+
+  /// Whether this node currently constrains the rows at all.
+  bool get isActive;
+}
+
+/// A nested group of filter nodes combined by [join].
+///
+/// Immutable; edit it with the `with*` helpers, each of which returns a new
+/// group (the editor rebuilds the tree top-down on every change).
+@immutable
+class ReadableFilterGroup extends ReadableFilterNode {
+  /// How the [children] combine (all = AND, any = OR).
+  final ReadableFilterJoin join;
+
+  /// The child nodes — leaf conditions and/or nested groups, in order.
+  final List<ReadableFilterNode> children;
+
+  const ReadableFilterGroup({this.join = ReadableFilterJoin.all, this.children = const []});
+
+  /// A group with one empty placeholder condition on [columnIndex].
+  factory ReadableFilterGroup.seed({int columnIndex = 0, ReadableFilterJoin join = ReadableFilterJoin.all}) =>
+      ReadableFilterGroup(join: join, children: [
+        ReadableFilter(columnIndex: columnIndex, op: ReadableFilterCatalog.opsFor(ReadableColumnType.text).first),
+      ]);
+
+  bool get isEmpty => children.isEmpty;
+  bool get isNotEmpty => children.isNotEmpty;
+
+  /// Number of leaf conditions anywhere in the subtree.
+  int get conditionCount {
+    var n = 0;
+    for (final c in children) {
+      if (c is ReadableFilterGroup) {
+        n += c.conditionCount;
+      } else {
+        n += 1;
+      }
+    }
+    return n;
+  }
+
+  @override
+  bool get isActive => children.any((c) => c.isActive);
+
+  @override
+  bool matches<T>(List<ReadableColumn<T>> columns, T row) {
+    final active = [for (final c in children) if (c.isActive) c];
+    if (active.isEmpty) return true;
+    if (join == ReadableFilterJoin.all) {
+      for (final c in active) {
+        if (!c.matches(columns, row)) return false;
+      }
+      return true;
+    } else {
+      for (final c in active) {
+        if (c.matches(columns, row)) return true;
+      }
+      return false;
+    }
+  }
+
+  // ── immutable edits ────────────────────────────────────────
+  ReadableFilterGroup copyWith({ReadableFilterJoin? join, List<ReadableFilterNode>? children}) =>
+      ReadableFilterGroup(join: join ?? this.join, children: children ?? this.children);
+
+  /// Flip this group's join (AND ⇄ OR).
+  ReadableFilterGroup toggledJoin() =>
+      copyWith(join: join == ReadableFilterJoin.all ? ReadableFilterJoin.any : ReadableFilterJoin.all);
+
+  ReadableFilterGroup withChildAdded(ReadableFilterNode child) =>
+      copyWith(children: [...children, child]);
+
+  ReadableFilterGroup withChildAt(int index, ReadableFilterNode child) {
+    if (index < 0 || index >= children.length) return this;
+    final next = [...children];
+    next[index] = child;
+    return copyWith(children: next);
+  }
+
+  ReadableFilterGroup withoutChildAt(int index) {
+    if (index < 0 || index >= children.length) return this;
+    final next = [...children]..removeAt(index);
+    return copyWith(children: next);
+  }
+
+  ReadableFilterGroup withChildMoved(int from, int to) {
+    if (from < 0 || from >= children.length) return this;
+    final next = [...children];
+    final node = next.removeAt(from);
+    next.insert(to.clamp(0, next.length), node);
+    return copyWith(children: next);
+  }
+
+  /// The flat list of leaf conditions, if this group has no nested groups
+  /// (lets the simple [ReadableFilterBar] interop with a one-level tree).
+  List<ReadableFilter>? get asFlatList {
+    final out = <ReadableFilter>[];
+    for (final c in children) {
+      if (c is ReadableFilter) {
+        out.add(c);
+      } else {
+        return null; // nested — not representable as a flat list
+      }
+    }
+    return out;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReadableFilterGroup && other.join == join && listEquals(other.children, children);
+
+  @override
+  int get hashCode => Object.hash(join, Object.hashAll(children));
+}
+
 /// One immutable filter predicate over a single (logical) column.
 ///
 /// Operands are stored loosely so one class covers every kind: [value] /
@@ -77,7 +206,7 @@ enum ReadableFilterOp {
 /// operator + column type, and [options] holds the allowed set for
 /// `isAnyOf` / `isNoneOf`. Build them by hand or via the ergonomic factories.
 @immutable
-class ReadableFilter {
+class ReadableFilter extends ReadableFilterNode {
   /// The LOGICAL column index this predicate tests (stable across visual
   /// reorder — the same index space as the controller's `columns`).
   final int columnIndex;
@@ -106,7 +235,6 @@ class ReadableFilter {
     this.options = const {},
     this.enabled = true,
   });
-
   // ── ergonomic factories ────────────────────────────────────
   factory ReadableFilter.text(int columnIndex, ReadableFilterOp op, [String? value]) =>
       ReadableFilter(columnIndex: columnIndex, op: op, value: value);
@@ -158,6 +286,17 @@ class ReadableFilter {
       case ReadableFilterArity.set:
         return options.isNotEmpty;
     }
+  }
+
+  /// A leaf is active when enabled AND fully configured.
+  @override
+  bool get isActive => enabled && isComplete;
+
+  /// Tree-node evaluation: resolves the column by [columnIndex], then [test]s.
+  @override
+  bool matches<T>(List<ReadableColumn<T>> columns, T row) {
+    if (columnIndex < 0 || columnIndex >= columns.length) return true;
+    return test(columns[columnIndex], row);
   }
 
   /// Evaluate this predicate against one row [row], reading it through the

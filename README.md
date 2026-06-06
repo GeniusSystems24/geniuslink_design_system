@@ -403,6 +403,28 @@ c.clearFilters();
 
 The bar itself is fully themed (`EditableTableThemeData`) and RTL-aware: a quick-search field, an **＋ Filter** button opening a column → condition → operand **editor dialog** (text / number / date-picker / multi-select), removable **chips** (tap to edit · dot to disable · ✕ to remove) with an inline **AND/OR** toggle, and a live **"N of M"** count + Clear-all.
 
+#### Nested query builder — `ReadableFilterEditingView`
+
+For advanced filtering — `A AND (B OR (C AND D))` — drop in the nested builder (the Attio / Notion-style surface). It edits the controller's **filter tree** and applies live:
+
+```dart
+ReadableFilterEditingView<Deal>(controller: c);          // applies live by default
+```
+
+The tree is a `ReadableFilterNode`: either a `ReadableFilter` leaf condition or a `ReadableFilterGroup` (a `join` + ordered `children`). Set one up front, or let the user build it:
+
+```dart
+c.setFilterGroup(ReadableFilterGroup(join: ReadableFilterJoin.all, children: [
+  ReadableFilter.text(colOwner, ReadableFilterOp.equals, 'Davon Larson'),
+  ReadableFilterGroup(join: ReadableFilterJoin.any, children: [
+    ReadableFilter(columnIndex: colHealth, op: ReadableFilterOp.equals, value: 'Critical'),
+    ReadableFilter.number(colValue, ReadableFilterOp.greater, 100000),
+  ]),
+]));
+```
+
+A non-empty tree **supersedes** the flat `filters` list for structured filtering; the quick-search still applies on top. Every group shows an **And / Or rail pill** (toggles all ⇄ any); every condition is column → operator → typed value, the value control adapting to the column kind (text · number · date-picker · enum dropdown · multi-select). **Add condition / Add subgroup / Clear all** and per-row delete round it out — all themed and RTL-aware (the rail mirrors). Pass `applyLive: false` to defer and call `state.apply()` yourself.
+
 ### Keyboard
 
 Focus the table (click it), then — press **?** (or `⌘/Ctrl + /`) for the in-widget cheatsheet:
@@ -874,10 +896,11 @@ lib/
     │   ├── editable_table_theme.dart         Theme  — ThemeExtension (Editable + Readable)
     │   ├── editable_table.dart               View   — EditableTable widget
     │   ├── readable_table_models.dart          Model  — ReadableColumn<T>, cell, enums
-    │   ├── readable_table_filter.dart          Model  — ReadableFilter, ops, catalog
+    │   ├── readable_table_filter.dart          Model  — ReadableFilter, group tree, ops, catalog
     │   ├── readable_table_controller.dart      Controller — ChangeNotifier + scope (+ filtering)
     │   ├── readable_table.dart                 View   — ReadableTable<T> (generic · MVC)
-    │   ├── readable_table_filter_bar.dart      View   — ReadableFilterBar<T>
+    │   ├── readable_table_filter_bar.dart      View   — ReadableFilterBar<T> (flat chips)
+    │   ├── readable_table_filter_view.dart     View   — ReadableFilterEditingView<T> (nested)
     │   └── tree_*.dart                        Tree — model · controller · theme · view
     └── navigation/
         ├── browser_style_tab_bar*.dart        BrowserStyleTabBar — MVC + overlays + pages

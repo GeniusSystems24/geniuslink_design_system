@@ -5,6 +5,42 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.6.0]
+
+### ✨ Added — `ReadableFilterEditingView` (nested And/Or query builder)
+
+- **A professional, flexible filter editor for the read-only grid** — the
+  Attio / Notion / Linear-style advanced-filter surface, rendered in the
+  GeniusLink visual language. Where `ReadableFilterBar` edits a flat chip list,
+  `ReadableFilterEditingView<T>` edits the full **nested tree**:
+  `A AND (B OR (C AND D))`.
+- **Model** — `readable_table_filter.dart` gained a recursive node tree:
+  `ReadableFilterNode` (interface) with two implementors — the existing
+  `ReadableFilter` leaf condition, and a new `ReadableFilterGroup` (a `join` +
+  ordered `children` of nodes). Groups nest arbitrarily; `group.matches(cols,
+  row)` evaluates the subtree (empty / inactive nodes match everything).
+  Immutable, with `toggledJoin` / `withChildAdded` / `withChildAt` /
+  `withoutChildAt` / `withChildMoved` edit helpers and `conditionCount`.
+- **Controller** — new `filterGroup` getter + `setFilterGroup(group)`. When a
+  non-empty tree is set it **supersedes** the flat `filters` list for structured
+  filtering; the cross-column quick-search still applies on top. `clearFilters`,
+  `isFiltered` and `hasFilters` all account for it; the constructor takes an
+  optional `filterGroup:`.
+- **View** — `ReadableFilterEditingView<T>(controller: …)`: a recursive builder
+  where every group has an **And / Or rail pill** (toggles all ⇄ any), every
+  condition is **column → operator → typed value**, and the value control adapts
+  to the column kind — text field · signed/decimal number · native date picker ·
+  enum dropdown (distinct values) · multi-select sheet (`is any of`). **Add
+  condition**, **Add subgroup**, per-row delete, and **Clear all**; applies live
+  to the controller by default (`applyLive: false` to defer + call `apply()`).
+  Fully themed via `EditableTableThemeData` and **RTL-aware** (the rail mirrors).
+- Exported from the `geniuslink_readable_table.dart` barrel. New standalone
+  example `example/lib/readable_table/filter_editing_demo.dart` drives a live
+  10-row Deal grid from a seeded 3-level tree. Interactive HTML reference:
+  `docs/components-filter-editing.html`.
+
+---
+
 ## [2.5.0]
 
 ### ✨ Added — `ReadableTable` advanced filter system

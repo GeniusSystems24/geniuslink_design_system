@@ -1,0 +1,347 @@
+<!-- @dsCard group="Components" name="FilterEditingView" subtitle="Nested And/Or query builder" viewport="1240x900" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GeniusLink — FilterEditingView</title>
+<meta name="viewport" content="width=1240" />
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  html,body{margin:0;padding:0}
+  body{font-family:var(--gl-font-body);background:var(--gl-bg);color:var(--gl-fg-1)}
+  *{box-sizing:border-box}
+  ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--gl-border-strong);border-radius:5px}
+  button{font-family:inherit}
+  /* native select reset → DS field look */
+  .fld{
+    appearance:none;-webkit-appearance:none;border:none;background:transparent;
+    font-family:var(--gl-font-body);font-size:14px;color:var(--gl-fg-1);
+    outline:none;cursor:pointer;padding:0;margin:0;width:100%;
+    text-overflow:ellipsis;white-space:nowrap;overflow:hidden;
+  }
+  .fld option{color:#0F172A}
+  .grip-btn{cursor:grab}
+  .grip-btn:active{cursor:grabbing}
+  .qb-row{transition:background var(--gl-dur-fast) var(--gl-ease-standard)}
+  .lnk{display:inline-flex;align-items:center;gap:7px;background:none;border:none;cursor:pointer;
+       font-family:var(--gl-font-body);font-size:14px;font-weight:600;padding:6px 8px;border-radius:var(--gl-radius-sm);
+       transition:background var(--gl-dur-fast) var(--gl-ease-standard)}
+  .lnk:hover{background:var(--gl-hover)}
+  .iconbtn{display:inline-flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;
+           width:30px;height:30px;border-radius:var(--gl-radius-sm);color:var(--gl-fg-3);
+           transition:background var(--gl-dur-fast),color var(--gl-dur-fast)}
+  .iconbtn:hover{background:var(--gl-hover);color:var(--gl-fg-1)}
+  .iconbtn.danger:hover{background:color-mix(in srgb,var(--gl-danger-500) 12%,transparent);color:var(--gl-danger-500)}
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#F7F8FA"/><rect x="16" y="22" width="68" height="13" rx="3" fill="#fff" stroke="#C2C6D6"/><rect x="20" y="42" width="60" height="34" rx="4" fill="#EEF1F7"/><rect x="26" y="48" width="50" height="11" rx="2.5" fill="#fff" stroke="#C2C6D6"/><rect x="26" y="63" width="50" height="11" rx="2.5" fill="#fff" stroke="#C2C6D6"/><circle cx="14" cy="55" r="6" fill="#fff" stroke="#4A7CFF"/></svg></template>
+</head>
+<body data-theme="light">
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel">
+const { useState, useRef, useCallback } = React;
+
+/* ── tiny icon set (inline, 1.6px stroke, currentColor) ────────── */
+function Icon({ name, size = 16, color = 'currentColor', stroke = 1.7 }) {
+  const P = {
+    chevD: 'M6 9l6 6 6-6',
+    plus: 'M12 5v14|M5 12h14',
+    close: 'M18 6L6 18|M6 6l12 12',
+  }[name];
+  if (name === 'grip') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" fill={color} aria-hidden="true">
+        {[4, 8, 12].map(y => [5.5, 10.5].map(x => <circle key={x + '-' + y} cx={x} cy={y} r="1.15" />))}
+      </svg>
+    );
+  }
+  if (name === 'trash') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/>
+      </svg>
+    );
+  }
+  if (name === 'swap') {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M17 2.5l3 3-3 3"/><path d="M20 5.5H8a4 4 0 0 0-4 4"/><path d="M7 21.5l-3-3 3-3"/><path d="M4 18.5h12a4 4 0 0 0 4-4"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {P.split('|').map((d, i) => <path key={i} d={d} />)}
+    </svg>
+  );
+}
+
+/* ── schema: fields, their operators, value kinds ──────────────── */
+const FIELDS = {
+  Owner:            { ops: ['is', 'is not'], kind: 'person' },
+  Stage:           { ops: ['is any of', 'is', 'is not'], kind: 'multi', options: ['Require review', 'Negotiation', 'Won', 'Lost'] },
+  'Health score':   { ops: ['is', 'is not'], kind: 'enum', options: ['Critical', 'At risk', 'Healthy'], tone: { Critical:'danger', 'At risk':'warning', Healthy:'success' } },
+  'Next meeting':   { ops: ['when', 'before', 'after'], kind: 'enum', options: ['No meeting', 'This week', 'This month'] },
+  'Last interaction':{ ops: ['when', 'before', 'after'], kind: 'enum', options: ['No interaction', 'Over 30 days', 'Over 90 days'] },
+  Region:          { ops: ['is', 'is any of'], kind: 'enum', options: ['Riyadh', 'Jeddah', 'Dammam'] },
+  Balance:          { ops: ['=', '>', '<', 'between'], kind: 'number' },
+};
+const FIELD_NAMES = Object.keys(FIELDS);
+const TONE = { danger:'var(--gl-danger-500)', warning:'var(--gl-warning-500)', success:'var(--gl-success-500)', blue:'var(--gl-blue-500)' };
+
+let _uid = 1;
+const uid = () => 'n' + (_uid++);
+const mkCond = (field = 'Stage') => {
+  const f = FIELDS[field];
+  return { id: uid(), kind: 'condition', field, op: f.ops[0],
+    value: f.kind === 'multi' ? [f.options[0]] : f.kind === 'enum' ? f.options[0] : f.kind === 'person' ? 'Davon Larson' : '' };
+};
+const mkGroup = (join = 'and', children) => ({ id: uid(), kind: 'group', join, children: children || [mkCond()] });
+
+/* ── seed tree — mirrors the reference exactly ─────────────────── */
+const seed = () => ({
+  id: 'root', kind: 'group', join: 'and',
+  children: [
+    { id: uid(), kind: 'condition', field: 'Owner', op: 'is', value: 'Davon Larson' },
+    { id: uid(), kind: 'group', join: 'and', children: [
+      { id: uid(), kind: 'condition', field: 'Stage', op: 'is any of', value: ['Require review', 'Negotiation'] },
+      { id: uid(), kind: 'group', join: 'or', children: [
+        { id: uid(), kind: 'condition', field: 'Health score', op: 'is', value: 'Critical' },
+        { id: uid(), kind: 'condition', field: 'Next meeting', op: 'when', value: 'No meeting' },
+        { id: uid(), kind: 'condition', field: 'Last interaction', op: 'when', value: 'No interaction' },
+      ]},
+    ]},
+  ],
+});
+
+/* ── immutable tree helpers ────────────────────────────────────── */
+function update(node, id, fn) {
+  if (node.id === id) return fn(node);
+  if (node.kind === 'group') {
+    let changed = false;
+    const children = node.children.map(c => { const n = update(c, id, fn); if (n !== c) changed = true; return n; }).filter(Boolean);
+    if (changed) return { ...node, children };
+  }
+  return node;
+}
+function removeNode(node, id) {
+  if (node.kind !== 'group') return node;
+  const children = node.children.filter(c => c.id !== id).map(c => removeNode(c, id));
+  return { ...node, children };
+}
+
+/* ── a DS field control: [grip | label ▾]  or  [label ▾] ───────── */
+function FieldBox({ children, onChange, value, options, width, grip, leading, danger }) {
+  return (
+    <div style={{ display:'inline-flex', alignItems:'center', height:38, background:'var(--gl-surface)',
+      border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-lg)', minWidth:width, maxWidth:width?width:undefined }}>
+      {grip && (
+        <span className="grip-btn" title="Drag to reorder" style={{ display:'flex', alignItems:'center', padding:'0 9px', height:'100%',
+          color:'var(--gl-fg-4)', borderRight:'1px solid var(--gl-border)' }}>
+          <Icon name="grip" size={15} />
+        </span>
+      )}
+      <div style={{ position:'relative', flex:1, display:'flex', alignItems:'center', minWidth:0, padding:'0 10px', gap:8 }}>
+        {leading}
+        {options ? (
+          <select className="fld" value={value} onChange={e => onChange(e.target.value)}
+            style={{ paddingRight:18, fontWeight: danger ? 600 : 400, color: danger ? 'var(--gl-danger-500)' : 'var(--gl-fg-1)' }}>
+            {options.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ) : <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:8 }}>{children}</div>}
+        <span style={{ position:'absolute', right:8, display:'flex', pointerEvents:'none', color:'var(--gl-fg-3)' }}><Icon name="chevD" size={15} /></span>
+      </div>
+    </div>
+  );
+}
+
+/* ── value renderers per field kind ────────────────────────────── */
+function ValueControl({ node, onChange }) {
+  const f = FIELDS[node.field];
+  if (f.kind === 'person') {
+    return (
+      <FieldBox width={186} leading={
+        <span style={{ width:22, height:22, borderRadius:'var(--gl-radius-pill)', flexShrink:0,
+          background:'linear-gradient(135deg,#8AA4FF,#4A7CFF)', display:'flex', alignItems:'center', justifyContent:'center',
+          color:'#fff', fontSize:10, fontWeight:700 }}>{node.value.split(' ').map(s=>s[0]).join('').slice(0,2)}</span>
+      }>
+        <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:14 }}>{node.value}</span>
+      </FieldBox>
+    );
+  }
+  if (f.kind === 'multi') {
+    const vals = node.value;
+    const first = vals[0] || 'Any';
+    const extra = vals.length - 1;
+    return (
+      <FieldBox width={186}>
+        <span style={{ display:'inline-flex', alignItems:'center', gap:6, overflow:'hidden' }}>
+          <span style={{ fontSize:12.5, fontWeight:600, padding:'3px 9px', borderRadius:'var(--gl-radius-pill)', whiteSpace:'nowrap',
+            color:'var(--gl-blue-700)', background:'var(--gl-blue-50)', border:'1px solid color-mix(in srgb,var(--gl-blue-500) 35%,transparent)',
+            maxWidth:96, overflow:'hidden', textOverflow:'ellipsis' }}>{first}</span>
+          {extra > 0 && <span style={{ fontSize:12, fontWeight:600, padding:'3px 7px', borderRadius:'var(--gl-radius-pill)',
+            color:'var(--gl-fg-2)', background:'var(--gl-input-bg)' }}>+{extra}</span>}
+        </span>
+      </FieldBox>
+    );
+  }
+  if (f.kind === 'enum') {
+    const tone = f.tone && f.tone[node.value];
+    return (
+      <FieldBox width={186} value={node.value} onChange={v => onChange({ ...node, value: v })} options={f.options}
+        leading={tone ? <span style={{ width:9, height:9, borderRadius:2.5, background:TONE[tone], flexShrink:0 }} /> : null} />
+    );
+  }
+  // number / text
+  return (
+    <div style={{ display:'inline-flex', alignItems:'center', height:38, width:186, background:'var(--gl-surface)',
+      border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-lg)', padding:'0 10px' }}>
+      <input className="fld" value={node.value} placeholder="Enter a value"
+        onChange={e => onChange({ ...node, value: e.target.value })}
+        style={{ fontFamily: f.kind==='number' ? 'var(--gl-font-mono)' : 'var(--gl-font-body)' }} />
+    </div>
+  );
+}
+
+/* ── one condition row ─────────────────────────────────────────── */
+function ConditionRow({ node, onChange, onRemove }) {
+  const f = FIELDS[node.field];
+  const onField = (field) => onChange(mkCondKeepId(node.id, field));
+  return (
+    <div className="qb-row" style={{ display:'flex', alignItems:'center', gap:8, padding:'4px 0' }}>
+      <FieldBox grip width={196} value={node.field} onChange={onField} options={FIELD_NAMES} />
+      <FieldBox width={138} value={node.op} onChange={op => onChange({ ...node, op })} options={f.ops} />
+      <ValueControl node={node} onChange={onChange} />
+      <button className="iconbtn danger" title="Remove condition" onClick={onRemove}><Icon name="trash" size={16} /></button>
+    </div>
+  );
+}
+function mkCondKeepId(id, field) { const c = mkCond(field); c.id = id; return c; }
+
+/* ── And / Or rail pill (toggles a group's join) ───────────────── */
+function JoinPill({ join, onToggle }) {
+  return (
+    <button onClick={onToggle} title="Toggle And / Or"
+      style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'6px 10px', cursor:'pointer',
+        background:'var(--gl-surface)', border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-md)',
+        fontFamily:'var(--gl-font-body)', fontSize:13.5, fontWeight:600, color:'var(--gl-fg-2)', boxShadow:'0 1px 2px rgba(15,23,42,.05)' }}>
+      {join === 'and' ? 'And' : 'Or'}
+      <Icon name="swap" size={14} color="var(--gl-blue-500)" />
+    </button>
+  );
+}
+
+/* ── a group (recursive) ───────────────────────────────────────── */
+function GroupView({ node, onChange, onRemove, depth }) {
+  const isRoot = depth === 0;
+  const setJoin = () => onChange({ ...node, join: node.join === 'and' ? 'or' : 'and' });
+  const changeChild = (child) => onChange({ ...node, children: node.children.map(c => c.id === child.id ? child : c) });
+  const removeChild = (id) => onChange({ ...node, children: node.children.filter(c => c.id !== id) });
+  const addCondition = () => onChange({ ...node, children: [...node.children, mkCond()] });
+  const addGroup = () => onChange({ ...node, children: [...node.children, mkGroup('or')] });
+  const multi = node.children.length > 1;
+
+  const headerText = node.join === 'and' ? 'All of the following are true:' : 'Any of the following are true:';
+
+  const rows = (
+    <div style={{ flex:1, minWidth:0 }}>
+      {!isRoot && (
+        <div style={{ fontSize:14, color:'var(--gl-fg-3)', padding:'2px 0 10px 2px' }}>{headerText}</div>
+      )}
+      {node.children.map((child, i) => (
+        <div key={child.id} style={{ display:'flex', alignItems:'flex-start', gap:14 }}>
+          <div style={{ width:isRoot?64:54, flexShrink:0, paddingTop:11, textAlign: document.dir==='rtl'?'right':'left' }}>
+            {i === 0 && <span style={{ fontSize:14.5, color:'var(--gl-fg-3)' }}>Where:</span>}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            {child.kind === 'condition'
+              ? <ConditionRow node={child} onChange={changeChild} onRemove={() => removeChild(child.id)} />
+              : <GroupView node={child} onChange={changeChild} onRemove={() => removeChild(child.id)} depth={depth + 1} />}
+          </div>
+        </div>
+      ))}
+      <div style={{ display:'flex', alignItems:'center', gap:6, paddingTop:8, paddingLeft:isRoot?0:2 }}>
+        <button className="lnk" style={{ color:'var(--gl-blue-500)' }} onClick={addCondition}>
+          <Icon name="plus" size={16} /> Add condition
+        </button>
+        <button className="lnk" style={{ color:'var(--gl-fg-2)' }} onClick={addGroup}>
+          <Icon name="plus" size={16} /> {isRoot ? 'Add group' : 'Add subgroup'}
+        </button>
+        {isRoot && (
+          <button className="lnk" style={{ color:'var(--gl-fg-3)', marginLeft:'auto' }} onClick={() => onChange(mkGroup('and', [mkCond('Owner')]))}>
+            Clear all
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  // left rail with the join pill, drawn only when 2+ children
+  const withRail = (
+    <div style={{ display:'flex', alignItems:'stretch', gap:0 }}>
+      <div style={{ position:'relative', width:multi ? 84 : 0, flexShrink:0 }}>
+        {multi && (
+          <>
+            <div style={{ position:'absolute', insetInlineStart:30, top:18, bottom:18, width:1.5, background:'var(--gl-border-strong)' }} />
+            <div style={{ position:'absolute', insetInlineStart:30, top:18, width:14, height:1.5, background:'var(--gl-border-strong)' }} />
+            <div style={{ position:'absolute', insetInlineStart:30, bottom:18, width:14, height:1.5, background:'var(--gl-border-strong)' }} />
+            <div style={{ position:'absolute', insetInlineStart:0, top:'50%', transform:'translateY(-50%)' }}>
+              <JoinPill join={node.join} onToggle={setJoin} />
+            </div>
+          </>
+        )}
+      </div>
+      {rows}
+    </div>
+  );
+
+  if (isRoot) return withRail;
+  return (
+    <div style={{ background:'color-mix(in srgb, var(--gl-fg-1) 3.5%, var(--gl-surface))',
+      border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-xl)', padding:'14px 16px 10px', marginTop:4 }}>
+      {withRail}
+    </div>
+  );
+}
+
+/* ── the FilterEditingView card ────────────────────────────────── */
+function FilterEditingView() {
+  const [tree, setTree] = useState(seed);
+  return (
+    <div style={{ background:'var(--gl-surface)', borderRadius:16, boxShadow:'var(--gl-shadow-card-light)',
+      border:'1px solid var(--gl-border)', padding:'22px 26px 20px', width:920 }}>
+      <GroupView node={tree} onChange={setTree} onRemove={() => {}} depth={0} />
+    </div>
+  );
+}
+
+function App() {
+  const [light, setLight] = useState(true);
+  React.useEffect(() => { document.body.setAttribute('data-theme', light ? 'light' : ''); }, [light]);
+  return (
+    <div style={{ minHeight:'100vh', background:'var(--gl-bg)', padding:'48px 40px',
+      display:'flex', flexDirection:'column', alignItems:'center', gap:24 }}>
+      <div style={{ width:920, display:'flex', alignItems:'flex-end', justifyContent:'space-between' }}>
+        <div>
+          <div style={{ fontFamily:'var(--gl-font-body)', fontSize:11, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--gl-blue-500)' }}>GeniusLink Design System</div>
+          <div style={{ fontFamily:'var(--gl-font-display)', fontSize:30, fontWeight:800, letterSpacing:'-.02em', color:'var(--gl-fg-1)', marginTop:8 }}>FilterEditingView</div>
+          <div style={{ fontSize:14, color:'var(--gl-fg-3)', marginTop:6, maxWidth:560, lineHeight:1.5 }}>
+            A nested And / Or query builder. Toggle a rail pill to switch a group between matching all or any of its rows; add conditions, nest subgroups, and remove anything — all in the GeniusLink visual language.
+          </div>
+        </div>
+        <button onClick={() => setLight(l => !l)} style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'9px 13px', cursor:'pointer',
+          background:'var(--gl-surface)', border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-md)',
+          fontFamily:'var(--gl-font-body)', fontSize:13, fontWeight:600, color:'var(--gl-fg-1)' }}>
+          {light ? 'Light' : 'Dark'}
+        </button>
+      </div>
+      <FilterEditingView />
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -52,6 +52,7 @@ class ReadableTableController<T> extends ChangeNotifier {
     ReadableFilterJoin filterJoin = ReadableFilterJoin.all,
     String query = '',
     Iterable<int>? quickSearchColumns,
+    ReadableFilterGroup? filterGroup,
   })  : columns = List.unmodifiable(columns),
         _all = [...?rows] {
     _order.addAll(List<int>.generate(columns.length, (i) => i));
@@ -65,6 +66,7 @@ class ReadableTableController<T> extends ChangeNotifier {
       _sortCol = sortColumn;
       _sortDir = sortAscending ? ReadableSortDir.asc : ReadableSortDir.desc;
     }
+    if (filterGroup != null && filterGroup.isNotEmpty) _filterGroup = filterGroup;
     _recompute(notify: false);
   }
 
@@ -96,6 +98,7 @@ class ReadableTableController<T> extends ChangeNotifier {
   ReadableFilterJoin _join = ReadableFilterJoin.all;
   String _query = '';
   Set<int>? _quickCols; // null = search every column
+  ReadableFilterGroup? _filterGroup; // nested tree (FilterEditingView); supersedes _filters when set
 
   // Column layout: a visual→logical order list (drag-to-reorder) and per-column
   // width overrides (drag-to-resize), both keyed so selection / sort logic can
@@ -176,10 +179,13 @@ class ReadableTableController<T> extends ChangeNotifier {
   Set<int>? get quickSearchColumns => _quickCols == null ? null : Set<int>.unmodifiable(_quickCols!);
 
   /// Whether any filter or the quick-search is actually narrowing the rows.
-  bool get isFiltered => _query.trim().isNotEmpty || _filters.any((f) => f.enabled && f.isComplete);
+  bool get isFiltered =>
+      _query.trim().isNotEmpty ||
+      (_filterGroup?.isActive ?? false) ||
+      _filters.any((f) => f.enabled && f.isComplete);
 
   /// Whether any filter chip or query exists (even if disabled / incomplete).
-  bool get hasFilters => _filters.isNotEmpty || _query.isNotEmpty;
+  bool get hasFilters => _filters.isNotEmpty || _query.isNotEmpty || (_filterGroup?.isNotEmpty ?? false);
 
   /// Whether a column can be filtered (we can read a value from it).
   bool isColumnFilterable(int ci) =>
@@ -200,6 +206,20 @@ class ReadableTableController<T> extends ChangeNotifier {
 
   set quickSearchColumns(Iterable<int>? cols) {
     _quickCols = cols == null ? null : {...cols};
+    _recompute();
+  }
+
+  /// The nested filter tree edited by a [ReadableFilterEditingView], or null
+  /// when only the flat [filters] list is in use.
+  ReadableFilterGroup? get filterGroup => _filterGroup;
+
+  /// Set (or clear) the nested filter tree. When non-empty it supersedes the
+  /// flat [filters] list for structured filtering; the quick-search still
+  /// applies on top. Pass null or an empty group to clear it.
+  void setFilterGroup(ReadableFilterGroup? group) {
+    final next = (group == null || group.isEmpty) ? null : group;
+    if (next == _filterGroup) return;
+    _filterGroup = next;
     _recompute();
   }
 
@@ -259,10 +279,11 @@ class ReadableTableController<T> extends ChangeNotifier {
     _recompute();
   }
 
-  /// Drop every filter and the quick-search.
+  /// Drop every filter (flat list + nested tree) and the quick-search.
   void clearFilters() {
-    if (_filters.isEmpty && _query.isEmpty) return;
+    if (_filters.isEmpty && _query.isEmpty && _filterGroup == null) return;
     _filters.clear();
+    _filterGroup = null;
     _query = '';
     _recompute();
   }
@@ -282,6 +303,10 @@ class ReadableTableController<T> extends ChangeNotifier {
         }
       }
       if (!any) return false;
+    }
+    // structured filtering: the nested tree wins when present, else flat list.
+    if (_filterGroup != null && _filterGroup!.isActive) {
+      return _filterGroup!.matches(columns, value);
     }
     final active = [
       for (final f in _filters)

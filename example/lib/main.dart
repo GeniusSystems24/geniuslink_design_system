@@ -16,15 +16,16 @@
 
 import 'package:flutter/material.dart';
 import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
+import 'package:geniuslink_design_system_example/readable_table/filter_editing_demo.dart';
 import 'browser_tabs_demo.dart';
 import 'editable_table_demo.dart';
-import 'readable_table/filter_demo.dart';
 import 'readable_table_demo.dart';
 import 'tree_demo.dart';
-import 'tree_demo_style01.dart';
 import 'navigation_sidebar_demo.dart';
 import 'erp_console.dart';
 import 'shell_kit.dart';
+import 'tree_demo_style01.dart';
+import 'readable_table/filter_demo.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -127,6 +128,13 @@ class LauncherScreen extends StatelessWidget {
                         accent: const Color(0xFF4A7CFF),
                         preview: const _ReadableTableThumb(),
                         onTap: () => _open(context, const ReadableFilterDemo()),
+                      ),
+                      _DemoCard(
+                        title: 'ReadableTable - Editing Filters',
+                        subtitle: 'Read-only display grid · typed column kinds · resize / reorder · multi-select & copy · keyboard nav · scroll-on-focus',
+                        accent: const Color(0xFF4A7CFF),
+                        preview: const _ReadableTableThumb(),
+                        onTap: () => _open(context, const FilterEditingDemo()),
                       ),
                       _DemoCard(
                         title: 'Tree',
