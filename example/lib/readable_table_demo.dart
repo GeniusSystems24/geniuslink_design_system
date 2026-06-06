@@ -190,6 +190,11 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
   // ── controller-op handlers ──
   void _selectExpenses() => _controller.selectRowsWhere((a) => a.type == 'Expense');
 
+  // Programmatic filtering — same API the filter bar drives. Column 6 is Balance.
+  void _filterBigBalances() => _controller.setFilters([
+        ReadableFilter.number(6, ReadableFilterOp.greater, 100000),
+      ]);
+
   void _addRow() {
     _seq++;
     final acc = Account('90${_seq.toString().padLeft(2, '0')}', 'New Ledger $_seq', 'حساب جديد', 'Asset', 'DR',
@@ -220,6 +225,7 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
   }
 
   void _reset() {
+    _controller.clearFilters();
     _controller.setRows(List<Account>.from(_seed));
     setState(() => _tsvPreview = '');
   }
@@ -334,14 +340,27 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
                     ),
                     const SizedBox(height: 22),
 
-                    // the table — wrapped in the chosen direction
+                    // the table — wrapped in the chosen direction, with the
+                    // advanced filter bar mounted above it.
                     Directionality(
                       textDirection: _rtl ? TextDirection.rtl : TextDirection.ltr,
-                      child: ReadableTable<Account>(
-                        controller: _controller,
-                        hoverHighlight: true,
-                        rowMinHeight: 54,
-                        onRowTap: (a, i) => debugPrint('tapped ${a.code}'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          ReadableFilterBar<Account>(
+                            controller: _controller,
+                            searchHint: 'Search accounts…',
+                            itemNoun: 'account',
+                            itemNounPlural: 'accounts',
+                          ),
+                          const SizedBox(height: 12),
+                          ReadableTable<Account>(
+                            controller: _controller,
+                            hoverHighlight: true,
+                            rowMinHeight: 54,
+                            onRowTap: (a, i) => debugPrint('tapped ${a.code}'),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -356,6 +375,7 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
                       children: [
                         _OpButton(icon: Icons.filter_alt_outlined, label: 'Select Expenses', onTap: _selectExpenses),
                         _OpButton(icon: Icons.select_all_rounded, label: 'Select all', onTap: () => _controller.selectAllRows()),
+                        _OpButton(icon: Icons.bolt_rounded, label: 'Filter: balance > 100k', onTap: _filterBigBalances),
                         _OpButton(icon: Icons.copy_all_rounded, label: 'Copy selection (TSV)', onTap: _copySelection),
                         _OpButton(icon: Icons.add_rounded, label: 'Add after Assets', onTap: _addRow),
                         _OpButton(icon: Icons.delete_outline_rounded, label: 'Delete selected', onTap: _deleteSelected),

@@ -369,6 +369,40 @@ Set `selectionMode:` to one of `ReadableSelectionMode.{none, singleRow, multiRow
 
 Mark a column `sortable: true` and click its header to cycle **asc → desc** (an arrow marks the active column). Supply `sortKey: (value) => Comparable` per column — numbers sort numerically, strings alphabetically. Sorting reorders the rows **and remaps the selection / cursor** so they follow their rows. `initialSortColumn` / `initialSortAscending` / `onSortChanged` round it out.
 
+### Advanced filtering
+
+The grid carries a typed, per-column **filter system**. The controller derives the visible rows from an immutable MASTER set on every change as `sort(filter(master))`; the selection lives in master space and is pruned to the visible rows each rebuild, so filtering, sorting and selection compose. Mount the ready-made bar with one flag:
+
+```dart
+ReadableTable<Account>(
+  controller: c,
+  showFilterBar: true,                 // quick-search · filter chips · AND/OR · count
+  filterItemNoun: 'account', filterItemNounPlural: 'accounts',
+);
+
+// …or place the bar yourself, above the grid, for full control:
+Column(children: [ ReadableFilterBar<Account>(controller: c), const SizedBox(height: 12), ReadableTable(controller: c) ]);
+```
+
+A **`ReadableFilter`** is one predicate over a logical column — a `ReadableFilterOp` + operand(s) + an `enabled` flag. The offered operators depend on the column's `ReadableColumnType` (text gets *contains / starts with / is empty*; numbers get *greater / less / between*; enums get *is any of*; dates get *is before / after / between*). Filters combine by `ReadableFilterJoin.all` (AND) or `.any` (OR), and a cross-column quick-search narrows further. Evaluation runs through each column's own `sortKey` / `copyText`, so numbers compare numerically and dates by instant.
+
+```dart
+c.addFilter(ReadableFilter.text(1, ReadableFilterOp.contains, 'cash'));   // Account contains "cash"
+c.addFilter(ReadableFilter.number(6, ReadableFilterOp.between, 0, 5e4));  // Balance between 0 and 50,000
+c.addFilter(ReadableFilter.anyOf(2, {'Asset', 'Income'}));               // Type is any of …
+c.setFilterJoin(ReadableFilterJoin.any);                                  // OR instead of AND
+c.setQuery('rajhi');                                                       // cross-column search
+c.clearFilters();
+```
+
+| Group | API |
+|---|---|
+| **Filters** | `addFilter` · `insertFilterAt` · `updateFilterAt` · `removeFilterAt` · `toggleFilterAt` · `setFilters` · `clearFilters` |
+| **Join / search** | `setFilterJoin(all\|any)` · `setQuery(str)` · `quickSearchColumns` |
+| **Reads** | `filters` · `filterJoin` · `query` · `isFiltered` · `hasFilters` · `rowCount` (visible) vs `totalRowCount` · `isColumnFilterable(ci)` · `distinctValues(ci)` |
+
+The bar itself is fully themed (`EditableTableThemeData`) and RTL-aware: a quick-search field, an **＋ Filter** button opening a column → condition → operand **editor dialog** (text / number / date-picker / multi-select), removable **chips** (tap to edit · dot to disable · ✕ to remove) with an inline **AND/OR** toggle, and a live **"N of M"** count + Clear-all.
+
 ### Keyboard
 
 Focus the table (click it), then — press **?** (or `⌘/Ctrl + /`) for the in-widget cheatsheet:
@@ -840,8 +874,10 @@ lib/
     │   ├── editable_table_theme.dart         Theme  — ThemeExtension (Editable + Readable)
     │   ├── editable_table.dart               View   — EditableTable widget
     │   ├── readable_table_models.dart          Model  — ReadableColumn<T>, cell, enums
-    │   ├── readable_table_controller.dart      Controller — ChangeNotifier + scope
+    │   ├── readable_table_filter.dart          Model  — ReadableFilter, ops, catalog
+    │   ├── readable_table_controller.dart      Controller — ChangeNotifier + scope (+ filtering)
     │   ├── readable_table.dart                 View   — ReadableTable<T> (generic · MVC)
+    │   ├── readable_table_filter_bar.dart      View   — ReadableFilterBar<T>
     │   └── tree_*.dart                        Tree — model · controller · theme · view
     └── navigation/
         ├── browser_style_tab_bar*.dart        BrowserStyleTabBar — MVC + overlays + pages

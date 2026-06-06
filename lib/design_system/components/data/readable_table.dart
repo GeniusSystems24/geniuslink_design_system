@@ -37,6 +37,7 @@ import '../key_directions.dart';
 import 'editable_table_theme.dart';
 import 'readable_table_models.dart';
 import 'readable_table_controller.dart';
+import 'readable_table_filter_bar.dart';
 
 class ReadableTable<T> extends StatefulWidget {
   /// Drive / observe the grid externally. When null the widget builds and owns
@@ -60,6 +61,26 @@ class ReadableTable<T> extends StatefulWidget {
   final double rowMinHeight;
   final EdgeInsets cellPadding;
   final Widget? emptyState;
+
+  // ── advanced filtering ──────────────────────────────────────
+  /// Mount a [ReadableFilterBar] above the grid (quick-search · per-column
+  /// filter chips · AND/OR · results count). It drives this table's controller,
+  /// so filters apply live. For full control place a [ReadableFilterBar]
+  /// yourself and leave this false.
+  final bool showFilterBar;
+
+  /// Show the cross-column quick-search field in the built-in filter bar.
+  final bool filterBarSearch;
+
+  /// Placeholder for the built-in filter bar's quick-search.
+  final String filterSearchHint;
+
+  /// Singular / plural noun for the built-in filter bar's results count.
+  final String filterItemNoun;
+  final String filterItemNounPlural;
+
+  /// Gap between the built-in filter bar and the grid.
+  final double filterBarGap;
 
   // ── seeds (controller-less convenience) ─────────────────────
   final Set<int>? initialSelectedRows;
@@ -92,6 +113,12 @@ class ReadableTable<T> extends StatefulWidget {
     this.rowMinHeight = 52,
     this.cellPadding = const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
     this.emptyState,
+    this.showFilterBar = false,
+    this.filterBarSearch = true,
+    this.filterSearchHint = 'Search…',
+    this.filterItemNoun = 'row',
+    this.filterItemNounPlural = 'rows',
+    this.filterBarGap = 10,
     this.initialSelectedRows,
     this.initialSelectedCells,
     this.initialSortColumn,
@@ -338,17 +365,39 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
 
     final scoped = ReadableTableScope(controller: c, child: table);
 
-    if (!c.isInteractive) return scoped;
+    Widget result = scoped;
+    if (!c.isInteractive) {
+      result = scoped;
+    } else {
+      result = Focus(
+        focusNode: _focus,
+        onKeyEvent: _onKey,
+        child: GestureDetector(
+          onTap: () => _focus.requestFocus(),
+          behavior: HitTestBehavior.opaque,
+          child: scoped,
+        ),
+      );
+    }
 
-    return Focus(
-      focusNode: _focus,
-      onKeyEvent: _onKey,
-      child: GestureDetector(
-        onTap: () => _focus.requestFocus(),
-        behavior: HitTestBehavior.opaque,
-        child: scoped,
-      ),
-    );
+    if (widget.showFilterBar) {
+      result = Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ReadableFilterBar<T>(
+            controller: c,
+            showSearch: widget.filterBarSearch,
+            searchHint: widget.filterSearchHint,
+            itemNoun: widget.filterItemNoun,
+            itemNounPlural: widget.filterItemNounPlural,
+          ),
+          SizedBox(height: widget.filterBarGap),
+          result,
+        ],
+      );
+    }
+    return result;
   }
 
   Widget _header(EditableTableThemeData t) {

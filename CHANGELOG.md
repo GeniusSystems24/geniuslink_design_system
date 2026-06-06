@@ -5,6 +5,52 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.5.0]
+
+### ✨ Added — `ReadableTable` advanced filter system
+
+- **A typed, per-column filter layer for the read-only grid, MVC throughout.**
+  The controller gained a MASTER → VIEW data model: every mutation edits the
+  immutable-ordered master row set, and the visible rows are derived on each
+  change as `sort(filter(master))`. Selection lives in master space and is
+  pruned to the visible rows on every rebuild — "you can only select what you
+  can see" — so filtering, sorting and selection compose cleanly.
+- **Model** (`readable_table_filter.dart`) — `ReadableFilter`, one immutable
+  predicate over a single logical column: a `ReadableFilterOp` (contains ·
+  starts/ends with · equals · is greater/less · is between · is any/none of ·
+  is empty …), its operand(s), and an `enabled` flag. `ReadableFilterArity`
+  (none · one · two · set) drives the editor; `ReadableFilterJoin` (all = AND,
+  any = OR) combines them. `ReadableFilterCatalog` supplies the per-type
+  operator menu, date-aware human labels ("is before / is after") and a
+  one-line chip summary. `filter.test(column, row)` evaluates through the
+  column's own `sortKey` / `copyText`, so numbers compare numerically, dates by
+  instant and text case-insensitively — and an incomplete filter matches
+  everything (a half-built chip never hides rows).
+- **Controller** — new filter API alongside the existing select/add/delete/
+  replace ops: `addFilter` · `insertFilterAt` · `updateFilterAt` ·
+  `removeFilterAt` · `toggleFilterAt` · `setFilters` · `clearFilters`,
+  `setFilterJoin`, and a cross-column quick-search via `setQuery` /
+  `quickSearchColumns`. Reads: `filters`, `filterJoin`, `query`, `isFiltered`,
+  `hasFilters`, `rowCount` (visible) vs. `totalRowCount`, `isColumnFilterable`,
+  and `distinctValues(col)` (feeds the `is any of` picker).
+- **View** (`readable_table_filter_bar.dart`) — `ReadableFilterBar<T>`, a thin
+  render of the controller's filter state: a quick-search field, an **＋ Filter**
+  button opening a per-column **editor dialog** (column → condition → typed
+  operand — text field, signed/decimal number, native date picker, or a
+  multi-select value picker), removable **filter chips** (tap to edit · dot to
+  enable/disable · ✕ to remove) with an inline **AND/OR** toggle between them,
+  and a live **"N of M" results count** + Clear-all. Fully themed via
+  `EditableTableThemeData` and RTL-aware.
+- **`ReadableTable`** gained `showFilterBar` (+ `filterBarSearch`,
+  `filterSearchHint`, `filterItemNoun(Plural)`, `filterBarGap`) to mount the bar
+  above the grid in one line; or place a `ReadableFilterBar` yourself for full
+  control. Default `false` — existing tables are unchanged.
+- Exported from the `geniuslink_readable_table.dart` barrel. The
+  `readable_table_demo.dart` example now mounts a filter bar over the 24-row
+  Account grid and shows programmatic filtering (`setFilters([...])`).
+
+---
+
 ## [2.3.0]
 
 ### ✨ Added — `NavigationSidebar` (the GeniusLink web nav, ported MVC)

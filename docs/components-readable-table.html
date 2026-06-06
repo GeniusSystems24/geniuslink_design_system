@@ -503,6 +503,223 @@ function CopyTableDemo() {
   );
 }
 
+/* ── Phase 08 — Advanced filtering ──────────────────────────────── */
+const F_COLS = [
+  { key:'code', label:'Code',    w:80,  type:'text',   mono:true },
+  { key:'en',   label:'Account', w:200, type:'text' },
+  { key:'type', label:'Type',    w:120, type:'enum' },
+  { key:'bal',  label:'Balance', w:140, type:'number', mono:true, e:true },
+  { key:'date', label:'Posted',  w:120, type:'date',   mono:true },
+  { key:'st',   label:'Status',  w:120, type:'enum' },
+];
+const F_ROWS = [
+  { code:'1010', en:'Petty Cash',        type:'Asset',     bal:4200,    date:'2024-12-01', st:'Reconciled' },
+  { code:'1020', en:'Bank · SNB',        type:'Asset',     bal:182540,  date:'2024-12-02', st:'Reconciled' },
+  { code:'1110', en:'Receivables',       type:'Asset',     bal:54800,   date:'2024-11-28', st:'Pending' },
+  { code:'2010', en:'Accounts Payable',  type:'Liability', bal:-74100,  date:'2024-12-03', st:'Pending' },
+  { code:'2110', en:'VAT Payable',       type:'Liability', bal:-18940,  date:'2024-12-04', st:'Flagged' },
+  { code:'3010', en:'Share Capital',     type:'Equity',    bal:-500000, date:'2024-11-30', st:'Reconciled' },
+  { code:'4010', en:'Sales Revenue',     type:'Revenue',   bal:-640200, date:'2024-12-04', st:'Pending' },
+  { code:'5210', en:'Salaries Expense',  type:'Expense',   bal:156000,  date:'2024-12-04', st:'Flagged' },
+  { code:'5410', en:'Utilities',         type:'Expense',   bal:19600,   date:'2024-12-02', st:'Reconciled' },
+];
+// operator catalog — mirrors ReadableFilterCatalog (ops per type · arity · label)
+const F_OPS = {
+  text:   ['contains','notContains','equals','startsWith','endsWith','isEmpty','isNotEmpty'],
+  number: ['equals','notEquals','greater','greaterOrEqual','less','lessOrEqual','between'],
+  enum:   ['isAnyOf','isNoneOf','equals','notEquals'],
+  date:   ['equals','less','greater','between'],
+};
+const F_ARITY = op => ['isEmpty','isNotEmpty'].includes(op) ? 'none' : op==='between' ? 'two' : ['isAnyOf','isNoneOf'].includes(op) ? 'set' : 'one';
+const F_LABEL = (op, type) => {
+  const temporal = type==='date';
+  return ({
+    contains:'contains', notContains:'does not contain', startsWith:'starts with', endsWith:'ends with',
+    equals: temporal?'is on':'is', notEquals: temporal?'is not on':'is not',
+    greater: temporal?'is after':'is greater than', greaterOrEqual: temporal?'is on or after':'is ≥',
+    less: temporal?'is before':'is less than', lessOrEqual: temporal?'is on or before':'is ≤',
+    between:'is between', isAnyOf:'is any of', isNoneOf:'is none of', isEmpty:'is empty', isNotEmpty:'is not empty',
+  })[op];
+};
+const F_FMT = (v, type) => v==null||v===''?'—':type==='number'?Number(v).toLocaleString('en-US'):String(v);
+const F_SUMMARY = (f) => {
+  const col = F_COLS[f.col], op = F_LABEL(f.op, col.type), a = F_ARITY(f.op);
+  if(a==='none') return col.label+' '+op;
+  if(a==='one')  return col.label+' '+op+' '+F_FMT(f.v1, col.type);
+  if(a==='two')  return col.label+' '+op+' '+F_FMT(f.v1,col.type)+' and '+F_FMT(f.v2,col.type);
+  const list=[...f.opts]; return col.label+' '+op+' '+list.slice(0,3).join(', ')+(list.length>3?' +'+(list.length-3):'');
+};
+const F_COMPLETE = (f) => {
+  const a = F_ARITY(f.op);
+  if(a==='none') return true; if(a==='set') return f.opts.size>0;
+  if(a==='two') return f.v1!==''&&f.v1!=null&&f.v2!==''&&f.v2!=null;
+  return f.v1!==''&&f.v1!=null;
+};
+function fText(f, row){
+  const col=F_COLS[f.col], raw=row[col.key], s=String(raw??'').toLowerCase();
+  const num=v=>Number(v), eq=(a,b)=>col.type==='number'?num(a)===num(b):String(a).toLowerCase()===String(b).toLowerCase();
+  const cmp=(a,b)=>col.type==='number'?num(a)-num(b):String(a)<String(b)?-1:String(a)>String(b)?1:0;
+  switch(f.op){
+    case 'contains': return s.includes(String(f.v1).toLowerCase());
+    case 'notContains': return !s.includes(String(f.v1).toLowerCase());
+    case 'startsWith': return s.startsWith(String(f.v1).toLowerCase());
+    case 'endsWith': return s.endsWith(String(f.v1).toLowerCase());
+    case 'equals': return eq(raw, f.v1);
+    case 'notEquals': return !eq(raw, f.v1);
+    case 'greater': return cmp(raw, f.v1)>0;
+    case 'greaterOrEqual': return cmp(raw, f.v1)>=0;
+    case 'less': return cmp(raw, f.v1)<0;
+    case 'lessOrEqual': return cmp(raw, f.v1)<=0;
+    case 'between': return cmp(raw,f.v1)>=0 && cmp(raw,f.v2)<=0;
+    case 'isAnyOf': return f.opts.has(String(raw));
+    case 'isNoneOf': return !f.opts.has(String(raw));
+    case 'isEmpty': return s.trim()==='';
+    case 'isNotEmpty': return s.trim()!=='';
+    default: return true;
+  }
+}
+function FilterChip({ f, onToggle, onEdit, onRemove }) {
+  const on = f.enabled;
+  return (
+    <div style={{ display:'inline-flex', alignItems:'center', borderRadius:'var(--gl-radius-sm)',
+      background:on?'color-mix(in srgb,var(--gl-blue-500) 10%,var(--gl-surface))':'var(--gl-surface)',
+      border:'1px solid '+(on?'color-mix(in srgb,var(--gl-blue-500) 55%,transparent)':'var(--gl-border)') }}>
+      <button type="button" onClick={onToggle} title={on?'Disable':'Enable'} style={{ background:'none', border:'none', cursor:'pointer', padding:'6px 4px 6px 8px', display:'flex' }}>
+        <span style={{ width:8, height:8, borderRadius:999, background:on?'var(--gl-blue-500)':'transparent', border:'1.4px solid '+(on?'var(--gl-blue-500)':'var(--gl-fg-4)'), boxSizing:'border-box' }}/>
+      </button>
+      <button type="button" onClick={onEdit} style={{ background:'none', border:'none', cursor:'pointer', padding:'6px 2px', fontFamily:'var(--gl-font-body)', fontSize:12.5, fontWeight:500,
+        color:on?'var(--gl-fg-1)':'var(--gl-fg-3)', textDecoration:on?'none':'line-through' }}>{F_SUMMARY(f)}</button>
+      <button type="button" onClick={onRemove} title="Remove" style={{ background:'none', border:'none', cursor:'pointer', padding:'6px 8px 6px 4px', display:'flex' }}>
+        <GLIcon name="close" size={13} color="var(--gl-fg-3)"/>
+      </button>
+    </div>
+  );
+}
+function FilterEditor({ initial, onSave, onCancel }) {
+  const [col, setCol] = useState(initial ? initial.col : 0);
+  const type = F_COLS[col].type;
+  const ops = F_OPS[type];
+  const [op, setOp] = useState(initial && ops.includes(initial.op) ? initial.op : ops[0]);
+  const [v1, setV1] = useState(initial ? (initial.v1 ?? '') : '');
+  const [v2, setV2] = useState(initial ? (initial.v2 ?? '') : '');
+  const [opts, setOpts] = useState(new Set(initial ? initial.opts : []));
+  const arity = F_ARITY(op);
+  const changeCol = ci => { setCol(ci); const nt=F_COLS[ci].type, no=F_OPS[nt]; if(!no.includes(op)) setOp(no[0]); setV1(''); setV2(''); setOpts(new Set()); };
+  const distinct = useMemo(()=>[...new Set(F_ROWS.map(r=>String(r[F_COLS[col].key])))].sort(),[col]);
+  const draft = { col, op, v1: type==='number'&&v1!==''?Number(v1):v1, v2: type==='number'&&v2!==''?Number(v2):v2, opts, enabled:true };
+  const valid = F_COMPLETE(draft);
+  const inputCss = { width:'100%', height:38, boxSizing:'border-box', padding:'0 10px', background:'var(--gl-input-bg)', border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-sm)', color:'var(--gl-fg-1)', fontFamily:'var(--gl-font-body)', fontSize:13, outline:'none' };
+  const lbl = s => <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--gl-fg-3)', marginBottom:6 }}>{s}</div>;
+  return (
+    <div onClick={onCancel} style={{ position:'absolute', inset:0, background:'rgba(0,0,0,.35)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:30, borderRadius:'var(--gl-radius-md)' }}>
+      <div onClick={e=>e.stopPropagation()} style={{ width:360, padding:'20px 22px 18px', background:'var(--gl-surface)', borderRadius:'var(--gl-radius-lg)', border:'1px solid var(--gl-border-strong)', boxShadow:'var(--gl-shadow-pop, 0 10px 24px -6px rgba(0,0,0,.35))' }}>
+        <div style={{ fontSize:10, fontWeight:700, letterSpacing:'.14em', textTransform:'uppercase', color:'var(--gl-blue-500)' }}>Filter</div>
+        <div style={{ fontFamily:'var(--gl-font-display)', fontSize:18, fontWeight:700, color:'var(--gl-fg-1)', margin:'4px 0 16px' }}>{initial?'Edit filter':'Add filter'}</div>
+        {lbl('Column')}
+        <select value={col} onChange={e=>changeCol(+e.target.value)} style={{ ...inputCss, marginBottom:12 }}>
+          {F_COLS.map((c,i)=><option key={c.key} value={i}>{c.label}</option>)}
+        </select>
+        {lbl('Condition')}
+        <select value={op} onChange={e=>setOp(e.target.value)} style={{ ...inputCss, marginBottom:12 }}>
+          {ops.map(o=><option key={o} value={o}>{F_LABEL(o,type)}</option>)}
+        </select>
+        {arity!=='none' && lbl('Value')}
+        {arity==='one' && <input autoFocus type={type==='number'?'number':type==='date'?'date':'text'} value={v1} onChange={e=>setV1(e.target.value)} placeholder="Value" style={inputCss}/>}
+        {arity==='two' && <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <input type={type==='date'?'date':'number'} value={v1} onChange={e=>setV1(e.target.value)} placeholder="From" style={inputCss}/>
+          <span style={{ fontSize:12, color:'var(--gl-fg-3)' }}>and</span>
+          <input type={type==='date'?'date':'number'} value={v2} onChange={e=>setV2(e.target.value)} placeholder="To" style={inputCss}/>
+        </div>}
+        {arity==='set' && <div style={{ display:'flex', flexWrap:'wrap', gap:6, maxHeight:160, overflowY:'auto' }}>
+          {distinct.map(v=>{ const sel=opts.has(v); return (
+            <button key={v} type="button" onClick={()=>setOpts(s=>{const n=new Set(s);n.has(v)?n.delete(v):n.add(v);return n;})}
+              style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'6px 10px', borderRadius:'var(--gl-radius-sm)', cursor:'pointer',
+                background:sel?'color-mix(in srgb,var(--gl-blue-500) 14%,var(--gl-surface))':'var(--gl-input-bg)',
+                border:'1px solid '+(sel?'var(--gl-blue-500)':'var(--gl-border)'), color:sel?'var(--gl-fg-1)':'var(--gl-fg-2)', fontFamily:'var(--gl-font-body)', fontSize:12.5, fontWeight:sel?600:500 }}>
+              {sel&&<GLIcon name="check2" size={12} color="var(--gl-blue-500)"/>}{v}
+            </button>
+          );})}
+        </div>}
+        <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:20 }}>
+          <DSButton size="sm" variant="secondary" onClick={onCancel}>Cancel</DSButton>
+          <DSButton size="sm" variant="primary" state={valid?undefined:'disabled'} onClick={()=>valid&&onSave({ ...draft, opts:new Set(opts) })}>{initial?'Save':'Add filter'}</DSButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+function FilterDemo() {
+  const [filters, setFilters] = useState([
+    { col:2, op:'isAnyOf', v1:'', v2:'', opts:new Set(['Asset','Expense']), enabled:true },
+  ]);
+  const [join, setJoin] = useState('all');
+  const [query, setQuery] = useState('');
+  const [editor, setEditor] = useState(null); // {index|null}
+  const passes = (row) => {
+    const q = query.trim().toLowerCase();
+    if(q && !F_COLS.some(c=>String(row[c.key]).toLowerCase().includes(q))) return false;
+    const active = filters.filter(f=>f.enabled && F_COMPLETE(f));
+    if(!active.length) return true;
+    return join==='all' ? active.every(f=>fText(f,row)) : active.some(f=>fText(f,row));
+  };
+  const rows = F_ROWS.filter(passes);
+  const isFiltered = query.trim()!=='' || filters.some(f=>f.enabled&&F_COMPLETE(f));
+  const GT = F_COLS.map(c=>c.w+'px').join(' '), totalW = F_COLS.reduce((a,c)=>a+c.w,0);
+  const save = (f) => { setFilters(fs => editor.index==null ? [...fs, f] : fs.map((x,i)=>i===editor.index?f:x)); setEditor(null); };
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12, position:'relative' }}>
+      {/* filter bar */}
+      <div style={{ padding:'9px 10px', background:'var(--gl-bg)', border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-md)', display:'flex', flexDirection:'column', gap:9 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <div style={{ flex:1, height:34, display:'flex', alignItems:'center', gap:7, padding:'0 10px', background:'var(--gl-input-bg)', border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-sm)' }}>
+            <GLIcon name="search" size={15} color="var(--gl-fg-3)"/>
+            <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search accounts…" style={{ flex:1, border:'none', outline:'none', background:'transparent', color:'var(--gl-fg-1)', fontFamily:'var(--gl-font-body)', fontSize:13 }}/>
+            {query && <button type="button" onClick={()=>setQuery('')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex' }}><GLIcon name="close" size={14} color="var(--gl-fg-3)"/></button>}
+          </div>
+          <DSButton size="sm" variant="secondary" icon="plus" onClick={()=>setEditor({ index:null })}>Filter</DSButton>
+          <span style={{ fontFamily:'var(--gl-font-mono)', fontSize:11.5, color:isFiltered?'var(--gl-blue-500)':'var(--gl-fg-3)' }}>
+            {isFiltered ? rows.length+' of '+F_ROWS.length+' accounts' : F_ROWS.length+' accounts'}
+          </span>
+          {(filters.length>0||query) && <button type="button" onClick={()=>{setFilters([]);setQuery('');}} style={{ background:'none', border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-md)', cursor:'pointer', padding:'7px 11px', fontFamily:'var(--gl-font-body)', fontSize:12, fontWeight:600, color:'var(--gl-fg-2)' }}>Clear all</button>}
+        </div>
+        {filters.length>0 && <div style={{ display:'flex', flexWrap:'wrap', gap:6, alignItems:'center' }}>
+          {filters.map((f,i)=>(
+            <React.Fragment key={i}>
+              {i>0 && <button type="button" onClick={()=>setJoin(j=>j==='all'?'any':'all')}
+                style={{ padding:'5px 9px', borderRadius:'var(--gl-radius-sm)', background:'var(--gl-input-bg)', border:'1px solid var(--gl-border)', cursor:'pointer', fontFamily:'var(--gl-font-mono)', fontSize:10, fontWeight:700, letterSpacing:'.06em', color:'var(--gl-blue-500)' }}>{join==='all'?'AND':'OR'}</button>}
+              <FilterChip f={f} onToggle={()=>setFilters(fs=>fs.map((x,j)=>j===i?{...x,enabled:!x.enabled}:x))} onEdit={()=>setEditor({ index:i })} onRemove={()=>setFilters(fs=>fs.filter((_,j)=>j!==i))}/>
+            </React.Fragment>
+          ))}
+        </div>}
+      </div>
+      {/* grid */}
+      <div className="vp" style={{ overflowX:'auto', border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-md)', background:'var(--gl-surface)' }}>
+        <div style={{ minWidth:totalW }}>
+          <div style={{ display:'grid', gridTemplateColumns:GT, background:'var(--gl-bg)' }}>
+            {F_COLS.map(c=><div key={c.key} style={{ padding:'9px 12px', fontSize:10, fontWeight:700, letterSpacing:'.05em', textTransform:'uppercase', color:'var(--gl-fg-3)', borderBottom:'1px solid var(--gl-border-strong)', textAlign:c.e?'end':'start', whiteSpace:'nowrap' }}>{c.label}</div>)}
+          </div>
+          {rows.length===0 ? <div style={{ padding:'34px 0', textAlign:'center', color:'var(--gl-fg-3)', fontSize:13 }}>No rows match</div>
+            : rows.map((r,ri)=>(
+            <div key={r.code} style={{ display:'grid', gridTemplateColumns:GT, background:ri%2?'color-mix(in srgb,var(--gl-fg-1) 2%,transparent)':'transparent' }}>
+              {F_COLS.map(c=>{ const v=r[c.key], neg=c.type==='number'&&v<0; return (
+                <div key={c.key} style={{ minHeight:40, padding:'0 12px', display:'flex', alignItems:'center', justifyContent:c.e?'flex-end':'flex-start', borderInlineEnd:'1px solid var(--gl-border)', borderBottom:'1px solid var(--gl-border)', fontFamily:c.mono?'var(--gl-font-mono)':'var(--gl-font-body)', fontSize:12.5, color:neg?'var(--gl-danger-500)':'var(--gl-fg-1)', whiteSpace:'nowrap' }}>
+                  {c.key==='type'?<span style={{ fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:999, color:TT[v], background:'color-mix(in srgb,'+TT[v]+' 16%,transparent)' }}>{v}</span>
+                    :c.key==='st'?<span style={{ fontSize:10, fontWeight:700, padding:'2px 9px', borderRadius:999, color:ST[v]||'var(--gl-fg-3)', background:'color-mix(in srgb,'+(ST[v]||'var(--gl-fg-3)')+' 15%,transparent)' }}>{v}</span>
+                      :c.type==='number'?(neg?'−':'')+Math.abs(v).toLocaleString('en-US',{minimumFractionDigits:2}):v}
+                </div>
+              );})}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5 }}>
+        Each chip is one <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>ReadableFilter</code> — column · operator · operand(s). The operator menu adapts to the column kind (text · number · enum · date); chips combine by <strong>AND/OR</strong> and a cross-column search narrows further. The dot enables/disables a chip without removing it.
+        </div>
+      {editor && <FilterEditor initial={editor.index==null?null:filters[editor.index]} onSave={save} onCancel={()=>setEditor(null)}/>}
+    </div>
+  );
+}
+
 /* ── Column-type reference ───────────────────────────────────────── */
 function TypeRef() {
   const items=[
@@ -537,7 +754,7 @@ function ReadableStateBox({ kind }) {
 function App() {
   const [rtl, setRtl] = useState(false);
   return (
-    <Shell title="ReadableTable" subtitle="GeniusLink Design System · v2.4.0">
+    <Shell title="ReadableTable" subtitle="GeniusLink Design System · v2.5.0">
       <Section title="Sortable grid — typed column kinds" desc="Click any header to sort by its typed key. The small monospace tag above the label names the column kind: text · number · enum · progress · color · date · time · link. Every renderer is theme-aware; flip to RTL to mirror the whole grid." cols="1fr">
         <div style={{ gridColumn:'1 / -1', display:'flex', flexDirection:'column', gap:12 }}>
           <div style={{ display:'flex', justifyContent:'flex-end' }}>
@@ -563,6 +780,9 @@ function App() {
       </Section>
       <Section title="Phase 07 — Copy rows &amp; cells" desc="Select rows (click / Shift / Ctrl) or cells (click / Shift-rectangle / Ctrl-toggle), then ⌘C. Selection serializes to tab-separated values and goes to the real OS clipboard. Cell mode copies the bounding rectangle (gaps blank so the shape is preserved in Sheets/Excel)." cols="1fr">
         <div style={{ gridColumn:'1 / -1' }}><CopyTableDemo /></div>
+      </Section>
+      <Section title="Phase 08 — Advanced filtering" desc="A typed, per-column filter layer. The controller derives the visible rows from an immutable master set as sort(filter(master)); selection is pruned to what's visible. Add filters from the editor (column → condition → operand), combine them with AND/OR, toggle a chip without removing it, and narrow further with a cross-column search." cols="1fr">
+        <div style={{ gridColumn:'1 / -1' }}><FilterDemo /></div>
       </Section>
       <Section title="Column types" desc="Typed factory methods — mirror of EditableTable. The renderer lives in readable_table_cells.dart; the legacy unnamed constructor with a custom cell builder still works unchanged." cols="1fr">
         <div style={{ gridColumn:'1 / -1' }}><TypeRef /></div>
