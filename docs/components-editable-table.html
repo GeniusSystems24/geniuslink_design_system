@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GeniusLink — EditableTable</title>
+<meta name="viewport" content="width=1240" />
+<link rel="stylesheet" href="tokens.css" />
+<style>html,body{margin:0;padding:0}body{font-family:var(--gl-font-body)}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--gl-border-strong);border-radius:5px}
+  .xl-wrap:focus{outline:none}
+  .xl-cell{outline:none}
+  .rz-handle{position:absolute;top:0;inset-inline-end:-5px;width:11px;height:100%;cursor:col-resize;z-index:6;display:flex;align-items:center;justify-content:center;touch-action:none}
+  .rz-handle::after{content:'';width:2px;height:60%;background:var(--gl-border-strong);border-radius:2px;transition:background .12s,height .12s}
+  .rz-handle:hover::after,.rz-handle.on::after{background:var(--gl-blue-500);height:100%}
+  .rz-col.resizing{background:color-mix(in srgb,var(--gl-blue-500) 6%,transparent)}
+  .col-head{cursor:grab;user-select:none;transition:background .1s}
+  .col-head:hover{background:color-mix(in srgb,var(--gl-blue-500) 8%,transparent)}
+  .col-head.dragging{opacity:.4;cursor:grabbing}
+  .drop-line{position:absolute;top:0;bottom:0;width:3px;background:var(--gl-blue-500);z-index:9;border-radius:2px}
+  @keyframes tblScale{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+  @keyframes tblSheet{from{transform:translateY(100%)}to{transform:none}}
+  @media (prefers-reduced-motion: reduce){@keyframes tblScale{from{opacity:1}to{opacity:1}}@keyframes tblSheet{from{transform:none}to{transform:none}}}
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#111318"/><rect x="14" y="26" width="72" height="48" fill="none" stroke="#33353A"/><line x1="14" y1="38" x2="86" y2="38" stroke="#33353A"/><line x1="14" y1="50" x2="86" y2="50" stroke="#33353A"/><line x1="14" y1="62" x2="86" y2="62" stroke="#33353A"/><line x1="38" y1="26" x2="38" y2="74" stroke="#33353A"/><line x1="62" y1="26" x2="62" y2="74" stroke="#33353A"/><rect x="38" y="50" width="24" height="12" fill="none" stroke="#4A7CFF" stroke-width="2"/></svg></template>
+</head>
+<body data-theme="">
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ds-kit.jsx"></script>
+<script type="text/babel">
+const { GLIcon, DSButton, DSIconButton, DSSpinner, DSPill, Shell, Section, Spec } = window;
+
+/* Two glyphs the shared kit doesn't ship — drawn inline at call sites. */
+function RawIcon({ d, size = 15 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    {d.split('|').map((p, i) => <path key={i} d={p} />)}
+  </svg>;
+}
+const CLOCK = 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z|M12 6v6l4 2';
+const KEYBOARD = 'M2 6h20v12H2z|M6 10h.01|M10 10h.01|M14 10h.01|M18 10h.01|M6 14h12';
+
+const SWATCHES = ['#4A7CFF', '#1DB88A', '#F97316', '#EF4444', '#A855F7', '#0EA5E9', '#EAB308', '#EC4899', '#64748B', '#111318'];
+const STATUS_TONE = { Open: 'var(--gl-warning-500)', Active: 'var(--gl-blue-500)', Done: 'var(--gl-success-500)' };
+
+/* ── number / date / time helpers (mirror the Flutter columns) ── */
+const parseNum = (v) => { const n = parseFloat(String(v).replace(/,/g, '')); return isFinite(n) ? n : null; };
+const fmtNum = (n, dec = 2) => n == null ? '' : n.toLocaleString('en-US', { minimumFractionDigits: Math.max(0, dec), maximumFractionDigits: Math.max(0, dec) });
+const maskDate = (v) => { let d = String(v).replace(/\D/g, '').slice(0, 8); let o = ''; for (let i = 0; i < d.length; i++) { if (i === 4 || i === 6) o += '-'; o += d[i]; } return o; };
+const maskTime = (v) => { let d = String(v).replace(/\D/g, '').slice(0, 4); let o = ''; for (let i = 0; i < d.length; i++) { if (i === 2) o += ':'; o += d[i]; } return o; };
+const validDate = (v) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v); if (!m) return false; const mo = +m[2], da = +m[3]; return mo >= 1 && mo <= 12 && da >= 1 && da <= 31; };
+const validTime = (v) => { const m = /^(\d{2}):(\d{2})$/.exec(v); if (!m) return false; return +m[1] <= 23 && +m[2] <= 59; };
+
+/* ── column schema: one of every kind ──
+   kind: 'text'|'num'|'date'|'time'|'combo'|'enum'|'color'|'readonly'|'computed' */
+const COLS = [
+  { key: 'id', label: 'ID', w: 64, kind: 'readonly', mono: true, align: 'left' },
+  { key: 'task', label: 'Task', w: 184, kind: 'text', align: 'left', required: true },
+  { key: 'qty', label: 'Qty', w: 78, kind: 'num', align: 'right', mono: true, dec: 0, min: 0,
+    validate: (v) => { const n = parseNum(v); if (n == null || n <= 0) return 'Qty > 0'; if (n % 1 !== 0) return 'Whole number'; return null; } },
+  { key: 'price', label: 'Price', w: 104, kind: 'num', align: 'right', mono: true, dec: 2, min: 0,
+    validate: (v) => (parseNum(v) ?? 0) < 0 ? 'No negatives' : null },
+  { key: 'total', label: 'Total', w: 118, kind: 'computed', align: 'right', mono: true, total: true,
+    compute: (row) => fmtNum((parseNum(row.qty) ?? 0) * (parseNum(row.price) ?? 0)) },
+  { key: 'due', label: 'Due date', w: 150, kind: 'date', align: 'left', mono: true,
+    validate: (v) => v && !validDate(v) ? 'YYYY-MM-DD' : null },
+  { key: 'at', label: 'At', w: 112, kind: 'time', align: 'left', mono: true,
+    validate: (v) => v && !validTime(v) ? 'HH:mm' : null },
+  { key: 'status', label: 'Status', w: 134, kind: 'enum', align: 'left', opts: ['Open', 'Active', 'Done'],
+    cellBuilder: (val) => val ? <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 999, color: STATUS_TONE[val] || 'var(--gl-fg-2)', background: `color-mix(in srgb, ${STATUS_TONE[val] || 'var(--gl-fg-3)'} 16%, transparent)` }}>{val}</span> : null },
+  { key: 'tag', label: 'Tag', w: 150, kind: 'combo', align: 'left', opts: ['Design', 'Build', 'QA', 'Research'] },
+  { key: 'color', label: 'Colour', w: 150, kind: 'color', align: 'left', mono: true },
+];
+const SEED = [
+  { id: '001', task: 'Wireframes', qty: '2', price: '500.00', due: '2024-11-20', at: '09:30', status: 'Done', tag: 'Design', color: '#4A7CFF' },
+  { id: '002', task: 'Component build', qty: '8', price: '320.00', due: '2024-12-02', at: '14:00', status: 'Active', tag: 'Build', color: '#1DB88A' },
+  { id: '003', task: 'Accessibility pass', qty: '1', price: '900.00', due: '2024-12-10', at: '11:15', status: 'Open', tag: 'QA', color: '#F97316' },
+];
+const colLabel = (c) => String.fromCharCode(65 + c);
+let __idSeq = 4;
+const blankRow = () => ({ id: String(__idSeq++).padStart(3, '0'), task: '', qty: '', price: '', due: '', at: '', status: '', tag: '', color: '' });
+const INLINE = new Set(['text', 'num', 'date', 'time', 'combo']);
+const READONLY = new Set(['readonly', 'computed']);
+const displayVal = (col, row) => col.kind === 'computed' ? col.compute(row) : (row[col.key] ?? '');
+
+const normalizeValue = (col, raw) => {
+  if (col.kind === 'num') { const n = parseNum(raw); if (n == null) return raw; let v = n; if (col.min != null && v < col.min) v = col.min; if (col.max != null && v > col.max) v = col.max; return fmtNum(v, col.dec ?? 2); }
+  if (col.kind === 'date') { const m = maskDate(raw); return m; }
+  if (col.kind === 'time') { const m = maskTime(raw); return m; }
+  return raw;
+};
+
+/* ---- Confirm dialog ---- */
+function ConfirmDialog({ open, title, body, confirmLabel = 'Delete', danger = true, onConfirm, onCancel }) {
+  if (!open) return null;
+  return (
+    <div onClick={onCancel} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 360, maxWidth: '100%', background: 'var(--gl-surface)', border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', overflow: 'hidden', animation: 'tblScale 180ms cubic-bezier(.2,0,0,1)' }}>
+        <div style={{ padding: 18 }}>
+          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--gl-fg-1)' }}>{title}</div>
+          <div style={{ fontSize: 13, color: 'var(--gl-fg-3)', marginTop: 8, lineHeight: 1.5 }}>{body}</div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: 14, borderTop: '1px solid var(--gl-border)' }}>
+          <DSButton size="sm" variant="secondary" onClick={onCancel}>Cancel</DSButton>
+          <DSButton size="sm" variant={danger ? 'danger' : 'primary'} icon={danger ? 'trash' : 'check'} onClick={onConfirm}>{confirmLabel}</DSButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---- Keyboard shortcuts reference (⌘/) ---- */
+function ShortcutsDialog({ open, onClose }) {
+  React.useEffect(() => { if (!open) return; const f = (e) => { if (e.key === 'Escape') onClose(); }; document.addEventListener('keydown', f); return () => document.removeEventListener('keydown', f); }, [open, onClose]);
+  if (!open) return null;
+  const groups = {
+    Navigate: [['↑ ↓ ← →', 'Move between cells'], ['Tab / ⇧Tab', 'Next / previous cell'], ['Home / End', 'First / last column'], ['⌘ Home / End', 'First / last cell']],
+    Edit: [['Type', 'Overwrite the cell'], ['Enter / F2', 'Edit, or open a select'], ['Enter ↓ · Tab →', 'Commit & move'], ['Tab at end', 'Append a new row'], ['⌫ / Delete', 'Clear the cell'], ['Esc', 'Cancel editing']],
+    'Rows & clipboard': [['⌘ Enter', 'Add a row'], ['⌘ D', 'Duplicate row'], ['⌘ ⌫', 'Delete row'], ['⌘ C / X / V', 'Copy / cut / paste cell'], ['⌘ Z / ⇧Z', 'Undo / redo']],
+  };
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 3100, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 440, maxWidth: '100%', background: 'var(--gl-surface)', border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', padding: '20px 22px 18px', animation: 'tblScale 180ms cubic-bezier(.2,0,0,1)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 14 }}>
+          <span style={{ color: 'var(--gl-blue-500)', display: 'flex' }}><RawIcon d={KEYBOARD} size={18} /></span>
+          <div style={{ fontFamily: 'var(--gl-font-display)', fontWeight: 800, fontSize: 17, color: 'var(--gl-fg-1)' }}>Keyboard shortcuts</div>
+          <div style={{ marginLeft: 'auto' }}><DSIconButton icon="close" size={28} onClick={onClose} /></div>
+        </div>
+        {Object.entries(groups).map(([g, items]) => (
+          <div key={g}>
+            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gl-blue-500)', margin: '12px 0 6px' }}>{g}</div>
+            {items.map(([k, d], i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '3px 0' }}>
+                <span style={{ width: 150, fontFamily: 'var(--gl-font-mono)', fontSize: 12, fontWeight: 600, color: 'var(--gl-fg-1)' }}>{k}</span>
+                <span style={{ flex: 1, fontSize: 12.5, color: 'var(--gl-fg-3)' }}>{d}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---- Colour swatch popover ---- */
+function ColorMenu({ x, y, onPick, onClose }) {
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const onEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', onDoc); document.addEventListener('keydown', onEsc);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onEsc); };
+  }, [onClose]);
+  return (
+    <div ref={ref} style={{ position: 'fixed', left: Math.min(x, window.innerWidth - 196), top: Math.min(y, window.innerHeight - 120), zIndex: 3200, width: 184, padding: 10, background: 'var(--gl-surface)', border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-md)', boxShadow: 'var(--gl-shadow)', display: 'flex', flexWrap: 'wrap', gap: 8, animation: 'tblScale 120ms cubic-bezier(.2,0,0,1)' }}>
+      {SWATCHES.map(hex => (
+        <button key={hex} title={hex} onClick={() => onPick(hex)} style={{ width: 26, height: 26, borderRadius: 6, background: hex, border: '1px solid rgba(0,0,0,.25)', cursor: 'pointer', padding: 0 }} />
+      ))}
+    </div>
+  );
+}
+
+/* ---- Right-click row context menu ---- */
+function RowMenu({ x, y, onInsertAbove, onInsertBelow, onDuplicate, onDelete, onClose }) {
+  const ref = React.useRef(null);
+  const [pos, setPos] = React.useState({ left: x, top: y });
+  React.useEffect(() => { const el = ref.current; if (!el) return; setPos({ left: Math.min(x, window.innerWidth - el.offsetWidth - 8), top: Math.min(y, window.innerHeight - el.offsetHeight - 8) }); }, [x, y]);
+  React.useEffect(() => {
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    const onEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', onDoc); document.addEventListener('keydown', onEsc);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onEsc); };
+  }, [onClose]);
+  const Item = ({ icon, label, danger, onClick }) => {
+    const [hv, setHv] = React.useState(false);
+    return (
+      <button onMouseEnter={() => setHv(true)} onMouseLeave={() => setHv(false)} onClick={onClick}
+        style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '8px 12px', background: hv ? (danger ? 'rgba(239,68,68,.1)' : 'var(--gl-hover)') : 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--gl-font-body)', fontSize: 13, color: danger ? 'var(--gl-danger-500)' : 'var(--gl-fg-1)', textAlign: 'left' }}>
+        <GLIcon name={icon} size={15} />{label}
+      </button>
+    );
+  };
+  return (
+    <div ref={ref} style={{ position: 'fixed', left: pos.left, top: pos.top, zIndex: 3200, minWidth: 188, padding: '5px 0', background: 'var(--gl-surface)', border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-md)', boxShadow: 'var(--gl-shadow)', animation: 'tblScale 120ms cubic-bezier(.2,0,0,1)' }}>
+      <Item icon="chevD" label="Insert row above" onClick={onInsertAbove} />
+      <Item icon="chevD" label="Insert row below" onClick={onInsertBelow} />
+      <Item icon="plus" label="Duplicate row  ⌘D" onClick={onDuplicate} />
+      <div style={{ height: 1, background: 'var(--gl-border)', margin: '5px 0' }}></div>
+      <Item icon="trash" label="Delete row  ⌘⌫" danger onClick={onDelete} />
+    </div>
+  );
+}
+
+/* ---- Combo suggestions popover (shown while editing a combo cell) ---- */
+function ComboMenu({ rect, opts, query, onPick }) {
+  const filtered = opts.filter(o => o.toLowerCase().includes((query || '').toLowerCase()));
+  if (!filtered.length) return null;
+  return (
+    <div style={{ position: 'fixed', left: rect.left, top: rect.bottom + 2, width: Math.max(rect.width, 140), zIndex: 3200, padding: '4px 0', background: 'var(--gl-surface)', border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-md)', boxShadow: 'var(--gl-shadow)', maxHeight: 180, overflowY: 'auto' }}>
+      {filtered.map(o => (
+        <button key={o} onMouseDown={(e) => { e.preventDefault(); onPick(o); }}
+          style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--gl-font-body)', fontSize: 13, color: 'var(--gl-fg-1)' }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--gl-hover)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>{o}</button>
+      ))}
+    </div>
+  );
+}
+
+function ExcelGrid() {
+  const [rows, setRows] = React.useState(SEED);
+  const [sel, setSel] = React.useState({ r: 0, c: 1 });
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState('');
+  const [confirm, setConfirm] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(true);
+  const [sort, setSort] = React.useState({ c: null, dir: 0 });
+  const [menu, setMenu] = React.useState(null);
+  const [colorMenu, setColorMenu] = React.useState(null);
+  const [comboRect, setComboRect] = React.useState(null);
+  const [shortcuts, setShortcuts] = React.useState(false);
+  const [flash, setFlash] = React.useState(null);
+  const wrapRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+  const activeCellRef = React.useRef(null);
+  const dateProxy = React.useRef(null);
+  const timeProxy = React.useRef(null);
+  const clipRef = React.useRef(null);
+  const histRef = React.useRef({ past: [], future: [] });
+  const nRows = rows.length, nCols = COLS.length;
+
+  const focusGrid = () => { if (wrapRef.current) wrapRef.current.focus(); };
+  React.useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  React.useEffect(() => {
+    setSel(s => { const r = Math.min(s.r, Math.max(0, nRows - 1)); const c = Math.min(s.c, Math.max(0, nCols - 1)); return (r === s.r && c === s.c) ? s : { r, c }; });
+  }, [nRows, nCols]);
+
+  // ── auto-scroll the selected cell fully into view (horizontal) ──
+  React.useEffect(() => {
+    const cell = activeCellRef.current, wrap = wrapRef.current;
+    if (!cell || !wrap) return;
+    const cr = cell.getBoundingClientRect(), wr = wrap.getBoundingClientRect();
+    const pad = 6;
+    if (cr.left < wr.left + pad) wrap.scrollLeft -= (wr.left + pad - cr.left);
+    else if (cr.right > wr.right - pad) wrap.scrollLeft += (cr.right - (wr.right - pad));
+  }, [sel.r, sel.c, rows.length]);
+
+  const flashHint = (msg) => { setFlash(msg); clearTimeout(flashHint._t); flashHint._t = setTimeout(() => setFlash(null), 1100); };
+
+  const pushRows = (next) => { const h = histRef.current; h.past.push(rows); if (h.past.length > 200) h.past.shift(); h.future = []; setRows(next); };
+  const undo = () => { const h = histRef.current; if (!h.past.length) return; h.future.push(rows); setRows(h.past.pop()); setEditing(false); focusGrid(); };
+  const redo = () => { const h = histRef.current; if (!h.future.length) return; h.past.push(rows); setRows(h.future.pop()); setEditing(false); focusGrid(); };
+
+  const writeCell = (r, c, val) => pushRows(rows.map((row, i) => i === r ? { ...row, [COLS[c].key]: val } : row));
+
+  const activate = () => {
+    const col = COLS[sel.c];
+    if (READONLY.has(col.kind)) return;
+    if (col.kind === 'color') { openColorMenu(sel.r, sel.c); return; }
+    beginEdit();
+  };
+  const beginEdit = (initial) => {
+    const col = COLS[sel.c];
+    if (READONLY.has(col.kind) || col.kind === 'color') return;
+    setDraft(initial != null ? initial : String(rows[sel.r][col.key] ?? ''));
+    setEditing(true);
+  };
+
+  // Atomic commit: normalize + write + navigate (auto-grow past the end) in one step.
+  const commit = (move, valueOverride) => {
+    const col = COLS[sel.c];
+    const value = normalizeValue(col, valueOverride != null ? valueOverride : draft);
+    let next = rows.map((row, i) => i === sel.r ? { ...row, [col.key]: value } : row);
+    let target = { r: sel.r, c: sel.c };
+    if (move) {
+      let r = sel.r + move.dr, c = sel.c + move.dc;
+      if (c < 0) { c = nCols - 1; r -= 1; }
+      if (c >= nCols) { c = 0; r += 1; }
+      if (r < 0) { r = 0; c = 0; }
+      if (r >= next.length) { if (move.grow !== false) next = [...next, blankRow()]; else { r = next.length - 1; c = nCols - 1; } }
+      target = { r: Math.min(r, next.length - 1), c: Math.max(0, Math.min(c, nCols - 1)) };
+    }
+    setEditing(false); setComboRect(null); setSel(target); pushRows(next); focusGrid();
+  };
+  const cancel = () => { setEditing(false); setComboRect(null); focusGrid(); };
+
+  const moveSel = (dr, dc, grow) => {
+    setSel(s => {
+      let r = s.r + dr, c = s.c + dc;
+      if (c < 0) { c = nCols - 1; r -= 1; }
+      if (c >= nCols) { c = 0; r += 1; }
+      if (grow && r >= nRows) { pushRows([...rows, blankRow()]); return { r: nRows, c: 0 }; }
+      r = Math.max(0, Math.min(r, nRows - 1)); c = Math.max(0, Math.min(c, nCols - 1));
+      return { r, c };
+    });
+  };
+
+  const copyCell = (cut) => { const col = COLS[sel.c]; if (READONLY.has(col.kind) && cut) return; clipRef.current = displayVal(col, rows[sel.r]); if (cut) writeCell(sel.r, sel.c, ''); flashHint(cut ? 'Cut' : 'Copied'); };
+  const pasteCell = () => { if (clipRef.current == null) return; const col = COLS[sel.c]; if (READONLY.has(col.kind)) return; writeCell(sel.r, sel.c, normalizeValue(col, clipRef.current)); flashHint('Pasted'); };
+
+  const sortByCol = (ci) => {
+    const dir = (sort.c === ci && sort.dir === 1) ? -1 : 1; const col = COLS[ci];
+    const sorted = [...rows].sort((a, b) => {
+      if (col.kind === 'num' || col.kind === 'computed') return ((parseNum(displayVal(col, a)) ?? 0) - (parseNum(displayVal(col, b)) ?? 0)) * dir;
+      return String(displayVal(col, a) || '').localeCompare(String(displayVal(col, b) || '')) * dir;
+    });
+    setSort({ c: ci, dir }); pushRows(sorted);
+  };
+
+  const addRow = () => { pushRows([...rows, blankRow()]); setSel({ r: nRows, c: 1 }); setTimeout(focusGrid, 0); };
+  const insertRowAt = (i) => { const next = [...rows]; next.splice(i, 0, blankRow()); pushRows(next); setSel({ r: i, c: 1 }); focusGrid(); };
+  const duplicateRowAt = (i) => { const next = [...rows]; next.splice(i + 1, 0, { ...rows[i], id: String(__idSeq++).padStart(3, '0') }); pushRows(next); setSel({ r: i + 1, c: 1 }); focusGrid(); };
+  const deleteRowAt = (i) => { if (nRows <= 1) { pushRows([blankRow()]); setSel({ r: 0, c: 1 }); return; } pushRows(rows.filter((_, k) => k !== i)); setSel(s => ({ r: Math.max(0, Math.min(s.r, nRows - 2)), c: s.c })); focusGrid(); };
+  const requestDelete = (i) => { if (confirmDelete) { setSel({ r: i, c: sel.c }); setConfirm(true); } else deleteRowAt(i); };
+
+  const openColorMenu = (r, c) => { setSel({ r, c }); const el = activeCellRef.current; const rect = el ? el.getBoundingClientRect() : { left: 200, bottom: 200 }; setColorMenu({ r, c, x: rect.left, y: rect.bottom + 4 }); };
+
+  const openDate = () => { const p = dateProxy.current; if (!p) return; p.value = validDate(draft) ? draft : ''; (p.showPicker ? p.showPicker() : p.click()); };
+  const openTime = () => { const p = timeProxy.current; if (!p) return; p.value = validTime(draft) ? draft : ''; (p.showPicker ? p.showPicker() : p.click()); };
+
+  const onKeyDown = (e) => {
+    if (editing) {
+      if (e.key === 'Enter') { e.preventDefault(); commit({ dr: 1, dc: 0 }); }
+      else if (e.key === 'Tab') { e.preventDefault(); commit({ dr: 0, dc: e.shiftKey ? -1 : 1, grow: !e.shiftKey }); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
+      return;
+    }
+    if (e.metaKey || e.ctrlKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+      else if (k === 'y') { e.preventDefault(); redo(); }
+      else if (k === 'c') { e.preventDefault(); copyCell(false); }
+      else if (k === 'x') { e.preventDefault(); copyCell(true); }
+      else if (k === 'v') { e.preventDefault(); pasteCell(); }
+      else if (k === 'd') { e.preventDefault(); duplicateRowAt(sel.r); }
+      else if (k === '/') { e.preventDefault(); setShortcuts(true); }
+      else if (e.key === 'Enter') { e.preventDefault(); addRow(); }
+      else if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); requestDelete(sel.r); }
+      else if (e.key === 'Home') { e.preventDefault(); setSel({ r: 0, c: 0 }); }
+      else if (e.key === 'End') { e.preventDefault(); setSel({ r: nRows - 1, c: nCols - 1 }); }
+      return;
+    }
+    switch (e.key) {
+      case 'ArrowUp': e.preventDefault(); moveSel(-1, 0); break;
+      case 'ArrowDown': e.preventDefault(); moveSel(1, 0); break;
+      case 'ArrowLeft': e.preventDefault(); moveSel(0, -1); break;
+      case 'ArrowRight': e.preventDefault(); moveSel(0, 1); break;
+      case 'Home': e.preventDefault(); setSel(s => ({ r: s.r, c: 0 })); break;
+      case 'End': e.preventDefault(); setSel(s => ({ r: s.r, c: nCols - 1 })); break;
+      case 'Tab': e.preventDefault(); moveSel(0, e.shiftKey ? -1 : 1, !e.shiftKey); break;
+      case 'F2': case 'Enter': e.preventDefault(); activate(); break;
+      case 'Backspace': case 'Delete': { e.preventDefault(); const col = COLS[sel.c]; if (!READONLY.has(col.kind)) writeCell(sel.r, sel.c, ''); break; }
+      default:
+        if (e.key.length === 1 && !e.altKey) { const col = COLS[sel.c]; if (INLINE.has(col.kind)) beginEdit(e.key === ' ' ? '' : e.key); else if (col.kind === 'enum' || col.kind === 'color') activate(); }
+    }
+  };
+
+  const invalidCount = rows.reduce((n, r) => n + COLS.filter(c => {
+    const v = String(r[c.key] || '').trim();
+    if (c.required && !v) return true;
+    if (c.validate && c.validate(r[c.key] ?? '', r)) return true;
+    return false;
+  }).length, 0);
+  const grandTotal = rows.reduce((s, r) => s + COLS.filter(c => c.total).reduce((a, c) => a + (parseNum(displayVal(c, r)) ?? 0), 0), 0);
+  const canUndo = histRef.current.past.length > 0;
+  const canRedo = histRef.current.future.length > 0;
+
+  const ACT_W = 84;
+  const GT = `40px ${COLS.map(c => c.w + 'px').join(' ')} ${ACT_W}px`;
+  const totalW = COLS.reduce((s, c) => s + c.w, 0) + 40 + ACT_W;
+
+  return (
+    <div style={{ width: '100%' }}>
+      {/* hidden native pickers driven by the suffix buttons */}
+      <input ref={dateProxy} type="date" tabIndex={-1} onChange={e => { if (e.target.value) commit(null, e.target.value); }} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none', left: 0, top: 0 }} />
+      <input ref={timeProxy} type="time" tabIndex={-1} onChange={e => { if (e.target.value) commit(null, e.target.value); }} style={{ position: 'fixed', width: 0, height: 0, opacity: 0, pointerEvents: 'none', left: 0, top: 0 }} />
+
+      {/* toolbar */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {invalidCount === 0 ? <DSPill tone="success">All valid</DSPill> : <DSPill tone="danger">{invalidCount} cell{invalidCount > 1 ? 's' : ''} invalid</DSPill>}
+          {flash && <span style={{ fontSize: 11, fontFamily: 'var(--gl-font-mono)', color: 'var(--gl-fg-3)' }}>{flash}</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* confirm-delete toggle */}
+          <button onClick={() => setConfirmDelete(v => !v)} title="Toggle delete confirmation"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 10px', background: 'var(--gl-input-bg)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-sm)', cursor: 'pointer', color: 'var(--gl-fg-2)', fontFamily: 'var(--gl-font-body)', fontSize: 12 }}>
+            <span style={{ width: 30, height: 16, borderRadius: 999, background: confirmDelete ? 'var(--gl-blue-500)' : 'var(--gl-border-strong)', position: 'relative', transition: 'background .15s' }}>
+              <span style={{ position: 'absolute', top: 2, left: confirmDelete ? 16 : 2, width: 12, height: 12, borderRadius: 999, background: '#fff', transition: 'left .15s' }} />
+            </span>
+            Confirm delete
+          </button>
+          <DSIconButton icon="" size={32} title="Keyboard shortcuts (⌘/)" onClick={() => setShortcuts(true)} />
+          <span style={{ marginInlineStart: -38, marginInlineEnd: 22, pointerEvents: 'none', color: 'var(--gl-fg-1)', display: 'inline-flex', alignSelf: 'center' }}><RawIcon d={KEYBOARD} size={16} /></span>
+          <DSIconButton icon="back" size={32} title="Undo (Ctrl+Z)" onClick={undo} state={canUndo ? undefined : 'disabled'} />
+          <span style={{ display: 'inline-flex', transform: 'scaleX(-1)' }}><DSIconButton icon="back" size={32} title="Redo (Ctrl+Shift+Z)" onClick={redo} state={canRedo ? undefined : 'disabled'} /></span>
+        </div>
+      </div>
+
+      {/* grid */}
+      <div ref={wrapRef} className="xl-wrap" tabIndex={0} onKeyDown={onKeyDown}
+        style={{ width: '100%', overflowX: 'auto', border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-md)', userSelect: 'none' }}>
+        {/* header */}
+        <div style={{ display: 'grid', gridTemplateColumns: GT, background: 'var(--gl-bg)', minWidth: totalW }}>
+          <div style={{ ...hStyle(), borderInlineEnd: '1px solid var(--gl-border)' }}></div>
+          {COLS.map((c, ci) => (
+            <div key={c.key} onClick={() => sortByCol(ci)} title={`Sort by ${c.label}`}
+              style={{ ...hStyle(ci === sel.c), textAlign: c.align, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, justifyContent: c.align === 'right' ? 'flex-end' : 'flex-start' }}>
+              <span>{colLabel(ci)} · {c.label}{c.required && <span style={{ color: 'var(--gl-danger-500)' }}> *</span>}</span>
+              {sort.c === ci && <span style={{ fontSize: 9, color: 'var(--gl-blue-500)' }}>{sort.dir === 1 ? '▲' : '▼'}</span>}
+            </div>
+          ))}
+          <div style={{ ...hStyle(), textAlign: 'center', borderInlineStart: '1px solid var(--gl-border)' }}>Actions</div>
+        </div>
+        {/* rows */}
+        {rows.map((row, r) => (
+          <div key={r} onContextMenu={(e) => { e.preventDefault(); setSel({ r, c: sel.c }); setMenu({ x: e.clientX, y: e.clientY, r }); }}
+            style={{ display: 'grid', gridTemplateColumns: GT, minWidth: totalW }}>
+            <div onClick={() => { setSel({ r, c: 1 }); focusGrid(); }} style={gutStyle(r === sel.r)}>{r + 1}</div>
+            {COLS.map((c, ci) => {
+              const active = sel.r === r && sel.c === ci;
+              const isEditing = active && editing;
+              const shown = displayVal(c, row);
+              const raw = row[c.key];
+              const invalid = (c.required && !String(raw || '').trim()) || (c.validate && !!c.validate(raw ?? '', row));
+              const readonly = READONLY.has(c.kind);
+              return (
+                <div key={c.key} className="xl-cell" ref={active ? activeCellRef : null}
+                  onMouseDown={() => { if (!isEditing) setSel({ r, c: ci }); }}
+                  onDoubleClick={() => { setSel({ r, c: ci }); if (c.kind === 'color') openColorMenu(r, ci); else activate(); }}
+                  style={{
+                    position: 'relative', height: 36, padding: isEditing ? 0 : '0 10px', display: 'flex', alignItems: 'center',
+                    justifyContent: c.align === 'right' ? 'flex-end' : 'flex-start',
+                    borderInlineEnd: '1px solid var(--gl-border)', borderBottom: '1px solid var(--gl-border)',
+                    background: active ? 'color-mix(in srgb, var(--gl-blue-500) 10%, var(--gl-surface))' : 'var(--gl-surface)',
+                    boxShadow: active ? 'inset 0 0 0 2px var(--gl-blue-500)' : (invalid ? 'inset 0 0 0 1px var(--gl-danger-500)' : 'none'),
+                    fontFamily: c.mono ? 'var(--gl-font-mono)' : 'var(--gl-font-body)', fontSize: 13,
+                    fontStyle: c.kind === 'computed' ? 'italic' : 'normal',
+                    color: shown ? (readonly ? 'var(--gl-fg-3)' : 'var(--gl-fg-1)') : 'var(--gl-fg-4)',
+                    cursor: readonly ? 'default' : 'cell', zIndex: active ? 2 : 1,
+                  }}>
+                  {isEditing
+                    ? <CellEditor col={c} draft={draft} setDraft={setDraft} inputRef={inputRef} commit={commit}
+                        onOpenDate={openDate} onOpenTime={openTime}
+                        onComboRect={setComboRect} />
+                    : (c.cellBuilder ? c.cellBuilder(shown, row)
+                      : c.kind === 'color' ? <ColorSwatchCell hex={shown} />
+                      : shown)}
+                </div>
+              );
+            })}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, background: r === sel.r ? 'color-mix(in srgb, var(--gl-blue-500) 6%, var(--gl-surface))' : 'var(--gl-surface)', borderBottom: '1px solid var(--gl-border)' }}>
+              <DSIconButton icon="plus" size={26} title="Insert row below" onClick={() => insertRowAt(r + 1)} />
+              <DSIconButton icon="trash" variant="danger" size={26} title="Delete row" onClick={() => requestDelete(r)} />
+            </div>
+          </div>
+        ))}
+        {/* totals footer */}
+        <div style={{ display: 'grid', gridTemplateColumns: GT, minWidth: totalW, background: 'var(--gl-bg)', borderTop: '2px solid var(--gl-border-strong)' }}>
+          <div style={{ height: 38 }}></div>
+          {COLS.map((c, ci) => (
+            <div key={c.key} style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: c.align === 'right' ? 'flex-end' : 'flex-start', padding: '0 10px', borderInlineEnd: '1px solid var(--gl-border)', fontFamily: c.total ? 'var(--gl-font-mono)' : 'var(--gl-font-body)', fontSize: c.total ? 13 : 10, fontWeight: 700, letterSpacing: c.total ? 0 : '.05em', textTransform: c.total ? 'none' : 'uppercase', color: c.total ? 'var(--gl-fg-1)' : 'var(--gl-fg-3)' }}>
+              {ci === 0 ? 'Total' : c.total ? fmtNum(grandTotal) : ''}
+            </div>
+          ))}
+          <div style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <DSIconButton icon="plus" size={26} title="Add row at end (⌘Enter)" onClick={addRow} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--gl-fg-3)' }}>{nRows} rows · 9 column types · Tab → (adds a row at the end) · ⌘D dup · ⌘⌫ delete · ⌘/ shortcuts · click a header to sort</span>
+        <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 11, color: 'var(--gl-fg-3)' }}>SAR</span>
+      </div>
+
+      {menu && <RowMenu x={menu.x} y={menu.y}
+        onInsertAbove={() => { insertRowAt(menu.r); setMenu(null); }}
+        onInsertBelow={() => { insertRowAt(menu.r + 1); setMenu(null); }}
+        onDuplicate={() => { duplicateRowAt(menu.r); setMenu(null); }}
+        onDelete={() => { setMenu(null); requestDelete(menu.r); }}
+        onClose={() => setMenu(null)} />}
+      {colorMenu && <ColorMenu x={colorMenu.x} y={colorMenu.y} onPick={(hex) => { writeCell(colorMenu.r, colorMenu.c, hex); setColorMenu(null); focusGrid(); }} onClose={() => { setColorMenu(null); focusGrid(); }} />}
+      {editing && comboRect && COLS[sel.c].kind === 'combo' && <ComboMenu rect={comboRect} opts={COLS[sel.c].opts} query={draft} onPick={(o) => commit(null, o)} />}
+      <ShortcutsDialog open={shortcuts} onClose={() => { setShortcuts(false); focusGrid(); }} />
+      <ConfirmDialog open={confirm} title={`Delete row ${sel.r + 1}?`}
+        body={`“${rows[sel.r]?.task || 'Untitled'}” will be permanently removed. This action is recorded in the audit log.`}
+        onConfirm={() => { deleteRowAt(sel.r); setConfirm(false); }} onCancel={() => setConfirm(false)} />
+    </div>
+  );
+}
+
+/* ---- per-kind inline editor ---- */
+function CellEditor({ col, draft, setDraft, inputRef, commit, onOpenDate, onOpenTime, onComboRect }) {
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    if (col.kind === 'combo' && ref.current) { const r = ref.current.getBoundingClientRect(); onComboRect({ left: r.left, bottom: r.bottom, width: r.width }); }
+  }, [col.kind, draft, onComboRect]);
+  const baseIn = { width: '100%', height: '100%', padding: '0 9px', background: 'var(--gl-surface)', border: 'none', outline: 'none', fontFamily: col.mono ? 'var(--gl-font-mono)' : 'var(--gl-font-body)', fontSize: 13, color: 'var(--gl-fg-1)', textAlign: col.align === 'right' ? 'right' : 'left', boxSizing: 'border-box' };
+
+  if (col.kind === 'enum') {
+    return <select ref={inputRef} value={draft} onChange={e => setDraft(e.target.value)} onBlur={() => commit()} style={baseIn}>
+      <option value=""></option>{col.opts.map(o => <option key={o} value={o}>{o}</option>)}
+    </select>;
+  }
+
+  const suffix = col.kind === 'date'
+    ? <SuffixBtn onClick={onOpenDate} title="Pick a date" icon={<GLIcon name="calendar" size={15} />} />
+    : col.kind === 'time'
+      ? <SuffixBtn onClick={onOpenTime} title="Pick a time" icon={<RawIcon d={CLOCK} size={15} />} />
+      : col.kind === 'combo'
+        ? <SuffixBtn onClick={() => inputRef.current && inputRef.current.focus()} title="Suggestions" icon={<GLIcon name="chevD" size={15} />} />
+        : null;
+
+  const onChange = (e) => {
+    let v = e.target.value;
+    if (col.kind === 'date') v = maskDate(v);
+    else if (col.kind === 'time') v = maskTime(v);
+    setDraft(v);
+  };
+  const inputMode = col.kind === 'num' ? 'decimal' : (col.kind === 'date' || col.kind === 'time') ? 'numeric' : 'text';
+  const placeholder = col.kind === 'date' ? 'YYYY-MM-DD' : col.kind === 'time' ? 'HH:mm' : undefined;
+
+  return (
+    <div ref={ref} style={{ display: 'flex', alignItems: 'center', width: '100%', height: '100%', background: 'var(--gl-surface)' }}>
+      <input ref={inputRef} value={draft} onChange={onChange} onBlur={() => commit()} inputMode={inputMode} placeholder={placeholder}
+        style={{ ...baseIn, paddingInlineEnd: suffix ? 2 : 9 }} />
+      {suffix}
+    </div>
+  );
+}
+function SuffixBtn({ onClick, title, icon }) {
+  return <button tabIndex={-1} title={title} onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: '100%', border: 'none', background: 'transparent', color: 'var(--gl-blue-500)', cursor: 'pointer', padding: 0 }}>{icon}</button>;
+}
+function ColorSwatchCell({ hex }) {
+  const valid = /^#([0-9a-fA-F]{6})$/.test(hex || '');
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ width: 16, height: 16, borderRadius: 4, border: '1px solid var(--gl-border-strong)', background: valid ? hex : 'transparent', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        {!valid && <GLIcon name="ban" size={11} />}
+      </span>
+      <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 12, color: hex ? 'var(--gl-fg-1)' : 'var(--gl-fg-4)' }}>{hex ? hex.toUpperCase() : '—'}</span>
+    </span>
+  );
+}
+function hStyle(activeCol) { return { padding: '9px 10px', fontWeight: 700, fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: activeCol ? 'var(--gl-blue-500)' : 'var(--gl-fg-3)', borderBottom: '1px solid var(--gl-border-strong)', background: activeCol ? 'color-mix(in srgb, var(--gl-blue-500) 10%, var(--gl-bg))' : 'var(--gl-bg)', whiteSpace: 'nowrap' }; }
+function gutStyle(activeRow) { return { display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, fontFamily: 'var(--gl-font-mono)', fontSize: 11, color: activeRow ? 'var(--gl-blue-500)' : 'var(--gl-fg-3)', fontWeight: activeRow ? 700 : 400, background: activeRow ? 'color-mix(in srgb, var(--gl-blue-500) 10%, var(--gl-bg))' : 'var(--gl-bg)', borderInlineEnd: '1px solid var(--gl-border-strong)', borderBottom: '1px solid var(--gl-border)', cursor: 'pointer' }; }
+
+/* ---- mobile stacked cards ---- */
+function SheetField({ label, value, onChange, mono, required }) {
+  return (
+    <div>
+      <div style={{ fontWeight: 700, fontSize: 10, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--gl-fg-2)', marginBottom: 7 }}>{label}{required && <span style={{ color: 'var(--gl-danger-500)' }}> *</span>}</div>
+      <input value={value} onChange={e => onChange(e.target.value)} style={{ width: '100%', height: 46, padding: '0 14px', background: 'var(--gl-input-bg)', border: `1px solid ${required && !String(value).trim() ? 'var(--gl-danger-500)' : 'var(--gl-border-strong)'}`, borderRadius: 8, fontFamily: mono ? 'var(--gl-font-mono)' : 'var(--gl-font-body)', fontSize: 14, color: 'var(--gl-fg-1)', outline: 'none', boxSizing: 'border-box' }} />
+    </div>
+  );
+}
+function MobileCards() {
+  const [rows, setRows] = React.useState(SEED.map(r => ({ ...r })));
+  const [sheet, setSheet] = React.useState({ open: false, idx: null });
+  const [v, setV] = React.useState(blankRow());
+  const [del, setDel] = React.useState(null);
+  React.useEffect(() => { if (sheet.open) setV(sheet.idx == null ? blankRow() : { ...rows[sheet.idx] }); }, [sheet]);
+  const set = (k, val) => setV(p => ({ ...p, [k]: val }));
+  const save = () => { if (!v.task.trim()) return; setRows(p => sheet.idx == null ? [...p, v] : p.map((r, i) => i === sheet.idx ? v : r)); setSheet({ open: false, idx: null }); };
+  return (
+    <div style={{ width: '100%', maxWidth: 360, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <DSButton icon="plus" onClick={() => setSheet({ open: true, idx: null })}>Add Task</DSButton>
+      {rows.map((r, i) => (
+        <div key={i} style={{ background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', padding: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div><div style={{ fontWeight: 600, fontSize: 14 }}>{r.task || 'Untitled'}</div><div style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 11, color: 'var(--gl-fg-3)', marginTop: 2 }}>{r.id} · {r.due || '—'} · {r.at || '—'}</div></div>
+            <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 9px', borderRadius: 999, color: STATUS_TONE[r.status] || 'var(--gl-fg-3)', background: `color-mix(in srgb, ${STATUS_TONE[r.status] || 'var(--gl-fg-3)'} 16%, transparent)` }}>{r.status || '—'}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--gl-border)' }}>
+            <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 15, fontWeight: 600 }}>{fmtNum((parseNum(r.qty) ?? 0) * (parseNum(r.price) ?? 0))} <span style={{ fontSize: 10, color: 'var(--gl-fg-3)' }}>SAR</span></span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <DSIconButton icon="edit" size={32} onClick={() => setSheet({ open: true, idx: i })} />
+              <DSIconButton icon="trash" variant="danger" size={32} onClick={() => setDel(i)} />
+            </div>
+          </div>
+        </div>
+      ))}
+      {sheet.open && (
+        <div onClick={() => setSheet({ open: false, idx: null })} style={{ position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: 420, maxWidth: '100%', background: 'var(--gl-surface)', borderRadius: '16px 16px 0 0', border: '1px solid var(--gl-border-strong)', borderBottom: 'none', padding: 18, paddingBottom: 28, boxShadow: '0 -12px 32px -8px rgba(0,0,0,.45)', animation: 'tblSheet 260ms cubic-bezier(.2,0,0,1)' }}>
+            <div style={{ width: 36, height: 4, borderRadius: 999, background: 'var(--gl-border-strong)', margin: '0 auto 16px' }} />
+            <div style={{ fontFamily: 'var(--gl-font-display)', fontWeight: 700, fontSize: 17, marginBottom: 16, color: 'var(--gl-fg-1)' }}>{sheet.idx == null ? 'Add task' : 'Edit task'}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <SheetField label="Task" value={v.task} onChange={x => set('task', x)} required />
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}><SheetField label="Qty" value={v.qty} onChange={x => set('qty', x)} mono /></div>
+                <div style={{ flex: 1 }}><SheetField label="Price" value={v.price} onChange={x => set('price', x)} mono /></div>
+              </div>
+              <div style={{ display: 'flex', gap: 12 }}>
+                <div style={{ flex: 1 }}><SheetField label="Due (YYYY-MM-DD)" value={v.due} onChange={x => set('due', maskDate(x))} mono /></div>
+                <div style={{ flex: 1 }}><SheetField label="At (HH:mm)" value={v.at} onChange={x => set('at', maskTime(x))} mono /></div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+              <DSButton variant="secondary" onClick={() => setSheet({ open: false, idx: null })}>Cancel</DSButton>
+              <DSButton icon="check" onClick={save}>Save</DSButton>
+            </div>
+          </div>
+        </div>
+      )}
+      <ConfirmDialog open={del != null} title="Delete task?"
+        body={`“${(del != null && rows[del]?.task) || 'Untitled'}” will be permanently removed.`}
+        onConfirm={() => { setRows(rows.filter((_, i) => i !== del)); setDel(null); }} onCancel={() => setDel(null)} />
+    </div>
+  );
+}
+
+function StateBox({ kind }) {
+  if (kind === 'loading') return <div style={{ width: '100%', textAlign: 'center', padding: '40px 0', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', background: 'var(--gl-surface)' }}><DSSpinner size={26} /><div style={{ fontSize: 13, color: 'var(--gl-fg-3)', marginTop: 12 }}>Loading rows…</div></div>;
+  if (kind === 'empty') return <div style={{ width: '100%', textAlign: 'center', padding: '36px 0', border: '1px dashed var(--gl-border-strong)', borderRadius: 'var(--gl-radius-lg)', color: 'var(--gl-fg-3)' }}><GLIcon name="inbox" size={26} /><div style={{ fontSize: 13, marginTop: 10 }}>No rows yet</div><div style={{ marginTop: 14 }}><DSButton size="sm" icon="plus">Add Row</DSButton></div></div>;
+  return <div style={{ width: '100%', textAlign: 'center', padding: '36px 0', border: '1px dashed rgba(239,68,68,.4)', background: 'rgba(239,68,68,.05)', borderRadius: 'var(--gl-radius-lg)', color: 'var(--gl-danger-500)' }}><GLIcon name="alert" size={26} /><div style={{ fontSize: 13, marginTop: 10 }}>Failed to load table</div><div style={{ marginTop: 14 }}><DSButton size="sm" variant="secondary">Retry</DSButton></div></div>;
+}
+
+/* ---- column-type reference ---- */
+function TypeRef() {
+  const items = [
+    ['EditableColumn', 'inline text', 'free text'],
+    ['NumericColumn', 'inline numeric · min / max / decimals', 'grouped number 1,234.00'],
+    ['DateColumn', 'masked YYYY-MM-DD + calendar button', 'ISO date'],
+    ['TimeColumn', 'masked HH:mm + clock button', '24-hour time'],
+    ['ComboBoxColumn', 'free text + suggestions ▾', 'any string'],
+    ['DropdownColumn', 'strict popup menu', 'one of options'],
+    ['ColorPickerColumn', 'swatch menu', '#RRGGBB hex'],
+    ['ReadonlyColumn', '— never editable', 'display only'],
+    ['ComputedColumn', '— derived from the row', 'compute(row)'],
+  ];
+  return (
+    <div style={{ width: '100%', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', overflow: 'hidden' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr 1fr', background: 'var(--gl-bg)', padding: '10px 16px', fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gl-fg-3)', borderBottom: '1px solid var(--gl-border-strong)' }}>
+        <span>Column</span><span>Editor</span><span>Stores</span>
+      </div>
+      {items.map(([a, b, c], i) => (
+        <div key={a} style={{ display: 'grid', gridTemplateColumns: '180px 1fr 1fr', padding: '11px 16px', fontSize: 13, color: 'var(--gl-fg-2)', borderBottom: i < items.length - 1 ? '1px solid var(--gl-border)' : 'none', alignItems: 'center' }}>
+          <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 12, color: 'var(--gl-blue-500)' }}>{a}</span><span>{b}</span><span>{c}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══ PHASE FEATURE DEMOS ═══ shared utilities ═══════════════════ */
+const { useState, useRef, useEffect, useCallback } = React;
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const hStep = (isRight, rtl) => (isRight ? 1 : -1) * (rtl ? -1 : 1);
+const san = s => String(s).replace(/\t/g, ' ').replace(/[\r\n]+/g, ' ');
+const TT2 = { Asset:'#4A7CFF', Liability:'#E0A23B', Equity:'#1DB88A', Revenue:'#1DB88A', Expense:'#EF4444' };
+const ST2 = { Active:'#1DB88A', Open:'#E0A23B', Review:'#8C92A4', Flagged:'#EF4444' };
+const pmove = (arr, from, to) => { const a = arr.slice(); const [x] = a.splice(from, 1); a.splice(to, 0, x); return a; };
+const PMINW = 60, PMAXW = 460;
+
+function Seg({ value, onChange, options }) {
+  return (
+    <div style={{ display:'inline-flex', gap:3, background:'var(--gl-input-bg)', padding:3, borderRadius:7, border:'1px solid var(--gl-border)' }}>
+      {options.map(o => {
+        const v = typeof o === 'string' ? o : o.value, l = typeof o === 'string' ? o : o.label, on = value === v;
+        return <button key={v} type="button" onClick={() => onChange(v)}
+          style={{ padding:'5px 12px', borderRadius:5, background:on?'var(--gl-surface)':'transparent', color:on?'var(--gl-fg-1)':'var(--gl-fg-3)', border:'none', cursor:'pointer', fontFamily:'var(--gl-font-body)', fontWeight:700, fontSize:11, letterSpacing:'.08em', textTransform:'uppercase' }}>{l}</button>;
+      })}
+    </div>
+  );
+}
+function Kbd({ children }) {
+  return <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', minWidth:22, height:22, padding:'0 6px', borderRadius:5, background:'var(--gl-input-bg)', border:'1px solid var(--gl-border-strong)', borderBottomWidth:2, fontFamily:'var(--gl-font-mono)', fontSize:11.5, fontWeight:600, color:'var(--gl-fg-1)' }}>{children}</span>;
+}
+function useKeyLog() {
+  const [log, setLog] = useState([]);
+  const push = useCallback(function(key, action, ok) {
+    if (ok === undefined) ok = true;
+    setLog(l => [{ id: Date.now() + Math.random(), key, action, ok }, ...l].slice(0, 7));
+  }, []);
+  return [log, push];
+}
+function KeyLog({ log, hint }) {
+  return (
+    <div dir="ltr" style={{ background:'var(--gl-bg)', border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-md)', overflow:'hidden', minWidth:220 }}>
+      <div style={{ padding:'8px 12px', borderBottom:'1px solid var(--gl-border)', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--gl-fg-3)', display:'flex', alignItems:'center', gap:7 }}>
+        <GLIcon name="keyboard" size={14} color="var(--gl-blue-500)" />Key log
+      </div>
+      <div style={{ padding:log.length?'4px 0':'12px', minHeight:40 }}>
+        {!log.length ? <span style={{ fontSize:12, color:'var(--gl-fg-4)' }}>{hint || 'Press a key…'}</span>
+          : log.map((e,i) => <div key={e.id} style={{ display:'flex', alignItems:'center', gap:8, padding:'3px 12px', opacity:1-i*0.12 }}>
+              <Kbd>{e.key}</Kbd><span style={{ fontSize:11, color:'var(--gl-fg-4)' }}>→</span>
+              <span style={{ fontSize:12, fontFamily:'var(--gl-font-mono)', color:e.ok?'var(--gl-success-500)':'var(--gl-danger-500)' }}>{e.action}</span>
+            </div>)}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Phase 01 — LTR / RTL arrow-key directions ─────────────── */
+const P01_COLS_E = ['Code','Account','Type','Balance','Status'];
+const P01_ROWS_E = [
+  ['1010','Petty Cash','Asset','4,200.00','Active'],
+  ['1020','Bank · SNB','Asset','182,540.00','Active'],
+  ['2010','Payables','Liability','−74,100.00','Open'],
+  ['3010','Share Capital','Equity','−500,000.00','Active'],
+];
+function EditKbdDemo() {
+  const [dir, setDir] = useState('ltr');
+  const [sel, setSel] = useState({ r:1, c:1 });
+  const [focused, setFocused] = useState(false);
+  const [log, push] = useKeyLog();
+  const rtl = dir === 'rtl';
+  const nR = P01_ROWS_E.length, nC = P01_COLS_E.length;
+  const onKey = (e) => {
+    const k = e.key;
+    if (k==='ArrowRight'||k==='ArrowLeft') { e.preventDefault(); const isRight=k==='ArrowRight',d=hStep(isRight,rtl); setSel(s=>({...s,c:clamp(s.c+d,0,nC-1)})); push(k,'cell '+(isRight?'right →':'← left')); }
+    else if (k==='ArrowDown') { e.preventDefault(); setSel(s=>({...s,r:clamp(s.r+1,0,nR-1)})); push('↓','cell down'); }
+    else if (k==='ArrowUp') { e.preventDefault(); setSel(s=>({...s,r:clamp(s.r-1,0,nR-1)})); push('↑','cell up'); }
+    else if (k==='Home') { e.preventDefault(); setSel(s=>({...s,c:0})); push('Home','first column'); }
+    else if (k==='End') { e.preventDefault(); setSel(s=>({...s,c:nC-1})); push('End','last column'); }
+  };
+  const GT = '64px minmax(120px,1.4fr) 96px 130px 92px';
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+        <span style={{ fontSize:12.5, color:'var(--gl-fg-3)' }}>Click the grid, then press <Kbd>←</Kbd><Kbd>→</Kbd><Kbd>↑</Kbd><Kbd>↓</Kbd><Kbd>Home</Kbd><Kbd>End</Kbd></span>
+        <Seg value={dir} onChange={setDir} options={[{value:'ltr',label:'LTR'},{value:'rtl',label:'RTL · عربي'}]} />
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) 230px', gap:16, alignItems:'start' }}>
+        <div tabIndex={0} onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)} onKeyDown={onKey}
+          style={{ outline:focused?'2px solid var(--gl-blue-500)':'none', outlineOffset:2, border:'1px solid var(--gl-border-strong)', borderRadius:8, overflow:'hidden' }}>
+          <div dir={rtl?'rtl':'ltr'}>
+            <div style={{ display:'grid', gridTemplateColumns:GT, background:'var(--gl-bg)' }}>
+              {P01_COLS_E.map((c,ci) => <div key={c} style={{ padding:'9px 11px', fontSize:10, fontWeight:700, letterSpacing:'.05em', textTransform:'uppercase', color:ci===sel.c?'var(--gl-blue-500)':'var(--gl-fg-3)', borderBottom:'1px solid var(--gl-border-strong)', textAlign:ci>=3?(ci===3?'end':'center'):'start', whiteSpace:'nowrap' }}>{c}</div>)}
+            </div>
+            {P01_ROWS_E.map((row,r) => (
+              <div key={r} style={{ display:'grid', gridTemplateColumns:GT }}>
+                {row.map((v,c) => {
+                  const on=sel.r===r&&sel.c===c;
+                  return <div key={c} onClick={()=>setSel({r,c})}
+                    style={{ height:38, padding:'0 11px', display:'flex', alignItems:'center', justifyContent:c>=3?(c===3?'flex-end':'center'):'flex-start',
+                      borderInlineEnd:'1px solid var(--gl-border)', borderBottom:'1px solid var(--gl-border)',
+                      background:on?'color-mix(in srgb,var(--gl-blue-500) 11%,var(--gl-surface))':'var(--gl-surface)',
+                      boxShadow:on?'inset 0 0 0 2px var(--gl-blue-500)':'none', position:on?'relative':'static', zIndex:on?2:1,
+                      fontFamily:(c===0||c===3)?'var(--gl-font-mono)':'var(--gl-font-body)', fontSize:12.5,
+                      color:c===3&&v.startsWith('−')?'var(--gl-danger-500)':'var(--gl-fg-1)', cursor:'cell' }}>
+                    {c===4?<span style={{fontSize:10,fontWeight:700,padding:'2px 8px',borderRadius:999,color:v==='Active'?'var(--gl-success-500)':'var(--gl-warning-500)',background:'color-mix(in srgb,'+(v==='Active'?'var(--gl-success-500)':'var(--gl-warning-500)')+' 16%,transparent)'}}>{v}</span>:v}
+                  </div>;
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        <KeyLog log={log} hint="Click the grid, press arrows" />
+      </div>
+      <div style={{ fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5 }}>
+        Selected <strong style={{color:'var(--gl-fg-1)'}}>{P01_COLS_E[sel.c]}</strong> · row {sel.r+1}. Columns reverse under RTL, but <Kbd>→</Kbd> still selects the cell to the visual right.
+        </div>
+    </div>
+  );
+}
+
+/* ─── Phase 03 — Generic row type EditableTable<T> ───────────── */
+class Account {
+  constructor(d) { Object.assign(this, d); }
+  copyWith(p) { return new Account({ ...this, ...p }); }
+}
+const P03_COLS = [
+  { key:'code',   label:'Code',       w:90,  mono:true,  kind:'text', value:a=>a.code,         setValue:(a,v)=>a.copyWith({code:v}) },
+  { key:'nameEn', label:'Account',    w:184, kind:'text', value:a=>a.nameEn,                    setValue:(a,v)=>a.copyWith({nameEn:v}) },
+  { key:'type',   label:'Type',       w:128, kind:'enum', opts:['Asset','Liability','Equity','Revenue','Expense'], value:a=>a.type, setValue:(a,v)=>a.copyWith({type:v}) },
+  { key:'qty',    label:'Qty',        w:80,  mono:true, align:'end', kind:'num', value:a=>String(a.qty),  setValue:(a,v)=>a.copyWith({qty:parseNum(v)||0}) },
+  { key:'price',  label:'Unit price', w:120, mono:true, align:'end', kind:'num', value:a=>fmtNum(a.price), setValue:(a,v)=>a.copyWith({price:parseNum(v)||0}) },
+  { key:'total',  label:'Total',      w:130, mono:true, align:'end', kind:'computed', value:a=>fmtNum(a.qty*a.price) },
+];
+const P03_SEED = [
+  new Account({ code:'1010', nameEn:'Petty Cash',   type:'Asset',     qty:3, price:1400 }),
+  new Account({ code:'1020', nameEn:'Bank · SNB',    type:'Asset',     qty:1, price:182540 }),
+  new Account({ code:'2010', nameEn:'Payables',      type:'Liability', qty:2, price:37050 }),
+  new Account({ code:'4010', nameEn:'Sales Revenue', type:'Revenue',   qty:4, price:160050 }),
+];
+const isRO = c => !c.setValue || c.kind === 'computed';
+function TypedGrid({ rows, setRows, sel, setSel }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const wrapRef = useRef(null), inputRef = useRef(null);
+  const nR = rows.length, nC = P03_COLS.length;
+  useEffect(() => { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+  const focusGrid = () => wrapRef.current && wrapRef.current.focus();
+  const beginEdit = init => { const c=P03_COLS[sel.c]; if(isRO(c))return; setDraft(init!=null?init:c.value(rows[sel.r])); setEditing(true); };
+  const commit = mv => {
+    const c = P03_COLS[sel.c];
+    if (!isRO(c)) setRows(rows.map((row,i)=>i===sel.r?c.setValue(row,draft):row));
+    setEditing(false);
+    if (mv) setSel(s=>({ r:clamp(s.r+(mv.dr||0),0,nR-1), c:clamp(s.c+(mv.dc||0),0,nC-1) }));
+    setTimeout(focusGrid, 0);
+  };
+  const cycleEnum = () => { const c=P03_COLS[sel.c]; const cur=c.value(rows[sel.r]); const i=c.opts.indexOf(cur); const next=c.opts[(i+1)%c.opts.length]; setRows(rows.map((row,ri)=>ri===sel.r?c.setValue(row,next):row)); };
+  const onKey = (e) => {
+    if (editing) { if(e.key==='Enter'){e.preventDefault();commit({dr:1});} else if(e.key==='Tab'){e.preventDefault();commit({dc:e.shiftKey?-1:1});} else if(e.key==='Escape'){e.preventDefault();setEditing(false);focusGrid();} return; }
+    const k = e.key;
+    if(k==='ArrowRight'){e.preventDefault();setSel(s=>({...s,c:Math.min(s.c+1,nC-1)}));}
+    else if(k==='ArrowLeft'){e.preventDefault();setSel(s=>({...s,c:Math.max(s.c-1,0)}));}
+    else if(k==='ArrowDown'){e.preventDefault();setSel(s=>({...s,r:Math.min(s.r+1,nR-1)}));}
+    else if(k==='ArrowUp'){e.preventDefault();setSel(s=>({...s,r:Math.max(s.r-1,0)}));}
+    else if(k==='Enter'||k==='F2'){e.preventDefault();const c=P03_COLS[sel.c];if(c.kind==='enum')cycleEnum();else beginEdit();}
+    else if(k.length===1&&!e.metaKey&&!e.ctrlKey){const c=P03_COLS[sel.c];if(!isRO(c)&&c.kind!=='enum')beginEdit(k);else if(c.kind==='enum')cycleEnum();}
+  };
+  const GT = P03_COLS.map(c=>c.w+'px').join(' '), totalW = P03_COLS.reduce((s,c)=>s+c.w,0);
+  return (
+    <div ref={wrapRef} tabIndex={0} onKeyDown={onKey} style={{ overflowX:'auto', border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-md)', outline:'none' }}>
+      <div style={{ minWidth:totalW }}>
+        <div style={{ display:'grid', gridTemplateColumns:GT, background:'var(--gl-bg)' }}>
+          {P03_COLS.map((c,ci) => (
+            <div key={c.key} style={{ padding:'9px 11px', fontSize:10, fontWeight:700, letterSpacing:'.05em', textTransform:'uppercase', color:ci===sel.c?'var(--gl-blue-500)':'var(--gl-fg-3)', borderBottom:'1px solid var(--gl-border-strong)', textAlign:c.align==='end'?'end':'start', whiteSpace:'nowrap' }}>
+              {c.label}{isRO(c)&&<span style={{color:'var(--gl-fg-4)',fontWeight:400,fontSize:9}}> ƒ</span>}
+            </div>
+          ))}
+        </div>
+        {rows.map((row,r) => (
+          <div key={r} style={{ display:'grid', gridTemplateColumns:GT }}>
+            {P03_COLS.map((c,ci) => {
+              const on=sel.r===r&&sel.c===ci, isEd=on&&editing&&!isRO(c), shown=c.value(row);
+              return (
+                <div key={c.key} onMouseDown={()=>{if(!isEd)setSel({r,c:ci});}} onDoubleClick={()=>{setSel({r,c:ci});if(c.kind==='enum')cycleEnum();else beginEdit();}}
+                  style={{ height:38, padding:isEd?0:'0 11px', display:'flex', alignItems:'center', justifyContent:c.align==='end'?'flex-end':'flex-start',
+                    borderInlineEnd:'1px solid var(--gl-border)', borderBottom:'1px solid var(--gl-border)',
+                    background:on?'color-mix(in srgb,var(--gl-blue-500) 11%,var(--gl-surface))':'var(--gl-surface)',
+                    boxShadow:on?'inset 0 0 0 2px var(--gl-blue-500)':'none', position:on?'relative':'static', zIndex:on?2:1,
+                    fontFamily:c.mono?'var(--gl-font-mono)':'var(--gl-font-body)', fontSize:12.5,
+                    color:isRO(c)?'var(--gl-fg-3)':'var(--gl-fg-1)', fontStyle:c.kind==='computed'?'italic':'normal', cursor:isRO(c)?'default':'cell' }}>
+                  {isEd
+                    ?<input ref={inputRef} value={draft} onChange={e=>setDraft(e.target.value)} onBlur={()=>commit()} inputMode={c.kind==='num'?'decimal':'text'}
+                        style={{width:'100%',height:'100%',padding:'0 10px',background:'var(--gl-surface)',border:'none',outline:'none',fontFamily:c.mono?'var(--gl-font-mono)':'var(--gl-font-body)',fontSize:12.5,color:'var(--gl-fg-1)',textAlign:c.align==='end'?'right':'left'}}/>
+                    :c.kind==='enum'
+                      ?<span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:999,color:TT2[shown],background:'color-mix(in srgb,'+TT2[shown]+' 16%,transparent)'}}>{shown}</span>
+                      :shown}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function ModelInspector({ rows, sel }) {
+  return (
+    <div style={{ background:'var(--gl-bg)', border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-md)', overflow:'hidden' }}>
+      <div style={{ padding:'9px 13px', borderBottom:'1px solid var(--gl-border)', fontSize:10, fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'var(--gl-fg-2)' }}>
+        Live <code style={{fontFamily:'var(--gl-font-mono)',color:'var(--gl-blue-500)'}}>List&lt;Account&gt;</code>
+      </div>
+      <pre style={{ margin:0, padding:'10px 13px', fontFamily:'var(--gl-font-mono)', fontSize:11, lineHeight:1.65, color:'var(--gl-fg-2)', overflowX:'auto' }}>
+        {rows.map((a,i) => (
+          <div key={i} style={{ background:i===sel.r?'color-mix(in srgb,var(--gl-blue-500) 12%,transparent)':'transparent', borderRadius:3, padding:'0 4px', margin:'0 -4px' }}>
+            <span style={{color:'var(--gl-blue-500)'}}>Account</span>(<span style={{color:'var(--gl-success-500)'}}>'{a.code}'</span>, qty: <span style={{color:'var(--gl-warning-500)'}}>{a.qty}</span>, price: <span style={{color:'var(--gl-warning-500)'}}>{a.price}</span>)
+          </div>
+        ))}
+      </pre>
+    </div>
+  );
+}
+function TypedGridDemo() {
+  const [rows, setRows] = useState(P03_SEED);
+  const [sel, setSel] = useState({ r:0, c:0 });
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1.6fr) minmax(220px,1fr)', gap:18, alignItems:'start' }}>
+        <div>
+          <TypedGrid rows={rows} setRows={setRows} sel={sel} setSel={setSel} />
+          <div style={{ marginTop:10, fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5 }}>
+            Editing <strong style={{color:'var(--gl-fg-1)'}}>{P03_COLS[sel.c].label}</strong> · {rows[sel.r].code}. Click + type, or <Kbd>Enter</Kbd> on Type to cycle. ƒ = computed read-only.
+          </div>
+        </div>
+        <ModelInspector rows={rows} sel={sel} />
+      </div>
+      <div style={{ fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5 }}>
+        Each column declares <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>value(a)</code> to read and <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>setValue(a, raw) → Account</code> to write. The inspector confirms rows are typed <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>Account</code> instances, not string maps.
+        </div>
+    </div>
+  );
+}
+
+/* ─── Phase 04 / 05 — Column resize & reorder ────────────────── */
+const PH_COLS0 = [
+  {key:'code',label:'Code',w:88,mono:true},{key:'task',label:'Task',w:200},
+  {key:'type',label:'Type',w:120},{key:'amt',label:'Amount',w:140,mono:true,e:true},
+  {key:'due',label:'Due',w:120,mono:true},{key:'st',label:'Status',w:120},
+];
+const PH_ROWS = [
+  {code:'001',task:'Wireframes',type:'Asset',amt:'4,200.00',due:'2024-12-01',st:'Active'},
+  {code:'002',task:'Component build',type:'Asset',amt:'182,540.00',due:'2024-12-02',st:'Active'},
+  {code:'003',task:'Accessibility pass',type:'Liability',amt:'−74,100.00',due:'2024-12-03',st:'Open'},
+  {code:'004',task:'Design QA',type:'Equity',amt:'−500,000.00',due:'2024-11-30',st:'Active'},
+  {code:'005',task:'Launch prep',type:'Revenue',amt:'−640,200.00',due:'2024-12-04',st:'Review'},
+];
+function EtResizeDemo() {
+  const [widths, setWidths] = useState(PH_COLS0.map(c=>c.w));
+  const [drag, setDrag] = useState(null);
+  const dragRef = useRef(null);
+  const onDown=(ci,e)=>{e.preventDefault();e.stopPropagation();try{e.currentTarget.setPointerCapture(e.pointerId);}catch(_){}dragRef.current={ci,startX:e.clientX,startW:widths[ci]};setDrag(ci);};
+  const onMove=e=>{const d=dragRef.current;if(!d)return;setWidths(w=>w.map((x,i)=>i===d.ci?clamp(d.startW+(e.clientX-d.startX),PMINW,PMAXW):x));};
+  const onUp=e=>{try{e.currentTarget.releasePointerCapture(e.pointerId);}catch(_){}dragRef.current=null;setDrag(null);};
+  const GT=widths.map(w=>w+'px').join(' '),totalW=widths.reduce((a,b)=>a+b,0);
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:10,flexWrap:'wrap'}}>
+        <span style={{fontSize:12.5,color:'var(--gl-fg-3)'}}>Drag the handle on a header's right edge · double-click to reset</span>
+        <DSButton size="sm" variant="secondary" icon="back" onClick={()=>setWidths(PH_COLS0.map(c=>c.w))}>Reset</DSButton>
+      </div>
+      <div className="xl-wrap" style={{overflowX:'auto',border:'1px solid var(--gl-border-strong)',borderRadius:'var(--gl-radius-md)',background:'var(--gl-surface)',userSelect:drag!=null?'none':'auto'}}>
+        <div style={{minWidth:totalW}}>
+          <div style={{display:'grid',gridTemplateColumns:GT,background:'var(--gl-bg)'}}>
+            {PH_COLS0.map((c,ci)=>(
+              <div key={c.key} className={'rz-col'+(drag===ci?' resizing':'')}
+                style={{position:'relative',padding:'10px 12px',fontSize:10,fontWeight:700,letterSpacing:'.05em',textTransform:'uppercase',color:drag===ci?'var(--gl-blue-500)':'var(--gl-fg-3)',borderBottom:'1px solid var(--gl-border-strong)',textAlign:c.e?'end':'start',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                {c.label}
+                <div className={'rz-handle'+(drag===ci?' on':'')} onPointerDown={e=>onDown(ci,e)} onPointerMove={onMove} onPointerUp={onUp} onDoubleClick={()=>setWidths(w=>w.map((x,i)=>i===ci?PH_COLS0[i].w:x))}/>
+              </div>
+            ))}
+          </div>
+          {PH_ROWS.map((row,r)=>(
+            <div key={r} style={{display:'grid',gridTemplateColumns:GT}}>
+              {PH_COLS0.map(c=>{const v=row[c.key],neg=c.key==='amt'&&String(v).startsWith('−');return(
+                <div key={c.key} style={{height:38,padding:'0 12px',display:'flex',alignItems:'center',justifyContent:c.e?'flex-end':'flex-start',borderInlineEnd:'1px solid var(--gl-border)',borderBottom:'1px solid var(--gl-border)',fontFamily:c.mono?'var(--gl-font-mono)':'var(--gl-font-body)',fontSize:12.5,color:neg?'var(--gl-danger-500)':'var(--gl-fg-1)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',cursor:'cell'}}>
+                  {c.key==='type'?<span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:999,color:TT2[v],background:'color-mix(in srgb,'+TT2[v]+' 16%,transparent)',whiteSpace:'nowrap'}}>{v}</span>
+                    :c.key==='st'?<span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:999,color:ST2[v]||'var(--gl-fg-3)',background:'color-mix(in srgb,'+(ST2[v]||'var(--gl-fg-3)')+' 15%,transparent)',whiteSpace:'nowrap'}}>{v}</span>
+                      :<span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{v}</span>}
+                </div>
+              );})}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{marginTop:10,fontSize:12.5,color:'var(--gl-fg-3)',lineHeight:1.5}}>
+        Widths live in the controller — <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>resizeColumn(i, delta)</code>; header and rows read <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>widthOf(i)</code>. Min {PMINW}px · Max {PMAXW}px.
+        </div>
+    </div>
+  );
+}
+function EtReorderDemo() {
+  const [order, setOrder] = useState(PH_COLS0.map((_,i)=>i));
+  const [drag, setDrag] = useState(null);
+  const [over, setOver] = useState(null);
+  const headRef = useRef(null);
+  const cols = order.map(i=>PH_COLS0[i]);
+  const onDragStart=(pos,e)=>{setDrag(pos);e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain','');}catch(_){}};
+  const onDragOver=e=>{e.preventDefault();const cells=[...headRef.current.querySelectorAll('[data-head]')];let slot=cells.length;for(let i=0;i<cells.length;i++){const r=cells[i].getBoundingClientRect();if(e.clientX<r.left+r.width/2){slot=i;break;}}setOver(slot);};
+  const onDrop=e=>{e.preventDefault();if(drag==null||over==null){setDrag(null);setOver(null);return;}let to=over;if(to>drag)to-=1;setOrder(o=>pmove(o,drag,to));setDrag(null);setOver(null);};
+  const GT=cols.map(c=>c.w+'px').join(' '),totalW=cols.reduce((a,c)=>a+c.w,0);
+  let dropLeft=null; if(over!=null) dropLeft=cols.slice(0,over).reduce((a,c)=>a+c.w,0);
+  return (
+    <div>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,marginBottom:10,flexWrap:'wrap'}}>
+        <span style={{fontSize:12.5,color:'var(--gl-fg-3)'}}>Drag a column header to reorder</span>
+        <DSButton size="sm" variant="secondary" icon="back" onClick={()=>setOrder(PH_COLS0.map((_,i)=>i))}>Reset</DSButton>
+      </div>
+      <div className="xl-wrap" style={{overflowX:'auto',border:'1px solid var(--gl-border-strong)',borderRadius:'var(--gl-radius-md)',background:'var(--gl-surface)'}}>
+        <div style={{minWidth:totalW,position:'relative'}}>
+          {dropLeft!=null&&<div className="drop-line" style={{insetInlineStart:dropLeft-1}}/>}
+          <div ref={headRef} onDragOver={onDragOver} onDrop={onDrop} onDragEnd={()=>{setDrag(null);setOver(null);}} style={{display:'grid',gridTemplateColumns:GT,background:'var(--gl-bg)'}}>
+            {cols.map((c,pos)=>(
+              <div key={c.key} data-head draggable onDragStart={e=>onDragStart(pos,e)}
+                className={'col-head'+(drag===pos?' dragging':'')}
+                style={{display:'flex',alignItems:'center',gap:7,padding:'10px 12px',borderBottom:'1px solid var(--gl-border-strong)',whiteSpace:'nowrap',overflow:'hidden'}}>
+                <GLIcon name="grip" size={12} color="var(--gl-fg-4)"/>
+                <span style={{fontSize:10,fontWeight:700,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--gl-fg-3)',overflow:'hidden',textOverflow:'ellipsis'}}>{c.label}</span>
+              </div>
+            ))}
+          </div>
+          {PH_ROWS.map((row,r)=>(
+            <div key={r} style={{display:'grid',gridTemplateColumns:GT}}>
+              {cols.map(c=>{const v=row[c.key],neg=c.key==='amt'&&String(v).startsWith('−');return(
+                <div key={c.key} style={{height:38,padding:'0 12px',display:'flex',alignItems:'center',justifyContent:c.e?'flex-end':'flex-start',borderInlineEnd:'1px solid var(--gl-border)',borderBottom:'1px solid var(--gl-border)',fontFamily:c.mono?'var(--gl-font-mono)':'var(--gl-font-body)',fontSize:12.5,color:neg?'var(--gl-danger-500)':'var(--gl-fg-1)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {c.key==='type'?<span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:999,color:TT2[v],background:'color-mix(in srgb,'+TT2[v]+' 16%,transparent)',whiteSpace:'nowrap'}}>{v}</span>
+                    :c.key==='st'?<span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:999,color:ST2[v]||'var(--gl-fg-3)',background:'color-mix(in srgb,'+(ST2[v]||'var(--gl-fg-3)')+' 15%,transparent)',whiteSpace:'nowrap'}}>{v}</span>
+                      :<span style={{overflow:'hidden',textOverflow:'ellipsis'}}>{v}</span>}
+                </div>
+              );})}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{marginTop:10,fontSize:12.5,color:'var(--gl-fg-3)',lineHeight:1.5}}>
+        Order is an index list in the controller — <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>moveColumn(from, to)</code>; header and rows read <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>columnAt(visualIndex)</code>.
+        </div>
+    </div>
+  );
+}
+
+/* ─── Phase 07 — Copy rows & cells ───────────────────────── */
+function EtCopyDemo() {
+  const [mode, setMode] = useState('row');
+  const [selRows, setSelRows] = useState(new Set());
+  const [selCells, setSelCells] = useState(new Set());
+  const [anchor, setAnchor] = useState(null);
+  const [copied, setCopied] = useState(null);
+  const [pasteBox, setPasteBox] = useState('');
+  const clear = () => { setSelRows(new Set()); setSelCells(new Set()); setAnchor(null); };
+  const onRowClick=(r,e)=>{const next=new Set(selRows);if(e.shiftKey&&anchor!=null){const[a,b]=[Math.min(anchor,r),Math.max(anchor,r)];for(let i=a;i<=b;i++)next.add(i);}else if(e.metaKey||e.ctrlKey){next.has(r)?next.delete(r):next.add(r);setAnchor(r);}else{next.clear();next.add(r);setAnchor(r);}setSelRows(next);};
+  const onCellClick=(r,c,e)=>{const next=new Set(selCells);if(e.shiftKey&&Array.isArray(anchor)){const[ar,ac]=anchor;next.clear();for(let i=Math.min(ar,r);i<=Math.max(ar,r);i++)for(let j=Math.min(ac,c);j<=Math.max(ac,c);j++)next.add(i+':'+j);}else if(e.metaKey||e.ctrlKey){const id=r+':'+c;next.has(id)?next.delete(id):next.add(id);setAnchor([r,c]);}else{next.clear();next.add(r+':'+c);setAnchor([r,c]);}setSelCells(next);};
+  const buildTsv=()=>{if(mode==='row'){const rs=[...selRows].sort((a,b)=>a-b);if(!rs.length)return null;return{tsv:rs.map(r=>PH_COLS0.map(c=>san(PH_ROWS[r][c.key])).join('\t')).join('\n'),label:rs.length+' row'+(rs.length>1?'s':'')};}const cells=[...selCells].map(s=>s.split(':').map(Number));if(!cells.length)return null;const rs=cells.map(c=>c[0]),cs=cells.map(c=>c[1]);const[minR,maxR,minC,maxC]=[Math.min(...rs),Math.max(...rs),Math.min(...cs),Math.max(...cs)];const picked=new Set(selCells),lines=[];for(let r=minR;r<=maxR;r++){const line=[];for(let c=minC;c<=maxC;c++)line.push(picked.has(r+':'+c)?san(PH_ROWS[r][PH_COLS0[c].key]):'');lines.push(line.join('\t'));}return{tsv:lines.join('\n'),label:cells.length+' cells · '+(maxR-minR+1)+'×'+(maxC-minC+1)};};
+  const doCopy=async()=>{const built=buildTsv();if(!built)return;try{await navigator.clipboard.writeText(built.tsv);}catch(_){}setCopied(built);};
+  const count=mode==='row'?selRows.size:selCells.size;
+  const GT=PH_COLS0.map(c=>c.w+'px').join(' '),totalW=PH_COLS0.reduce((a,c)=>a+c.w,0);
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:12}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10}}>
+        <span style={{fontSize:12.5,color:'var(--gl-fg-3)'}}>{mode==='row'?<span>Click row · <Kbd>⇧</Kbd>-range · <Kbd>⌘</Kbd>/<Kbd>Ctrl</Kbd>-toggle</span>:<span>Click cell · <Kbd>⇧</Kbd>-rectangle · <Kbd>⌘</Kbd>/<Kbd>Ctrl</Kbd>-toggle</span>}</span>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <span style={{fontSize:12,color:count?'var(--gl-blue-500)':'var(--gl-fg-4)',fontWeight:600}}>{count?count+' selected':'nothing selected'}</span>
+          <Seg value={mode} onChange={v=>{setMode(v);clear();}} options={[{value:'row',label:'Rows'},{value:'cell',label:'Cells'}]}/>
+          <DSButton size="sm" variant="secondary" icon="copy" onClick={doCopy}>Copy <span style={{opacity:.6,marginInlineStart:4}}>⌘C</span></DSButton>
+        </div>
+      </div>
+      <div tabIndex={0} onKeyDown={e=>{if((e.metaKey||e.ctrlKey)&&e.key==='c'){e.preventDefault();doCopy();}}} className="xl-wrap" style={{overflowX:'auto',border:'1px solid var(--gl-border-strong)',borderRadius:'var(--gl-radius-md)',background:'var(--gl-surface)',outline:'none'}}>
+        <div style={{minWidth:totalW}}>
+          <div style={{display:'grid',gridTemplateColumns:GT,background:'var(--gl-bg)'}}>
+            {PH_COLS0.map(c=><div key={c.key} style={{padding:'9px 12px',fontSize:10,fontWeight:700,letterSpacing:'.05em',textTransform:'uppercase',color:'var(--gl-fg-3)',borderBottom:'1px solid var(--gl-border-strong)',textAlign:c.e?'end':'start',whiteSpace:'nowrap'}}>{c.label}</div>)}
+          </div>
+          {PH_ROWS.map((row,r)=>{const rowSel=mode==='row'&&selRows.has(r);return(
+            <div key={r} onClick={mode==='row'?e=>onRowClick(r,e):undefined}
+              style={{display:'grid',gridTemplateColumns:GT,cursor:mode==='row'?'pointer':'default',background:rowSel?'color-mix(in srgb,var(--gl-blue-500) 13%,transparent)':'transparent',boxShadow:rowSel?'inset 2px 0 0 var(--gl-blue-500)':'none'}}>
+              {PH_COLS0.map((c,ci)=>{const cellSel=mode==='cell'&&selCells.has(r+':'+ci),v=row[c.key],neg=c.key==='amt'&&String(v).startsWith('−');return(
+                <div key={c.key} onClick={mode==='cell'?e=>onCellClick(r,ci,e):undefined}
+                  style={{height:38,padding:'0 12px',display:'flex',alignItems:'center',justifyContent:c.e?'flex-end':'flex-start',borderInlineEnd:'1px solid var(--gl-border)',borderBottom:'1px solid var(--gl-border)',cursor:mode==='cell'?'cell':'inherit',
+                    background:cellSel?'color-mix(in srgb,var(--gl-blue-500) 16%,transparent)':'transparent',
+                    boxShadow:cellSel?'inset 0 0 0 1.5px var(--gl-blue-500)':'none',position:cellSel?'relative':'static',zIndex:cellSel?2:1,
+                    fontFamily:c.mono?'var(--gl-font-mono)':'var(--gl-font-body)',fontSize:12.5,color:neg?'var(--gl-danger-500)':'var(--gl-fg-1)',whiteSpace:'nowrap'}}>
+                  {c.key==='type'?<span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:999,color:TT2[v],background:'color-mix(in srgb,'+TT2[v]+' 16%,transparent)'}}>{v}</span>
+                    :c.key==='st'?<span style={{fontSize:10,fontWeight:700,padding:'2px 9px',borderRadius:999,color:ST2[v]||'var(--gl-fg-3)',background:'color-mix(in srgb,'+(ST2[v]||'var(--gl-fg-3)')+' 15%,transparent)'}}>{v}</span>:v}
+                </div>
+              );})}
+            </div>
+          );})}
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+        <div style={{background:'var(--gl-bg)',border:'1px solid var(--gl-border)',borderRadius:'var(--gl-radius-md)',overflow:'hidden'}}>
+          <div style={{padding:'8px 12px',borderBottom:'1px solid var(--gl-border)',display:'flex',alignItems:'center',gap:8,justifyContent:'space-between'}}>
+            <span style={{display:'flex',alignItems:'center',gap:7}}><GLIcon name="copy" size={13} color="var(--gl-success-500)"/><span style={{fontSize:10,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--gl-fg-3)'}}>On clipboard (TSV)</span></span>
+            {copied&&<span style={{fontSize:10,fontWeight:700,color:'var(--gl-success-500)'}}>{copied.label}</span>}
+          </div>
+          <pre style={{margin:0,padding:'10px 12px',fontFamily:'var(--gl-font-mono)',fontSize:11,lineHeight:1.6,color:'var(--gl-fg-2)',minHeight:60,whiteSpace:'pre',overflowX:'auto'}}>{copied?copied.tsv.replace(/\t/g,' → '):<span style={{color:'var(--gl-fg-4)'}}>Select, press ⌘C…{'\n'}(tabs shown as →)</span>}</pre>
+        </div>
+        <div style={{background:'var(--gl-bg)',border:'1px solid var(--gl-border)',borderRadius:'var(--gl-radius-md)',overflow:'hidden'}}>
+          <div style={{padding:'8px 12px',borderBottom:'1px solid var(--gl-border)',display:'flex',alignItems:'center',gap:7}}><GLIcon name="check2" size={13} color="var(--gl-blue-500)"/><span style={{fontSize:10,fontWeight:700,letterSpacing:'.07em',textTransform:'uppercase',color:'var(--gl-fg-3)'}}>Paste here to verify</span></div>
+          <textarea value={pasteBox} onChange={e=>setPasteBox(e.target.value)} placeholder="⌘V — pastes as real tab-separated values" style={{width:'100%',minHeight:60,border:'none',outline:'none',resize:'vertical',background:'transparent',color:'var(--gl-fg-1)',fontFamily:'var(--gl-font-mono)',fontSize:11,lineHeight:1.6,padding:'10px 12px',boxSizing:'border-box'}}/>
+        </div>
+      </div>
+      <div style={{fontSize:12.5,color:'var(--gl-fg-3)',lineHeight:1.5}}>
+        <strong>Rows</strong>: every column. <strong>Cells</strong>: bounding rectangle (gaps blank — shape preserved in Sheets/Excel). Both hit the real OS clipboard.
+        </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Shell title="EditableTable" subtitle="GeniusLink Design System · v2.4.0">
+      <Section title="Spreadsheet grid — nine typed columns" desc="Click a cell and type to overwrite, or Enter / double-click to edit. Numbers clamp & group, dates and times have masked keyboard entry with a calendar / clock picker button, the Tag column is a combo (type or pick), Status is a dropdown rendered as a chip (cellBuilder), Colour opens a swatch menu, and Total is computed from Qty × Price. Validation flags red cells (Qty > 0, no negatives). Enter ↓ · Tab → (Tab past the last cell appends a row) · ⌘D duplicate · ⌘Enter add · ⌘⌫ delete (with optional confirmation) · ⌘C/X/V · ⌘Z/⇧Z · ⌘/ for the shortcut sheet. Navigating with the arrow keys / Tab auto-scrolls the selected cell into view." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><ExcelGrid /></div>
+      </Section>
+      <Section title="Column types" desc="Each kind is an ergonomic subclass of EditableColumn — the Flutter API mirrors this exactly." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TypeRef /></div>
+      </Section>
+      <Section title="Mobile — stacked cards" desc="Below the md breakpoint the grid becomes editable cards. Tap + Add or the ✎ pencil to open a bottom-sheet form; the 🗑 trash opens a confirmation dialog." cols="1fr">
+        <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'center' }}><MobileCards /></div>
+      </Section>
+      <Section title="States" cols="repeat(auto-fill, minmax(280px, 1fr))">
+        <Spec label="Loading"><StateBox kind="loading" /></Spec>
+        <Spec label="Empty"><StateBox kind="empty" /></Spec>
+        <Spec label="Error"><StateBox kind="error" /></Spec>
+      </Section>
+      <Section title="Phase 01 — LTR / RTL arrow-key directions" desc="Cell selection walks with the arrow keys in both text directions. Fix: resolve any horizontal key through horizontalStep(key, dir) — in RTL the column axis mirrors on screen, so the step flips. Home / End are direction-agnostic (first / last column)." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><EditKbdDemo /></div>
+      </Section>
+      <Section title="Phase 03 — EditableTable&lt;T&gt; generic row type" desc="Rows are a strongly-typed value (here an Account), not a Map<String,String>. Each column declares value(a) to read its cell and setValue(a, raw) → new immutable Account to write. The inspector shows the live List<Account>; undo/redo snapshots are just list copies." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TypedGridDemo /></div>
+      </Section>
+      <Section title="Phase 04 — Column resizing" desc="Drag handles on each header's inline-end edge resize that column live; double-click resets. Width state lives in the controller — header and every body row read widthOf(i), so the grid reflows in one frame." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><EtResizeDemo /></div>
+      </Section>
+      <Section title="Phase 05 — Column reordering" desc="Grab a header by its grip and drop it before or after another column. A blue insertion line previews the drop. moveColumn(from, to) reorders the controller's index list; header and rows read columnAt(visualIndex)." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><EtReorderDemo /></div>
+      </Section>
+      <Section title="Phase 07 — Copy rows &amp; cells" desc="Select rows (click / Shift / Ctrl) or cells (click / Shift-rectangle / Ctrl-toggle), then ⌘C. Selection serializes to tab-separated values and hits the real OS clipboard — cell mode copies the bounding rectangle with gaps blank so the block keeps its shape in a spreadsheet." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><EtCopyDemo /></div>
+      </Section>
+    </Shell>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

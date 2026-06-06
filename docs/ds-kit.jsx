@@ -33,6 +33,9 @@ const DS_ICONS = {
   fileCode:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6|M9 13l-2 2 2 2|M14 13l2 2-2 2',
   fileImg:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z|M14 2v6h6|M9 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2z|M18 18l-4-4-6 5',
   people:'M17 21v-2a4 4 0 0 0-3-3.87|M9 21v-2a4 4 0 0 1 3-3.87|M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z|M22 21v-2a4 4 0 0 0-3-3.87',
+  grip:'M9 5h.01|M9 12h.01|M9 19h.01|M15 5h.01|M15 12h.01|M15 19h.01',
+  check2:'M20 6L9 17l-5-5', minus:'M5 12h14', copy:'M9 9h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z|M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
+  cornerAdd:'M12 5v14|M5 12h14', clock:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z|M12 6v6l4 2', palette:'M12 22a10 10 0 1 1 0-20 10 10 0 0 1 8 16c-1 1-2 1-3 1h-2a2 2 0 0 0-1 3z|M7.5 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z|M12 7.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2z|M16.5 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
 };
 function GLIcon({ name, size = 18, color = 'currentColor', stroke = 1.6 }) {
   const raw = DS_ICONS[name]; if (!raw) return null;

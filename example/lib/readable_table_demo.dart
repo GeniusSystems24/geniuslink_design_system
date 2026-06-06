@@ -1,28 +1,33 @@
 // ============================================================
-// ReadableTable — demo gallery (generic · MVC).
-// A read-only display grid of a typed `Account` value, driven by a
-// ReadableTableController<Account>. Exercises the full interaction layer:
-//   1. Selection modes — none · singleRow · multiRow · singleCell · multiCell
-//      (segmented control → controller.setSelectionMode)
-//   2. Keyboard        — arrows move, Shift extends, Space toggles, ⌘/Ctrl+A
-//      selects all, Esc clears, ? cheatsheet (focus the table first)
-//   3. Column sort     — click a sortable header; numeric vs string via sortKey
-//   4. Controller ops  — select / add / delete / replace by index · value ·
-//      where · firstWhere, wired to the buttons below the table
+// ReadableTable — demo gallery (generic · MVC · read-only).
+// A typed `Account` display grid driven by ReadableTableController<Account>.
+// Exercises every requirement of the read-only table:
+//   • Column KINDS    — ReadableColumn.text / .number / .enumBadge / .date +
+//                       a boolean (check) column + a progress column
+//   • Selection modes — none · singleRow · multiRow · singleCell · multiCell
+//   • Keyboard + RTL  — arrows follow the VISUAL direction (RTL toggle);
+//                       Shift extends, Space toggles, ⌘/Ctrl+A all, Esc clears
+//   • Scroll-on-focus — navigating to an off-screen row pulls it into view
+//   • Resize / reorder— drag a header edge to resize, long-press to reorder
+//   • Copy (TSV)      — ⌘C, or the Copy button → selection as tab-separated text
 //   File: example/lib/readable_table_demo.dart
 // ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:geniuslink_design_system/geniuslink_readable_table.dart';
 
-// ── the typed row value ──
+// ── the typed row value (now with a date + boolean field) ──
 class Account {
   final String code, name, arabic, type, nature;
   final double balance;
-  const Account(this.code, this.name, this.arabic, this.type, this.nature, this.balance);
+  final DateTime opened;
+  final bool active;
+  final double utilisation; // 0..1
+  const Account(this.code, this.name, this.arabic, this.type, this.nature, this.balance, this.opened, this.active,
+      this.utilisation);
 
-  Account copyWith({double? balance}) =>
-      Account(code, name, arabic, type, nature, balance ?? this.balance);
+  Account copyWith({double? balance, bool? active}) =>
+      Account(code, name, arabic, type, nature, balance ?? this.balance, opened, active ?? this.active, utilisation);
 }
 
 class ReadableTableDemo extends StatefulWidget {
@@ -33,18 +38,57 @@ class ReadableTableDemo extends StatefulWidget {
 
 class _ReadableTableDemoState extends State<ReadableTableDemo> {
   bool _light = true;
+  bool _rtl = false;
   late ReadableTableController<Account> _controller;
-  int _seq = 0; // for unique synthetic codes
+  int _seq = 0;
+  String _tsvPreview = '';
 
-  static const _seed = [
-    Account('1001', 'Cash Box', 'صندوق النقد', 'Asset', 'DR', 42500.00),
-    Account('1100', 'Bank · NCB Main', 'بنك الأهلي', 'Asset', 'DR', 186420.00),
-    Account('2001', 'Accounts Payable', 'الذمم الدائنة', 'Liability', 'CR', 23140.00),
-    Account('3001', 'Share Capital', 'رأس المال', 'Equity', 'CR', 500000.00),
-    Account('4001', 'Sales Revenue', 'إيرادات المبيعات', 'Income', 'CR', 289200.00),
-    Account('5001', 'Cost of Goods Sold', 'تكلفة البضاعة', 'Expense', 'DR', 142800.00),
-    Account('5200', 'Salaries Expense', 'مصروف الرواتب', 'Expense', 'DR', 96400.00),
-  ];
+  // 24 rows — enough to scroll and to exercise scroll-on-focus.
+  static final List<Account> _seed = _buildSeed();
+
+  static List<Account> _buildSeed() {
+    const base = [
+      ['1001', 'Cash Box', 'صندوق النقد', 'Asset', 'DR', 42500.0],
+      ['1100', 'Bank · NCB Main', 'بنك الأهلي', 'Asset', 'DR', 186420.0],
+      ['1110', 'Bank · Rajhi', 'بنك الراجحي', 'Asset', 'DR', 98230.0],
+      ['1200', 'Accounts Receivable', 'الذمم المدينة', 'Asset', 'DR', 64120.0],
+      ['1300', 'Inventory', 'المخزون', 'Asset', 'DR', 132900.0],
+      ['1500', 'Fixed Assets', 'الأصول الثابتة', 'Asset', 'DR', 410000.0],
+      ['2001', 'Accounts Payable', 'الذمم الدائنة', 'Liability', 'CR', 23140.0],
+      ['2100', 'VAT Payable', 'ضريبة القيمة المضافة', 'Liability', 'CR', 18750.0],
+      ['2200', 'Short-term Loan', 'قرض قصير الأجل', 'Liability', 'CR', 75000.0],
+      ['2300', 'Accrued Salaries', 'رواتب مستحقة', 'Liability', 'CR', 31200.0],
+      ['3001', 'Share Capital', 'رأس المال', 'Equity', 'CR', 500000.0],
+      ['3100', 'Retained Earnings', 'أرباح محتجزة', 'Equity', 'CR', 212400.0],
+      ['4001', 'Sales Revenue', 'إيرادات المبيعات', 'Income', 'CR', 289200.0],
+      ['4100', 'Service Revenue', 'إيرادات الخدمات', 'Income', 'CR', 154300.0],
+      ['4200', 'Other Income', 'إيرادات أخرى', 'Income', 'CR', 22800.0],
+      ['5001', 'Cost of Goods Sold', 'تكلفة البضاعة', 'Expense', 'DR', 142800.0],
+      ['5200', 'Salaries Expense', 'مصروف الرواتب', 'Expense', 'DR', 96400.0],
+      ['5300', 'Rent Expense', 'مصروف الإيجار', 'Expense', 'DR', 48000.0],
+      ['5400', 'Utilities', 'المرافق', 'Expense', 'DR', 19600.0],
+      ['5500', 'Marketing', 'التسويق', 'Expense', 'DR', 53400.0],
+      ['5600', 'Depreciation', 'الإهلاك', 'Expense', 'DR', 41000.0],
+      ['5700', 'Software Subscriptions', 'اشتراكات البرامج', 'Expense', 'DR', 27300.0],
+      ['5800', 'Travel', 'السفر', 'Expense', 'DR', 16850.0],
+      ['5900', 'Professional Fees', 'أتعاب مهنية', 'Expense', 'DR', 38900.0],
+    ];
+    final d0 = DateTime(2021, 1, 1);
+    return [
+      for (var i = 0; i < base.length; i++)
+        Account(
+          base[i][0] as String,
+          base[i][1] as String,
+          base[i][2] as String,
+          base[i][3] as String,
+          base[i][4] as String,
+          base[i][5] as double,
+          d0.add(Duration(days: i * 47)),
+          i % 5 != 0,
+          ((base[i][5] as double) / 500000.0).clamp(0.03, 1),
+        ),
+    ];
+  }
 
   @override
   void initState() {
@@ -53,7 +97,7 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
       columns: _columns(),
       rows: List<Account>.from(_seed),
       selectionMode: ReadableSelectionMode.multiRow,
-      selectedRows: const {0},
+      selectedRows: const {0, 1},
       sortColumn: 4,
       sortAscending: false,
     );
@@ -64,15 +108,6 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
   void dispose() {
     _controller.dispose();
     super.dispose();
-  }
-
-  double get _maxBal => _seed.map((a) => a.balance).reduce((a, b) => a > b ? a : b);
-
-  String _fmt(double n) {
-    final s = n.toStringAsFixed(2);
-    final p = s.split('.');
-    final intPart = p[0].replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
-    return '$intPart.${p[1]}';
   }
 
   Color _typeColor(String type) {
@@ -89,101 +124,80 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
     }
   }
 
-  // ── typed columns: each renders itself from an Account ──
+  // ── typed columns using the REAL ReadableColumn.<kind> factories ──
   List<ReadableColumn<Account>> _columns() => [
+        // TEXT (mono code)
         ReadableColumn<Account>(
           'Code',
-          width: 80,
+          width: 84,
           sortable: true,
           sortKey: (a) => a.code,
+          copyText: (a) => a.code,
           cell: (ctx, a) => Text(a.code,
               style: TextStyle(
-                  fontFamily: EditableTableThemeData.monoFont,
-                  fontSize: 12.5,
-                  color: EditableTableThemeData.of(ctx).fg3)),
+                  fontFamily: EditableTableThemeData.monoFont, fontSize: 12.5, color: EditableTableThemeData.of(ctx).fg3)),
         ),
-        ReadableColumn<Account>(
+        // TEXT (two-line / bilingual) — via the factory
+        ReadableColumn.text<Account>(
           'Account',
+          value: (a) => a.name,
+          secondary: (a) => a.arabic,
           flex: 3,
           sortable: true,
-          sortKey: (a) => a.name.toLowerCase(),
-          cell: (ctx, a) {
-            final t = EditableTableThemeData.of(ctx);
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(a.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 13.5, fontWeight: FontWeight.w600, color: t.fg1)),
-                const SizedBox(height: 2),
-                Text(a.arabic,
-                    textDirection: TextDirection.rtl,
-                    style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 11.5, color: t.fg3)),
-              ],
-            );
-          },
         ),
-        ReadableColumn<Account>(
+        // ENUM badge — coloured pill
+        ReadableColumn.enumBadge<Account>(
           'Type',
-          width: 120,
-          sortable: true,
-          sortKey: (a) => a.type,
-          cell: (ctx, a) => _Chip(label: a.type, color: _typeColor(a.type)),
+          value: (a) => a.type,
+          color: _typeColor,
+          width: 116,
         ),
+        // BOOLEAN — a check / dash, with a flat copyText
         ReadableColumn<Account>(
-          'Nature',
-          width: 86,
+          'Active',
+          width: 84,
           align: ReadableAlign.center,
           sortable: true,
-          sortKey: (a) => a.nature,
-          cell: (ctx, a) => _Pill(label: a.nature, color: a.nature == 'DR' ? EditableTableThemeData.accent : EditableTableThemeData.warning),
-        ),
-        ReadableColumn<Account>(
-          'Balance',
-          width: 150,
-          align: ReadableAlign.end,
-          sortable: true,
-          sortKey: (a) => a.balance, // numeric sort
+          sortKey: (a) => a.active ? 1 : 0,
+          copyText: (a) => a.active ? 'yes' : 'no',
           cell: (ctx, a) {
             final t = EditableTableThemeData.of(ctx);
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(_fmt(a.balance),
-                    style: TextStyle(fontFamily: EditableTableThemeData.monoFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: t.fg1)),
-                const SizedBox(height: 5),
-                SizedBox(
-                  width: 110,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(999),
-                    child: LinearProgressIndicator(
-                      value: (a.balance / _maxBal).clamp(0.02, 1),
-                      minHeight: 3,
-                      backgroundColor: t.inputBg,
-                      valueColor: AlwaysStoppedAnimation(_typeColor(a.type).withOpacity(0.8)),
-                    ),
-                  ),
-                ),
-              ],
-            );
+            return Icon(a.active ? Icons.check_circle_rounded : Icons.remove_circle_outline_rounded,
+                size: 17, color: a.active ? EditableTableThemeData.success : t.fg4);
           },
+        ),
+        // DATE — via the factory (ISO mono)
+        ReadableColumn.date<Account>(
+          'Opened',
+          value: (a) => a.opened,
+          width: 116,
+        ),
+        // PROGRESS — labelled bar
+        ReadableColumn.progress<Account>(
+          'Utilisation',
+          value: (a) => a.utilisation,
+          width: 132,
+        ),
+        // NUMBER — grouped, 2 decimals, right-aligned mono
+        ReadableColumn.number<Account>(
+          'Balance',
+          value: (a) => a.balance,
+          decimals: 2,
+          width: 138,
         ),
       ];
 
-  // ── controller-op handlers (select / add / delete / replace) ──
+  // ── controller-op handlers ──
   void _selectExpenses() => _controller.selectRowsWhere((a) => a.type == 'Expense');
 
-  void _addRowAfterAssets() {
+  void _addRow() {
     _seq++;
-    final acc = Account('90${_seq.toString().padLeft(2, '0')}', 'New Ledger $_seq', 'حساب جديد', 'Asset', 'DR', 1000.0 * _seq);
-    // ADD by where — insert after the last Asset; falls back to end.
+    final acc = Account('90${_seq.toString().padLeft(2, '0')}', 'New Ledger $_seq', 'حساب جديد', 'Asset', 'DR',
+        1000.0 * _seq, DateTime.now(), true, 0.2);
     if (_controller.rows.any((a) => a.type == 'Asset')) {
       _controller.addRowWhere((a) => a.type == 'Asset', acc, after: true, firstOnly: false);
     } else {
-      _controller.addRow(acc); // ADD by end
+      _controller.addRow(acc);
     }
   }
 
@@ -191,20 +205,24 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
     if (_controller.selectedRowIndices.isNotEmpty) {
       _controller.deleteSelectedRows();
     } else {
-      // DELETE by where — drop every zero/low balance as a fallback demo
-      _controller.deleteRowsWhere((a) => a.balance < 50000);
+      _controller.deleteRowsWhere((a) => a.balance < 25000);
     }
   }
 
-  void _bumpFirstAsset() {
-    // REPLACE by firstWhere — first Asset gets +10%.
-    _controller.replaceFirstWhere(
-      (a) => a.type == 'Asset',
-      (a) => a.copyWith(balance: a.balance * 1.1),
-    );
+  Future<void> _copySelection() async {
+    final n = await _controller.copySelectionToClipboard(includeHeader: true);
+    setState(() => _tsvPreview = n == 0 ? '(nothing selected)' : _controller.copySelectionAsTsv(includeHeader: true));
+    if (mounted && n > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Copied $n line(s) as TSV to the clipboard'), duration: const Duration(seconds: 2)),
+      );
+    }
   }
 
-  void _reset() => _controller.setRows(List<Account>.from(_seed));
+  void _reset() {
+    _controller.setRows(List<Account>.from(_seed));
+    setState(() => _tsvPreview = '');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +242,7 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
           body: SafeArea(
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 880),
+                constraints: const BoxConstraints(maxWidth: 1000),
                 child: ListView(
                   padding: const EdgeInsets.fromLTRB(28, 40, 28, 80),
                   children: [
@@ -252,29 +270,42 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
                                       color: t.fg1)),
                               const SizedBox(height: 8),
                               Text(
-                                'Generic, MVC, read-only display grid — typed over `Account`. A '
-                                'ReadableTableController owns the rows; the buttons below drive it with '
-                                'select / add / delete / replace by index · value · where · firstWhere. '
-                                'Five selection modes, full keyboard control (focus the table, then arrows / '
-                                'Shift / Space / ⌘A / Esc — ? for the cheatsheet) and click-to-sort headers.',
+                                'Generic read-only grid typed over Account — 24 rows. Columns use the typed '
+                                'ReadableColumn factories: text · enum-badge · boolean · date · progress · number. '
+                                'Pick a selection mode, then click / Shift-click / ⌘-click rows or cells; drag a '
+                                'header edge to resize and long-press a header to reorder; ⌘C (or Copy) exports the '
+                                'selection as TSV. Toggle RTL to see arrow keys follow the visual direction.',
                                 style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 14, height: 1.5, color: t.fg3),
                               ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 16),
-                        _ThemeToggle(light: _light, onChanged: (v) => setState(() => _light = v)),
+                        Column(children: [
+                          _MiniToggle(
+                              on: _light,
+                              onIcon: Icons.light_mode_outlined,
+                              offIcon: Icons.dark_mode_outlined,
+                              onLabel: 'Light',
+                              offLabel: 'Dark',
+                              onChanged: (v) => setState(() => _light = v)),
+                          const SizedBox(height: 8),
+                          _MiniToggle(
+                              on: _rtl,
+                              onIcon: Icons.format_textdirection_r_to_l_rounded,
+                              offIcon: Icons.format_textdirection_l_to_r_rounded,
+                              onLabel: 'RTL',
+                              offLabel: 'LTR',
+                              onChanged: (v) => setState(() => _rtl = v)),
+                        ]),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    _ModePicker(
-                      mode: _controller.selectionMode,
-                      onChanged: (m) => _controller.setSelectionMode(m),
-                    ),
+                    _ModePicker(mode: _controller.selectionMode, onChanged: (m) => _controller.setSelectionMode(m)),
                     const SizedBox(height: 14),
 
-                    // live selection readout (from the controller)
+                    // live selection readout
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                       decoration: BoxDecoration(
@@ -292,9 +323,7 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              _controller.selectionMode == ReadableSelectionMode.none
-                                  ? 'Display only — no selection layer'
-                                  : _summary(),
+                              _controller.selectionMode == ReadableSelectionMode.none ? 'Display only — no selection layer' : _summary(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontFamily: EditableTableThemeData.monoFont, fontSize: 11.5, color: t.fg3),
@@ -305,16 +334,18 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
                     ),
                     const SizedBox(height: 22),
 
-                    // the table — driven by the external controller
-                    ReadableTable<Account>(
-                      controller: _controller,
-                      hoverHighlight: true,
-                      rowMinHeight: 56,
-                      onRowTap: (a, i) => debugPrint('tapped ${a.code}'),
+                    // the table — wrapped in the chosen direction
+                    Directionality(
+                      textDirection: _rtl ? TextDirection.rtl : TextDirection.ltr,
+                      child: ReadableTable<Account>(
+                        controller: _controller,
+                        hoverHighlight: true,
+                        rowMinHeight: 54,
+                        onRowTap: (a, i) => debugPrint('tapped ${a.code}'),
+                      ),
                     ),
                     const SizedBox(height: 16),
 
-                    // controller-op buttons
                     Text('CONTROLLER OPERATIONS',
                         style: TextStyle(
                             fontFamily: EditableTableThemeData.bodyFont, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1.2, color: t.fg3)),
@@ -323,15 +354,23 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        _OpButton(icon: Icons.filter_alt_outlined, label: 'Select where type = Expense', onTap: _selectExpenses),
-                        _OpButton(icon: Icons.add_rounded, label: 'Add after Assets', onTap: _addRowAfterAssets),
+                        _OpButton(icon: Icons.filter_alt_outlined, label: 'Select Expenses', onTap: _selectExpenses),
+                        _OpButton(icon: Icons.select_all_rounded, label: 'Select all', onTap: () => _controller.selectAllRows()),
+                        _OpButton(icon: Icons.copy_all_rounded, label: 'Copy selection (TSV)', onTap: _copySelection),
+                        _OpButton(icon: Icons.add_rounded, label: 'Add after Assets', onTap: _addRow),
                         _OpButton(icon: Icons.delete_outline_rounded, label: 'Delete selected', onTap: _deleteSelected),
-                        _OpButton(icon: Icons.trending_up_rounded, label: 'Replace first Asset +10%', onTap: _bumpFirstAsset),
-                        _OpButton(icon: Icons.restart_alt_rounded, label: 'Reset rows', onTap: _reset),
+                        _OpButton(icon: Icons.restart_alt_rounded, label: 'Reset', onTap: _reset),
                       ],
                     ),
+
+                    if (_tsvPreview.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      _TsvPreview(t: t, tsv: _tsvPreview),
+                    ],
+
                     const SizedBox(height: 14),
-                    Text('Tip — click the table, then use the keyboard. Click any sortable header to sort, drag a header edge to resize (double-tap to reset), and long-press a header to reorder. ⌘C copies the selection as TSV.',
+                    Text(
+                        'Tip — click the table, then use the keyboard: ↑↓ move · Shift extends · Space toggles · ⌘/Ctrl+A all · ⌘C copy · Esc clear · ? cheatsheet.',
                         style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 12.5, color: t.fg3)),
                   ],
                 ),
@@ -348,41 +387,42 @@ class _ReadableTableDemoState extends State<ReadableTableDemo> {
     if (mode == ReadableSelectionMode.singleCell || mode == ReadableSelectionMode.multiCell) {
       return _controller.selectedCells.map((c) => '${_controller.rowAt(c.row).code}·C${c.col}').take(6).join('  ');
     }
-    return _controller.selectedRows.map((a) => a.code).take(8).join('  ');
+    return _controller.selectedRows.map((a) => a.code).take(10).join('  ');
   }
 }
 
-// ── chip / pill cells ──
-class _Chip extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Chip({required this.label, required this.color});
+// ── TSV preview card ──
+class _TsvPreview extends StatelessWidget {
+  final EditableTableThemeData t;
+  final String tsv;
+  const _TsvPreview({required this.t, required this.tsv});
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.14),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(0.5)),
+        color: t.bg,
+        borderRadius: BorderRadius.circular(EditableTableThemeData.radiusLg),
+        border: Border.all(color: t.border),
       ),
-      child: Text(label,
-          style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: color)),
-    );
-  }
-}
-
-class _Pill extends StatelessWidget {
-  final String label;
-  final Color color;
-  const _Pill({required this.label, required this.color});
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(4)),
-      child: Text(label,
-          style: TextStyle(fontFamily: EditableTableThemeData.monoFont, fontSize: 10.5, fontWeight: FontWeight.w700, color: color)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.content_paste_rounded, size: 14, color: EditableTableThemeData.accent),
+            const SizedBox(width: 7),
+            Text('CLIPBOARD (TSV) — tabs shown as ⇥',
+                style: TextStyle(
+                    fontFamily: EditableTableThemeData.bodyFont, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 1, color: t.fg3)),
+          ]),
+          const SizedBox(height: 10),
+          SelectableText(
+            tsv.replaceAll('\t', ' ⇥ '),
+            style: TextStyle(fontFamily: EditableTableThemeData.monoFont, fontSize: 11.5, height: 1.5, color: t.fg2),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -471,18 +511,28 @@ class _ModePicker extends StatelessWidget {
   }
 }
 
-class _ThemeToggle extends StatelessWidget {
-  final bool light;
+class _MiniToggle extends StatelessWidget {
+  final bool on;
+  final IconData onIcon, offIcon;
+  final String onLabel, offLabel;
   final ValueChanged<bool> onChanged;
-  const _ThemeToggle({required this.light, required this.onChanged});
+  const _MiniToggle({
+    required this.on,
+    required this.onIcon,
+    required this.offIcon,
+    required this.onLabel,
+    required this.offLabel,
+    required this.onChanged,
+  });
   @override
   Widget build(BuildContext context) {
     final t = EditableTableThemeData.of(context);
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTap: () => onChanged(!light),
+        onTap: () => onChanged(!on),
         child: Container(
+          width: 96,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
           decoration: BoxDecoration(
             color: t.surface,
@@ -490,9 +540,9 @@ class _ThemeToggle extends StatelessWidget {
             borderRadius: BorderRadius.circular(EditableTableThemeData.radiusMd),
           ),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(light ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 15, color: t.fg2),
+            Icon(on ? onIcon : offIcon, size: 15, color: t.fg2),
             const SizedBox(width: 8),
-            Text(light ? 'Light' : 'Dark',
+            Text(on ? onLabel : offLabel,
                 style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: t.fg1)),
           ]),
         ),

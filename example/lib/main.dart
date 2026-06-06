@@ -20,6 +20,7 @@ import 'browser_tabs_demo.dart';
 import 'editable_table_demo.dart';
 import 'readable_table_demo.dart';
 import 'tree_demo.dart';
+import 'tree_demo_style01.dart';
 import 'navigation_sidebar_demo.dart';
 import 'erp_console.dart';
 import 'shell_kit.dart';
@@ -125,6 +126,13 @@ class LauncherScreen extends StatelessWidget {
                         accent: const Color(0xFF4A7CFF),
                         preview: const _TreeThumb(),
                         onTap: () => _open(context, const TreeDemo()),
+                      ),
+                      _DemoCard(
+                        title: 'Tree Style 01',
+                        subtitle: 'Chart-of-accounts tree · single & multi-select · add / remove nodes · code/EN/AR search · roll-up balances',
+                        accent: const Color(0xFF4A7CFF),
+                        preview: const _TreeThumb(),
+                        onTap: () => _open(context, const TreeDemoStyle01()),
                       ),
                       _DemoCard(
                         title: 'NavigationSidebar',

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GeniusLink — BrowserStyleTabBar</title>
+<meta name="viewport" content="width=1180" />
+<link rel="stylesheet" href="tokens.css" />
+<style>
+  html, body { margin: 0; padding: 0; } body { font-family: var(--gl-font-body); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; } ::-webkit-scrollbar-thumb { background: var(--gl-border-strong); border-radius: 5px; }
+  [role="tablist"]::-webkit-scrollbar, [role="tablist"] div::-webkit-scrollbar { height: 0; display: none; }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#111318"/><rect x="14" y="28" width="30" height="16" rx="4" fill="#1E2025"/><rect x="46" y="30" width="26" height="14" rx="3" fill="#33353A"/><rect x="14" y="44" width="72" height="30" rx="4" fill="#1E2025"/></svg></template>
+</head>
+<body data-theme="">
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="ds-kit.jsx"></script>
+<script type="text/babel" src="tab-pages.jsx"></script>
+<script type="text/babel" src="browser-tabs.jsx"></script>
+<script type="text/babel">
+const { Shell, Section, Spec, DSPill, BrowserStyleTabBar, GLIcon } = window;
+const { useState, useEffect, useCallback } = React;
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const hStep = (isRight, rtl) => (isRight ? 1 : -1) * (rtl ? -1 : 1);
+
+function Seg({ value, onChange, options }) {
+  return (
+    <div style={{ display: 'inline-flex', gap: 3, background: 'var(--gl-input-bg)', padding: 3, borderRadius: 7, border: '1px solid var(--gl-border)' }}>
+      {options.map(o => {
+        const v = typeof o === 'string' ? o : o.value, l = typeof o === 'string' ? o : o.label, on = value === v;
+        return <button key={v} type="button" onClick={() => onChange(v)}
+          style={{ padding: '5px 12px', borderRadius: 5, background: on ? 'var(--gl-surface)' : 'transparent', color: on ? 'var(--gl-fg-1)' : 'var(--gl-fg-3)', border: 'none', cursor: 'pointer', fontFamily: 'var(--gl-font-body)', fontWeight: 700, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' }}>{l}</button>;
+      })}
+    </div>
+  );
+}
+function Kbd({ children }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 22, padding: '0 6px', borderRadius: 5, background: 'var(--gl-input-bg)', border: '1px solid var(--gl-border-strong)', borderBottomWidth: 2, fontFamily: 'var(--gl-font-mono)', fontSize: 11.5, fontWeight: 600, color: 'var(--gl-fg-1)' }}>{children}</span>;
+}
+function useKeyLog() {
+  const [log, setLog] = useState([]);
+  const push = useCallback(function(key, action, ok) {
+    if (ok === undefined) ok = true;
+    setLog(l => [{ id: Date.now() + Math.random(), key, action, ok }, ...l].slice(0, 7));
+  }, []);
+  return [log, push];
+}
+function KeyLog({ log, hint }) {
+  return (
+    <div dir="ltr" style={{ background: 'var(--gl-bg)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-md)', overflow: 'hidden', minWidth: 220 }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--gl-border)', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gl-fg-3)', display: 'flex', alignItems: 'center', gap: 7 }}>
+        <GLIcon name="keyboard" size={14} color="var(--gl-blue-500)" />Key log
+      </div>
+      <div style={{ padding: log.length ? '4px 0' : '12px', minHeight: 40 }}>
+        {!log.length ? <span style={{ fontSize: 12, color: 'var(--gl-fg-4)' }}>{hint || 'Press a key…'}</span>
+          : log.map((e, i) => <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', opacity: 1 - i * 0.12 }}>
+              <Kbd>{e.key}</Kbd><span style={{ fontSize: 11, color: 'var(--gl-fg-4)' }}>→</span>
+              <span style={{ fontSize: 12, fontFamily: 'var(--gl-font-mono)', color: e.ok ? 'var(--gl-success-500)' : 'var(--gl-danger-500)' }}>{e.action}</span>
+            </div>)}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Phase 01 — LTR / RTL arrow-key directions ────────── */
+const KBD_TABS = [
+  { id: 'k1', label: 'Trial Balance', icon: 'bars' },
+  { id: 'k2', label: 'Journal JV-0042', icon: 'doc', dirty: true },
+  { id: 'k3', label: 'Accounts', icon: 'folder' },
+  { id: 'k4', label: 'Store · Riyadh', icon: 'home' },
+  { id: 'k5', label: 'Audit Log', icon: 'info' },
+];
+function TabsKbdDemo() {
+  const [dir, setDir] = useState('ltr');
+  const [active, setActive] = useState(2);
+  const [focused, setFocused] = useState(false);
+  const [log, push] = useKeyLog();
+  const rtl = dir === 'rtl';
+  const onKey = (e) => {
+    const k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowLeft') {
+      e.preventDefault(); const isRight = k === 'ArrowRight', d = hStep(isRight, rtl);
+      setActive(a => { const ni = clamp(a + d, 0, KBD_TABS.length - 1); push(k, 'move ' + (isRight ? 'right →' : '← left')); return ni; });
+    } else if (k === 'Home') { e.preventDefault(); setActive(0); push('Home', 'first tab'); }
+    else if (k === 'End') { e.preventDefault(); setActive(KBD_TABS.length - 1); push('End', 'last tab'); }
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--gl-fg-3)' }}>Click the strip, then press <Kbd>←</Kbd> <Kbd>→</Kbd> <Kbd>Home</Kbd> <Kbd>End</Kbd></span>
+        <Seg value={dir} onChange={setDir} options={[{value:'ltr',label:'LTR'},{value:'rtl',label:'RTL · عربي'}]} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 230px', gap: 16, alignItems: 'start' }}>
+        <div tabIndex={0} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onKeyDown={onKey}
+          style={{ outline: focused ? '2px solid var(--gl-blue-500)' : 'none', outlineOffset: 2, borderRadius: 8, border: '1px solid var(--gl-border)', overflow: 'hidden' }}>
+          <div dir={rtl ? 'rtl' : 'ltr'} style={{ display: 'flex', alignItems: 'stretch', background: 'var(--gl-bg)' }}>
+            {KBD_TABS.map((t, i) => {
+              const on = i === active;
+              return (
+                <div key={t.id} onClick={() => setActive(i)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 13px', height: 42, cursor: 'pointer',
+                    background: on ? 'var(--gl-surface)' : 'transparent', color: on ? 'var(--gl-fg-1)' : 'var(--gl-fg-3)',
+                    borderInlineEnd: '1px solid var(--gl-border)', borderTop: on ? '2px solid var(--gl-blue-500)' : '2px solid transparent' }}>
+                  <GLIcon name={t.icon} size={14} color={on ? 'var(--gl-blue-500)' : 'currentColor'} />
+                  <span style={{ fontSize: 13, fontWeight: on ? 600 : 500, whiteSpace: 'nowrap' }}>{t.label}</span>
+                  {t.dirty && <span style={{ width: 6, height: 6, borderRadius: 999, background: 'var(--gl-warning-500)', flexShrink: 0 }} />}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <KeyLog log={log} hint="Click the bar, press ← →" />
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--gl-fg-3)', lineHeight: 1.5 }}>
+        Active: <strong style={{ color: 'var(--gl-fg-1)' }}>{KBD_TABS[active].label}</strong>.
+        Flip to RTL — <Kbd>→</Kbd> still moves to the visual right. Fix: resolve through <code style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 12 }}>horizontalStep(key, dir)</code>.
+        </div>
+    </div>
+  );
+}
+
+/* ─── Phase 10 — Tab state preservation ──────────────────── */
+const P10_TABS = [
+  { id: 'p1', label: 'Trial Balance', icon: 'bars' },
+  { id: 'p2', label: 'Journal JV-0042', icon: 'doc' },
+  { id: 'p3', label: 'Reconcile · SNB', icon: 'folder' },
+];
+function TabPageState({ tab, mode }) {
+  const [mounts, setMounts] = useState(0);
+  const [note, setNote] = useState('');
+  const [qty, setQty] = useState(0);
+  useEffect(() => { setMounts(m => m + 1); }, []);
+  const bS = { width: 28, height: 28, border: '1px solid var(--gl-border-strong)', borderRadius: 6, background: 'var(--gl-input-bg)', cursor: 'pointer', color: 'var(--gl-fg-1)', fontSize: 18, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
+  return (
+    <div style={{ padding: 20, minHeight: 200 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <GLIcon name={tab.icon} size={16} color="var(--gl-blue-500)" />
+        <span style={{ fontWeight: 700, fontSize: 15 }}>{tab.label}</span>
+        <span style={{ marginInlineStart: 'auto', fontSize: 11.5, display: 'flex', alignItems: 'center', gap: 5, color: mode === 'keep' ? 'var(--gl-success-500)' : 'var(--gl-danger-500)' }}>
+          <span style={{ width: 6, height: 6, borderRadius: 999, background: 'currentColor' }} />
+          {mode === 'keep' ? 'kept alive' : 'rebuilt on switch'}
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        <div style={{ padding: '10px 12px', background: 'var(--gl-bg)', border: '1px solid var(--gl-border)', borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gl-fg-3)', marginBottom: 4 }}>Page mounts</div>
+          <div style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 22, fontWeight: 700, color: mode !== 'keep' && mounts > 1 ? 'var(--gl-warning-500)' : 'var(--gl-fg-1)' }}>{mounts}</div>
+          <div style={{ fontSize: 10.5, color: 'var(--gl-fg-4)' }}>resets on rebuild</div>
+        </div>
+        <div style={{ padding: '10px 12px', background: 'var(--gl-bg)', border: '1px solid var(--gl-border)', borderRadius: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gl-fg-3)', marginBottom: 6 }}>Stepper</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button style={bS} onClick={() => setQty(q => Math.max(0, q - 1))}>−</button>
+            <span style={{ fontFamily: 'var(--gl-font-mono)', fontSize: 18, fontWeight: 700, minWidth: 28, textAlign: 'center' }}>{qty}</span>
+            <button style={bS} onClick={() => setQty(q => q + 1)}>+</button>
+          </div>
+        </div>
+      </div>
+      <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--gl-fg-3)', display: 'block', marginBottom: 6 }}>Memo — type, then switch tabs</label>
+      <input value={note} onChange={e => setNote(e.target.value)} placeholder={'Notes for ' + tab.label + '…'}
+        style={{ width: '100%', height: 36, padding: '0 10px', background: 'var(--gl-input-bg)', border: '1px solid var(--gl-border-strong)', borderRadius: 8, color: 'var(--gl-fg-1)', fontFamily: 'var(--gl-font-body)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }} />
+    </div>
+  );
+}
+function TabStateDemo() {
+  const [mode, setMode] = useState('keep');
+  const [active, setActive] = useState('p1');
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--gl-fg-3)' }}>Edit the memo or stepper — then switch tabs and come back.</span>
+        <Seg value={mode} onChange={setMode} options={[{value:'keep',label:'Keep alive'},{value:'rebuild',label:'Rebuild'}]} />
+      </div>
+      <div style={{ border: '1px solid var(--gl-border-strong)', borderRadius: 'var(--gl-radius-lg)', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--gl-bg)', borderBottom: '1px solid var(--gl-border-strong)', padding: '8px 8px 0' }}>
+          {P10_TABS.map(t => {
+            const on = t.id === active;
+            return (
+              <div key={t.id} onClick={() => setActive(t.id)}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '0 14px', height: 38, cursor: 'pointer', borderRadius: '7px 7px 0 0',
+                  background: on ? 'var(--gl-surface)' : 'transparent', color: on ? 'var(--gl-fg-1)' : 'var(--gl-fg-3)',
+                  borderTop: on ? '2px solid var(--gl-blue-500)' : '2px solid transparent', position: 'relative', top: 1 }}>
+                <GLIcon name={t.icon} size={14} color={on ? 'var(--gl-blue-500)' : 'currentColor'} />
+                <span style={{ fontSize: 13, fontWeight: on ? 600 : 500 }}>{t.label}</span>
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ background: 'var(--gl-surface)' }}>
+          {mode === 'keep'
+            ? <div style={{ display: 'grid' }}>
+                {P10_TABS.map(t => (
+                  <div key={t.id} style={{ gridArea: '1/1', visibility: t.id === active ? 'visible' : 'hidden', pointerEvents: t.id === active ? 'auto' : 'none' }}>
+                    <TabPageState tab={t} mode={mode} />
+                  </div>
+                ))}
+              </div>
+            : <TabPageState tab={P10_TABS.find(t => t.id === active)} mode={mode} key={'rb-' + active} />}
+        </div>
+      </div>
+      <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gl-fg-3)', lineHeight: 1.5 }}>
+        <strong style={{ color: 'var(--gl-fg-1)' }}>Keep alive:</strong> pages mount once; state survives every switch.
+        <strong style={{ color: 'var(--gl-fg-1)' }}> Rebuild:</strong> switching disposes &amp; remounts — inputs clear, counter climbs.
+        </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Shell title="BrowserStyleTabBar" subtitle="GeniusLink Design System · v2.4.0">
+      <Section title="Workspace Tabs" desc="Modern browser-style tab strip: the rounded active tab merges with the surface below; inactive tabs are muted with hairline separators. Pinned tabs (icon-only) anchor on the start edge; right-click any tab for close / duplicate / pin actions; drag to reorder; overflow chevrons appear when tabs run off the edge. The ▾ button lists every open tab to jump to one; closing an unsaved tab prompts before discarding. Resting the pointer on any tab (≈0.5s) raises a mini-page preview — an actual scaled-down render of that page, not a placeholder. Add (+), close (×), unsaved-changes dot, long-title truncation, and ←/→/Home/End keyboard nav. Dark/light + RTL." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><BrowserStyleTabBar /></div>
+      </Section>
+      <Section title="LTR & RTL" desc="The same component mirrored — pinned anchor, separators, close buttons, overflow chevrons and the + button all flip with direction. The context menu opens at the cursor in both directions." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }} dir="rtl"><BrowserStyleTabBar tabsState={[{ id: 11, title: 'دليل الحسابات', icon: 'ledger', pinned: true }, { id: 12, title: 'قيد افتتاحي — JV-2024-0042', icon: 'doc', dirty: true }, { id: 13, title: 'لوحة التحكم', icon: 'chart' }, { id: 14, title: 'ميزان المراجعة — الربع الثالث', icon: 'ledger' }]} /></div>
+      </Section>
+      <Section title="Documentation" desc="Anatomy, states and props for the component — mirrors the DESIGN_SYSTEM.md template." cols="repeat(auto-fill, minmax(280px, 1fr))">
+        <Spec label="Anatomy">
+          <ol style={{ margin: 0, paddingInlineStart: 18, fontSize: 13, color: 'var(--gl-fg-2)', lineHeight: 1.7 }}>
+            <li>Strip container (sits on <code style={{ fontFamily: 'var(--gl-font-mono)' }}>--gl-bg</code>)</li>
+            <li>Pinned region · icon-only · anchored</li>
+            <li>Scrolling tab region + overflow chevrons</li>
+            <li>Tab = leading icon · label · dirty dot / close ×</li>
+            <li>New-tab (+) · tab-list (▾) buttons</li>
+            <li>Content surface that merges with the active tab</li>
+            <li>Right-click context menu</li>
+            <li>Dirty-close confirmation dialog</li>
+          </ol>
+        </Spec>
+        <Spec label="States">
+          <DSPill tone="info">Active</DSPill>
+          <DSPill tone="neutral">Inactive</DSPill>
+          <DSPill tone="neutral">Hover</DSPill>
+          <DSPill tone="neutral">Pinned</DSPill>
+          <DSPill tone="warning">Dirty</DSPill>
+          <DSPill tone="neutral">Dragging</DSPill>
+          <DSPill tone="info">Focused</DSPill>
+          <DSPill tone="neutral">Overflow</DSPill>
+          <DSPill tone="info">Preview</DSPill>
+        </Spec>
+        <Spec label="Mini-page preview">
+          <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 13, color: 'var(--gl-fg-2)', lineHeight: 1.7 }}>
+            <li>Hover-intent: appears after the pointer <strong>rests ~480ms</strong></li>
+            <li>Anchored popover with a caret to the tab; flips above when low</li>
+            <li>Header = icon · title · type · pinned / dirty marks</li>
+            <li>Thumbnail is a <strong>real, scaled-down render</strong> of the live page</li>
+            <li>Non-interactive · dismisses on move-away, click, drag or scroll</li>
+          </ul>
+        </Spec>
+        <Spec label="Context menu">
+          <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 13, color: 'var(--gl-fg-2)', lineHeight: 1.7 }}>
+            <li>Close tab</li>
+            <li>Close other tabs</li>
+            <li>Close tabs to the right</li>
+            <li>Duplicate tab</li>
+            <li>Pin / Unpin tab</li>
+          </ul>
+        </Spec>
+        <Spec label="Overflow & jump">
+          <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 13, color: 'var(--gl-fg-2)', lineHeight: 1.7 }}>
+            <li>‹ › chevrons fade in only when the strip overflows</li>
+            <li>▾ tab-list dropdown lists every open tab</li>
+            <li>Active row highlighted · pinned / dirty marked</li>
+            <li>Pick jumps to the tab · <code style={{ fontFamily: 'var(--gl-font-mono)' }}>Esc</code> / outside-click closes</li>
+          </ul>
+        </Spec>
+        <Spec label="Unsaved guard">
+          <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 13, color: 'var(--gl-fg-2)', lineHeight: 1.7 }}>
+            <li>Closing a <strong>dirty</strong> tab opens a confirm dialog</li>
+            <li><strong>Discard &amp; close</strong> — danger, drops edits</li>
+            <li><strong>Save &amp; close</strong> — clears dirty, then closes</li>
+            <li><strong>Cancel</strong> / <code style={{ fontFamily: 'var(--gl-font-mono)' }}>Esc</code> / backdrop — keep the tab</li>
+          </ul>
+        </Spec>
+        <Spec label="Keyboard">
+          <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 13, color: 'var(--gl-fg-2)', lineHeight: 1.7 }}>
+            <li><code style={{ fontFamily: 'var(--gl-font-mono)' }}>← / →</code> — previous / next tab</li>
+            <li><code style={{ fontFamily: 'var(--gl-font-mono)' }}>Home / End</code> — first / last tab</li>
+            <li>Right-click — context menu · <code style={{ fontFamily: 'var(--gl-font-mono)' }}>Esc</code> closes it</li>
+          </ul>
+        </Spec>
+        <Spec label="Props">
+          <div style={{ fontSize: 13, color: 'var(--gl-fg-2)', lineHeight: 1.7, fontFamily: 'var(--gl-font-mono)' }}>
+            tabsState?: Tab[]<br />
+            Tab = {'{'} id, title, icon,<br />
+            &nbsp;&nbsp;dirty?, pinned? {'}'}<br />
+            icon ∈ ledger · doc · store ·<br />
+            &nbsp;&nbsp;chart · user · globe
+          </div>
+        </Spec>
+        <Spec label="Do & Don't">
+          <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+            <div style={{ color: 'var(--gl-success-500)' }}>✓ Pin long-lived references (chart of accounts).</div>
+            <div style={{ color: 'var(--gl-success-500)' }}>✓ Warn on closing a dirty tab.</div>
+            <div style={{ color: 'var(--gl-danger-500)', marginTop: 8 }}>✗ More than ~3 pinned tabs.</div>
+            <div style={{ color: 'var(--gl-danger-500)' }}>✗ Hiding the active tab off-screen on open.</div>
+          </div>
+        </Spec>
+      </Section>
+      <Section title="Phase 01 — LTR / RTL arrow-key directions" desc="Arrow keys must map to the correct visual direction in both LTR and RTL. The fix: resolve any horizontal key through horizontalStep(key, dir) — in RTL the index axis mirrors on screen, so the step flips. Home / End stay logical (first / last tab) and are direction-agnostic." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TabsKbdDemo /></div>
+      </Section>
+      <Section title="Phase 10 — Tab state preservation" desc="Switching tabs must not rebuild pages. All pages mount once in an IndexedStack; switching only changes the visible index. Scroll position, form input and controller state all survive tab switches. Use lazyPages: true to opt back into the cheaper single-page build." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TabStateDemo /></div>
+      </Section>
+    </Shell>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

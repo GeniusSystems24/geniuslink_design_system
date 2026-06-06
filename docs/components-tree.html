@@ -79,6 +79,394 @@ const ANATOMY = [
   ['08', 'Balance + share bar', 'Rolled-up total with a proportional bar.'],
 ];
 
+const { useState, useRef, useEffect, useLayoutEffect, useCallback } = React;
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+const hStep = (isRight, rtl) => (isRight ? 1 : -1) * (rtl ? -1 : 1);
+
+function Seg({ value, onChange, options }) {
+  return (
+    <div style={{ display: 'inline-flex', gap: 3, background: 'var(--gl-input-bg)', padding: 3, borderRadius: 7, border: '1px solid var(--gl-border)' }}>
+      {options.map(o => {
+        const v = typeof o === 'string' ? o : o.value, l = typeof o === 'string' ? o : o.label, on = value === v;
+        return <button key={v} type="button" onClick={() => onChange(v)}
+          style={{ padding: '5px 12px', borderRadius: 5, background: on ? 'var(--gl-surface)' : 'transparent', color: on ? 'var(--gl-fg-1)' : 'var(--gl-fg-3)', border: 'none', cursor: 'pointer', fontFamily: 'var(--gl-font-body)', fontWeight: 700, fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase' }}>{l}</button>;
+      })}
+    </div>
+  );
+}
+function Kbd({ children }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minWidth: 22, height: 22, padding: '0 6px', borderRadius: 5, background: 'var(--gl-input-bg)', border: '1px solid var(--gl-border-strong)', borderBottomWidth: 2, fontFamily: 'var(--gl-font-mono)', fontSize: 11.5, fontWeight: 600, color: 'var(--gl-fg-1)' }}>{children}</span>;
+}
+function useKeyLog() {
+  const [log, setLog] = useState([]);
+  const push = useCallback(function(key, action, ok) {
+    if (ok === undefined) ok = true;
+    setLog(l => [{ id: Date.now() + Math.random(), key, action, ok }, ...l].slice(0, 7));
+  }, []);
+  return [log, push];
+}
+function KeyLog({ log, hint }) {
+  return (
+    <div dir="ltr" style={{ background: 'var(--gl-bg)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-md)', overflow: 'hidden', minWidth: 220 }}>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--gl-border)', fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--gl-fg-3)', display: 'flex', alignItems: 'center', gap: 7 }}>
+        <GLIcon name="keyboard" size={14} color="var(--gl-blue-500)" />Key log
+      </div>
+      <div style={{ padding: log.length ? '4px 0' : '12px', minHeight: 40 }}>
+        {!log.length ? <span style={{ fontSize: 12, color: 'var(--gl-fg-4)' }}>{hint || 'Press a key…'}</span>
+          : log.map((e, i) => <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 12px', opacity: 1 - i * 0.12 }}>
+              <Kbd>{e.key}</Kbd><span style={{ fontSize: 11, color: 'var(--gl-fg-4)' }}>→</span>
+              <span style={{ fontSize: 12, fontFamily: 'var(--gl-font-mono)', color: e.ok ? 'var(--gl-success-500)' : 'var(--gl-danger-500)' }}>{e.action}</span>
+            </div>)}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Phase 01 — LTR / RTL arrow-key directions ────────────── */
+const T1_TREE = [
+  { id: 'ta',   label: 'Assets',       depth: 0, group: true, kids: ['ta1','ta2'] },
+  { id: 'ta1',  label: 'Cash & Banks', depth: 1, group: true, kids: ['ta1a','ta1b'] },
+  { id: 'ta1a', label: 'Petty Cash',   depth: 2 },
+  { id: 'ta1b', label: 'Bank · SNB',   depth: 2 },
+  { id: 'ta2',  label: 'Receivables',  depth: 1 },
+  { id: 'tl',   label: 'Liabilities',  depth: 0, group: true, kids: ['tl1'] },
+  { id: 'tl1',  label: 'Payables',     depth: 1 },
+];
+function TreeKbdDemo() {
+  const [dir, setDir] = useState('ltr');
+  const [expanded, setExpanded] = useState({ ta: true, ta1: true });
+  const [cursor, setCursor] = useState('ta');
+  const [focused, setFocused] = useState(false);
+  const [log, push] = useKeyLog();
+  const rtl = dir === 'rtl';
+  const visible = [];
+  const walk = id => { const n = T1_TREE.find(t => t.id === id); if (!n) return; visible.push(n); if (n.group && expanded[n.id]) (n.kids || []).forEach(walk); };
+  ['ta', 'tl'].forEach(walk);
+  const idx = visible.findIndex(n => n.id === cursor);
+  const cur = visible[idx];
+  const onKey = (e) => {
+    const k = e.key;
+    if (k === 'ArrowDown') { e.preventDefault(); const n = visible[clamp(idx+1,0,visible.length-1)]; setCursor(n.id); push('↓','next row'); }
+    else if (k === 'ArrowUp') { e.preventDefault(); const n = visible[clamp(idx-1,0,visible.length-1)]; setCursor(n.id); push('↑','prev row'); }
+    else if (k === 'ArrowRight' || k === 'ArrowLeft') {
+      e.preventDefault(); const isRight = k === 'ArrowRight', into = hStep(isRight, rtl) > 0;
+      if (into) {
+        if (cur.group && !expanded[cur.id]) { setExpanded(s => ({...s,[cur.id]:true})); push(k,'expand ▸'); }
+        else if (cur.group) { const child = visible[idx+1]; if (child) { setCursor(child.id); push(k,'step into child'); } }
+        else push(k,'leaf — no children',false);
+      } else {
+        if (cur.group && expanded[cur.id]) { setExpanded(s => ({...s,[cur.id]:false})); push(k,'collapse ◂'); }
+        else { const parent = T1_TREE.find(t => (t.kids||[]).includes(cur.id)); if (parent) { setCursor(parent.id); push(k,'step out to parent'); } else push(k,'at root',false); }
+      }
+    }
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--gl-fg-3)' }}>Click the tree, then press <Kbd>↑</Kbd><Kbd>↓</Kbd><Kbd>←</Kbd><Kbd>→</Kbd></span>
+        <Seg value={dir} onChange={setDir} options={[{value:'ltr',label:'LTR'},{value:'rtl',label:'RTL · عربي'}]} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 230px', gap: 16, alignItems: 'start' }}>
+        <div tabIndex={0} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)} onKeyDown={onKey}
+          style={{ outline: focused ? '2px solid var(--gl-blue-500)' : 'none', outlineOffset: 2, border: '1px solid var(--gl-border)', borderRadius: 8, overflow: 'hidden', background: 'var(--gl-bg)' }}>
+          <div dir={rtl ? 'rtl' : 'ltr'} style={{ padding: '5px 0' }}>
+            {visible.map(n => {
+              const on = n.id === cursor, open = n.group && expanded[n.id];
+              return (
+                <div key={n.id} onClick={() => { setCursor(n.id); if (n.group) setExpanded(s => ({...s,[n.id]:!s[n.id]})); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, height: 34, paddingInlineStart: 12+n.depth*22, paddingInlineEnd: 12, cursor: 'pointer',
+                    background: on ? 'color-mix(in srgb, var(--gl-blue-500) 12%, transparent)' : 'transparent',
+                    boxShadow: on ? 'inset 2px 0 0 var(--gl-blue-500)' : 'none', color: on ? 'var(--gl-fg-1)' : 'var(--gl-fg-2)' }}>
+                  {n.group
+                    ? <span style={{ display:'flex', transform: rtl?(open?'rotate(90deg)':'rotate(180deg)'):(open?'rotate(90deg)':'none'), transition:'transform var(--gl-dur-base)', color:'var(--gl-fg-3)' }}><GLIcon name="chevR" size={13}/></span>
+                    : <span style={{ width:13 }}/>}
+                  <GLIcon name={n.group?(open?'folderOpen':'folder'):'doc'} size={14} color={on?'var(--gl-blue-500)':'var(--gl-fg-3)'}/>
+                  <span style={{ fontSize:13, fontWeight: on?600:500 }}>{n.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <KeyLog log={log} hint="Click tree, press ↑↓←→" />
+      </div>
+      <div style={{ fontSize: 12.5, color: 'var(--gl-fg-3)', lineHeight: 1.5 }}>
+        On <strong style={{ color: 'var(--gl-fg-1)' }}>{cur ? cur.label : '—'}</strong>. In RTL the indent mirrors — the key that expands toward children swaps.
+        </div>
+    </div>
+  );
+}
+
+/* ─── Phase 02 — Scroll on focus ────────────────────────── */
+const T2_SRC = (() => {
+  const gs = [
+    ['g0','Assets',['Petty Cash','Bank · SNB','Bank · Al Rajhi','Receivables','Inventory · Riyadh','Inventory · Jeddah']],
+    ['g1','Liabilities',['Payables','VAT Payable','Accrued Salaries']],
+    ['g2','Equity',['Share Capital','Retained Earnings']],
+    ['g3','Revenue',['Product Sales','Service Income','Other Income']],
+    ['g4','Expenses',['COGS','Salaries','Rent','Utilities','Marketing']],
+  ];
+  const nodes = [];
+  gs.forEach(([gid, label, kids]) => {
+    nodes.push({ id: gid, label, depth: 0, group: true, kids: kids.map((_,i) => gid+'_'+i) });
+    kids.forEach((kl, i) => nodes.push({ id: gid+'_'+i, label: kl, depth: 1, parent: gid }));
+  });
+  return nodes;
+})();
+function TreeScrollDemo() {
+  const [expanded, setExpanded] = useState({ g0:true, g1:true, g2:true, g3:true, g4:true });
+  const [cursor, setCursor] = useState('g0');
+  const vpRef = useRef(null), rowRef = useRef(null);
+  const visible = [];
+  T2_SRC.forEach(n => { if (n.depth===0) visible.push(n); else { const p=T2_SRC.find(g=>(g.kids||[]).includes(n.id)); if(p&&expanded[p.id]) visible.push(n); } });
+  const idx = visible.findIndex(n => n.id === cursor);
+  useLayoutEffect(() => {
+    const vp=vpRef.current, row=rowRef.current; if(!vp||!row) return;
+    const sv=vp.getBoundingClientRect(), sr=row.getBoundingClientRect();
+    if(sr.top < sv.top+4) vp.scrollTop += sr.top-sv.top-4;
+    else if(sr.bottom > sv.bottom-4) vp.scrollTop += sr.bottom-sv.bottom+4;
+  }, [cursor, expanded]);
+  const [scrollY, setScrollY] = useState(0);
+  useEffect(() => {
+    const vp=vpRef.current; if(!vp) return;
+    const f = () => setScrollY(Math.round(vp.scrollTop));
+    f(); vp.addEventListener('scroll',f,{passive:true}); return () => vp.removeEventListener('scroll',f);
+  }, []);
+  const onKey = (e) => {
+    let handled = true;
+    if(e.key==='ArrowDown') setCursor(visible[clamp(idx+1,0,visible.length-1)].id);
+    else if(e.key==='ArrowUp') setCursor(visible[clamp(idx-1,0,visible.length-1)].id);
+    else if(e.key==='Home') setCursor(visible[0].id);
+    else if(e.key==='End') setCursor(visible[visible.length-1].id);
+    else if(e.key==='ArrowRight') { const c=visible[idx]; if(c&&c.group) setExpanded(s=>({...s,[c.id]:true})); }
+    else if(e.key==='ArrowLeft') { const c=visible[idx]; if(c&&c.group) setExpanded(s=>({...s,[c.id]:false})); }
+    else handled = false;
+    if(handled) e.preventDefault();
+  };
+  return (
+    <div>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10, gap:12 }} dir="ltr">
+        <span style={{ fontSize:12, color:'var(--gl-fg-3)' }}>{visible.length} rows · taller than the viewport — keyboard focus stays revealed</span>
+        <span style={{ fontFamily:'var(--gl-font-mono)', fontSize:11, color:'var(--gl-fg-3)' }}>scroll y:<strong style={{color:'var(--gl-fg-2)'}}>{scrollY}</strong></span>
+      </div>
+      <div ref={vpRef} tabIndex={0} onKeyDown={onKey}
+        style={{ height:220, overflowY:'auto', border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-md)', background:'var(--gl-bg)', padding:'4px 0', outline:'none', scrollbarWidth:'thin' }}>
+        {visible.map(n => {
+          const on=n.id===cursor, open=n.group&&expanded[n.id];
+          return (
+            <div key={n.id} ref={on?rowRef:null} onClick={() => { setCursor(n.id); if(n.group) setExpanded(s=>({...s,[n.id]:!s[n.id]})); }}
+              style={{ display:'flex', alignItems:'center', gap:8, height:34, paddingInlineStart:14+n.depth*22, paddingInlineEnd:12, cursor:'pointer',
+                background:on?'color-mix(in srgb, var(--gl-blue-500) 13%, transparent)':'transparent',
+                boxShadow:on?'inset 2px 0 0 var(--gl-blue-500)':'none', color:on?'var(--gl-fg-1)':'var(--gl-fg-2)' }}>
+              {n.group?<span style={{display:'flex',transform:open?'rotate(90deg)':'none',transition:'transform var(--gl-dur-base)',color:'var(--gl-fg-3)'}}><GLIcon name="chevR" size={13}/></span>:<span style={{width:13}}/>}
+              <GLIcon name={n.group?(open?'folderOpen':'folder'):'doc'} size={14} color={on?'var(--gl-blue-500)':'var(--gl-fg-3)'}/>
+              <span style={{fontSize:13,fontWeight:on?600:500}}>{n.label}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop:10, fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5 }} dir="ltr">
+        On <strong style={{color:'var(--gl-fg-1)'}}>{visible[idx]?visible[idx].label:'—'}</strong>. <Kbd>↑</Kbd><Kbd>↓</Kbd><Kbd>Home</Kbd><Kbd>End</Kbd> all pull the focused row into view — including when → expands into a child far below.
+        </div>
+    </div>
+  );
+}
+
+/* ─── Phase 08 — Selection modes ──────────────────────────── */
+const T8_SRC = (() => {
+  const groups = [
+    ['s1','Assets','الأصول',[['Petty Cash','1010'],['Bank · SNB','1020'],['Receivables','1110'],['Inventory','1210']]],
+    ['s2','Liabilities','الخصوم',[['Payables','2010'],['VAT Payable','2110'],['Accrued Salaries','2210']]],
+    ['s3','Equity','حقوق الملكية',[['Share Capital','3010'],['Retained Earnings','3020']]],
+    ['s4','Revenue','الإيرادات',[['Product Sales','4010'],['Service Income','4020']]],
+  ];
+  const nodes = [];
+  groups.forEach(([gid, en, ar, kids]) => {
+    nodes.push({ id: gid, label: en, ar, depth: 0, group: true, kids: kids.map((_,i) => gid+'_'+i) });
+    kids.forEach(([kl, code], i) => nodes.push({ id: gid+'_'+i, label: kl, code, depth: 1 }));
+  });
+  return nodes;
+})();
+function TreeSelectDemo() {
+  const [mode, setMode] = useState('single');
+  const showChecks = mode === 'check';
+  const multi = mode === 'multi' || showChecks;
+  const [expanded, setExpanded] = useState({ s1:true, s2:true, s3:true, s4:true });
+  const [sel, setSel] = useState(new Set(['s1_0']));
+  const [checked, setChecked] = useState(new Set());
+  const [anchor, setAnchor] = useState('s1_0');
+  const visible = [];
+  T8_SRC.forEach(n => { if(n.depth===0) visible.push(n); else { const p=T8_SRC.find(g=>(g.kids||[]).includes(n.id)); if(p&&expanded[p.id]) visible.push(n); } });
+  const selectWith = (id, e) => {
+    const next = new Set(sel);
+    if (!multi) { setSel(new Set([id])); setAnchor(id); return; }
+    if (e.shiftKey && anchor) {
+      const a=visible.findIndex(v=>v.id===anchor), b=visible.findIndex(v=>v.id===id);
+      if(a>=0&&b>=0) { next.clear(); for(let i=Math.min(a,b);i<=Math.max(a,b);i++) next.add(visible[i].id); }
+    } else if (e.metaKey||e.ctrlKey) { next.has(id)?next.delete(id):next.add(id); setAnchor(id); }
+    else { next.clear(); next.add(id); setAnchor(id); }
+    setSel(next);
+  };
+  const leavesOf = n => n.group ? (n.kids||[]) : [n.id];
+  const checkState = n => { const ls=leavesOf(n), on=ls.filter(l=>checked.has(l)).length; return on===0?'none':on===ls.length?'all':'some'; };
+  const toggleCheck = n => { const ls=leavesOf(n); const next=new Set(checked); checkState(n)==='all'?ls.forEach(l=>next.delete(l)):ls.forEach(l=>next.add(l)); setChecked(next); };
+  const summary = showChecks ? T8_SRC.filter(n=>!n.group&&checked.has(n.id)) : visible.filter(v=>sel.has(v.id));
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
+        <span style={{ fontSize:12.5, color:'var(--gl-fg-3)' }}>{summary.length} selected{mode==='multi'?' · ⇧-click range · ⌘-click toggle':mode==='check'?' · click folder = check subtree':''}</span>
+        <Seg value={mode} onChange={v=>{setMode(v);setSel(new Set(['s1_0']));setChecked(new Set());}} options={[{value:'single',label:'Single'},{value:'multi',label:'Multi'},{value:'check',label:'Checkbox'}]} />
+      </div>
+      <div style={{ display:'grid', gridTemplateColumns:'minmax(0,1fr) 200px', gap:16, alignItems:'start' }}>
+        <div tabIndex={0} style={{ border:'1px solid var(--gl-border)', borderRadius:8, background:'var(--gl-bg)', padding:'5px 0', maxHeight:300, overflowY:'auto', scrollbarWidth:'thin', outline:'none' }}>
+          {visible.map(n => {
+            const isSel=sel.has(n.id), open=n.group&&expanded[n.id], cs=showChecks?checkState(n):'none';
+            return (
+              <div key={n.id} onClick={e=>selectWith(n.id,e)}
+                style={{ display:'flex', alignItems:'center', gap:8, height:36, paddingInlineStart:12+n.depth*22, paddingInlineEnd:12, cursor:'pointer',
+                  background:isSel?'color-mix(in srgb, var(--gl-blue-500) 14%, transparent)':'transparent',
+                  boxShadow:isSel?'inset 2px 0 0 var(--gl-blue-500)':'none', color:isSel?'var(--gl-fg-1)':'var(--gl-fg-2)' }}>
+                {showChecks&&(
+                  <div onClick={e=>{e.stopPropagation();toggleCheck(n);}}
+                    style={{ width:16,height:16,borderRadius:4,border:'1.5px solid '+(cs!=='none'?'var(--gl-blue-500)':'var(--gl-border-strong)'),background:cs==='all'?'var(--gl-blue-500)':cs==='some'?'color-mix(in srgb, var(--gl-blue-500) 30%, transparent)':'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+                    {cs==='all'&&<GLIcon name="check" size={11} color="#fff"/>}
+                    {cs==='some'&&<GLIcon name="minus" size={11} color="#fff"/>}
+                  </div>
+                )}
+                {n.group
+                  ?<span onClick={e=>{e.stopPropagation();setExpanded(s=>({...s,[n.id]:!s[n.id]}));}} style={{display:'flex',transform:open?'rotate(90deg)':'none',transition:'transform var(--gl-dur-base)',color:'var(--gl-fg-3)'}}><GLIcon name="chevR" size={13}/></span>
+                  :<span style={{width:13}}/>}
+                <GLIcon name={n.group?(open?'folderOpen':'folder'):'doc'} size={14} color={isSel?'var(--gl-blue-500)':'var(--gl-fg-3)'}/>
+                {n.code&&<span style={{fontFamily:'var(--gl-font-mono)',fontSize:11,color:'var(--gl-fg-4)',minWidth:34}}>{n.code}</span>}
+                <span style={{fontSize:13,fontWeight:isSel?600:500}}>{n.label}</span>
+                {n.ar&&<span dir="rtl" style={{fontFamily:'var(--gl-font-arabic)',fontSize:12,color:'var(--gl-fg-3)',marginInlineStart:'auto'}}>{n.ar}</span>}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{ background:'var(--gl-surface)', border:'1px solid var(--gl-border)', borderRadius:8, overflow:'hidden' }}>
+          <div style={{ padding:'8px 12px', borderBottom:'1px solid var(--gl-border)', fontSize:10, fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:'var(--gl-fg-3)', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            Selection<span style={{fontFamily:'var(--gl-font-mono)',fontSize:12,color:'var(--gl-blue-500)'}}>{summary.length}</span>
+          </div>
+          <div style={{ padding:summary.length?'6px 0':'12px', maxHeight:220, overflowY:'auto' }}>
+            {!summary.length?<span style={{fontSize:12,color:'var(--gl-fg-4)',padding:'0 12px'}}>Nothing selected</span>
+              :summary.map(n=><div key={n.id} style={{display:'flex',alignItems:'center',gap:7,padding:'4px 12px',fontSize:12.5,color:'var(--gl-fg-1)'}}><GLIcon name={n.group?'folder':'doc'} size={13} color="var(--gl-blue-500)"/>{n.label}</div>)}
+          </div>
+        </div>
+      </div>
+      <div style={{ fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5 }}>
+        {mode==='single'&&'Single-select: one node at a time. '}
+        {mode==='multi'&&<span><Kbd>⇧</Kbd>-click range · <Kbd>⌘</Kbd>/<Kbd>Ctrl</Kbd>-click toggle · <Kbd>⌘A</Kbd> all. </span>}
+        {mode==='check'&&'Checkbox: click a folder to check/uncheck its whole subtree (tri-state indicator). '}
+        
+      </div>
+    </div>
+  );
+}
+
+/* ─── Phase 09 — Add & remove nodes ──────────────────────── */
+let _t9uid = 100;
+const t9nid = () => 'n' + (++_t9uid);
+const t9seed = () => ([
+  { id:'r1',  label:'Assets',       depth:0, group:true, parent:null },
+  { id:'r1a', label:'Petty Cash',   depth:1, parent:'r1' },
+  { id:'r1b', label:'Bank · SNB',   depth:1, parent:'r1' },
+  { id:'r2',  label:'Liabilities',  depth:0, group:true, parent:null },
+  { id:'r2a', label:'Payables',     depth:1, parent:'r2' },
+  { id:'r3',  label:'Equity',       depth:0, group:true, parent:null },
+  { id:'r3a', label:'Share Capital',depth:1, parent:'r3' },
+]);
+function TreeAddRemoveDemo() {
+  const [nodes, setNodes] = useState(t9seed);
+  const [expanded, setExpanded] = useState({ r1:true, r2:true, r3:true });
+  const [sel, setSel] = useState('r1a');
+  const [editing, setEditing] = useState(null);
+  const [editVal, setEditVal] = useState('');
+  const [history, setHistory] = useState([]);
+  const [flash, setFlash] = useState(null);
+  const editRef = useRef(null);
+  useEffect(() => { if (editing && editRef.current) { editRef.current.focus(); editRef.current.select(); } }, [editing]);
+  const note = m => { setFlash(m); clearTimeout(window._t9t); window._t9t = setTimeout(() => setFlash(null), 1400); };
+  const snapshot = () => setHistory(h => [...h, { nodes: nodes.map(n=>({...n})), expanded:{...expanded}, sel }].slice(-20));
+  const undo = () => setHistory(h => { if(!h.length) return h; const last=h[h.length-1]; setNodes(last.nodes); setExpanded(last.expanded); setSel(last.sel); note('Undone'); return h.slice(0,-1); });
+  const childrenOf = pid => nodes.filter(n => n.parent===pid);
+  const visible = []; const walk9 = pid => childrenOf(pid).forEach(n => { visible.push(n); if(n.group&&expanded[n.id]) walk9(n.id); }); walk9(null);
+  const indexOf = id => nodes.findIndex(n => n.id===id);
+  const isDesc = (node, anc, arr) => { let p=node.parent; while(p){if(p===anc)return true; p=(arr.find(n=>n.id===p)||{}).parent;} return false; };
+  const addChild = pid => {
+    snapshot();
+    const parent=nodes.find(n=>n.id===pid); const depth=parent?parent.depth+1:0;
+    const id=t9nid(); const arr=nodes.slice(); let at=indexOf(pid)+1;
+    while(at<arr.length&&isDesc(arr[at],pid,arr)) at++;
+    arr.splice(at,0,{id,label:'New account',depth,parent:pid});
+    if(parent&&!parent.group){const pi=arr.findIndex(n=>n.id===pid); arr[pi]={...arr[pi],group:true};}
+    setNodes(arr); setExpanded(s=>({...s,[pid]:true})); setSel(id);
+    setEditing(id); setEditVal('New account'); note('Child added');
+  };
+  const removeNode = id => {
+    snapshot(); const doomed=new Set([id]); let grew=true;
+    while(grew){grew=false; nodes.forEach(n=>{if(n.parent&&doomed.has(n.parent)&&!doomed.has(n.id)){doomed.add(n.id);grew=true;}});}
+    const arr=nodes.filter(n=>!doomed.has(n.id));
+    setNodes(arr); if(doomed.has(sel)) setSel(arr.length?arr[0].id:null);
+    note(doomed.size>1?'Removed '+doomed.size+' nodes':'Removed');
+  };
+  const commitRename = () => { if(editing){setNodes(ns=>ns.map(n=>n.id===editing?{...n,label:editVal.trim()||n.label}:n));} setEditing(null); };
+  const selNode = nodes.find(n=>n.id===sel);
+  const btnS = { height:30, padding:'0 10px', border:'1px solid var(--gl-border-strong)', borderRadius:6, background:'var(--gl-input-bg)', cursor:'pointer', color:'var(--gl-fg-1)', fontFamily:'var(--gl-font-body)', fontSize:12, display:'inline-flex', alignItems:'center', gap:6 };
+  const dangerS = { ...btnS, borderColor:'color-mix(in srgb, var(--gl-danger-500) 40%, transparent)', color:'var(--gl-danger-500)', background:'color-mix(in srgb, var(--gl-danger-500) 7%, transparent)' };
+  return (
+    <div>
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+        <button style={btnS} onClick={()=>sel&&addChild(sel)}><GLIcon name="plus" size={13}/>Add child</button>
+        <button style={btnS} onClick={()=>sel&&selNode&&(setEditing(sel),setEditVal(selNode.label))}><GLIcon name="edit" size={13}/>Rename</button>
+        <button style={dangerS} onClick={()=>sel&&removeNode(sel)}><GLIcon name="trash" size={13}/>Delete</button>
+        <div style={{flex:1}}/>
+        <span style={{fontSize:12,color:'var(--gl-success-500)',fontWeight:600,minHeight:16,display:'flex',alignItems:'center',gap:5}}>{flash&&<><GLIcon name="check2" size={13}/>{flash}</>}</span>
+        <button style={{...btnS,color:'var(--gl-fg-3)'}} onClick={undo}><GLIcon name="back" size={13}/>Undo</button>
+      </div>
+      <div tabIndex={0} style={{ border:'1px solid var(--gl-border)', borderRadius:8, background:'var(--gl-bg)', maxHeight:280, overflowY:'auto', padding:'4px 0', scrollbarWidth:'thin', outline:'none' }}
+        onKeyDown={e => {
+          const idx2=visible.findIndex(v=>v.id===sel); if(editing) return;
+          if(e.key==='ArrowDown'&&visible[idx2+1]){e.preventDefault();setSel(visible[idx2+1].id);}
+          else if(e.key==='ArrowUp'&&visible[idx2-1]){e.preventDefault();setSel(visible[idx2-1].id);}
+          else if(e.key==='Enter'&&sel){e.preventDefault();const s=nodes.find(n=>n.id===sel);setEditing(sel);setEditVal(s?s.label:'');}
+          else if((e.key==='Delete'||e.key==='Backspace')&&sel){e.preventDefault();removeNode(sel);}
+          else if((e.metaKey||e.ctrlKey)&&(e.key==='z'||e.key==='Z')){e.preventDefault();undo();}
+        }}>
+        {visible.length===0&&<div style={{padding:24,textAlign:'center',color:'var(--gl-fg-4)',fontSize:13}}>Tree is empty — use Add child.</div>}
+        {visible.map(n => {
+          const isSel=n.id===sel, open=n.group&&expanded[n.id];
+          return (
+            <div key={n.id} onClick={()=>setSel(n.id)} onDoubleClick={()=>{setEditing(n.id);setEditVal(n.label);}}
+              style={{ display:'flex', alignItems:'center', gap:8, minHeight:34, paddingInlineStart:12+n.depth*22, paddingInlineEnd:8, cursor:'pointer',
+                background:isSel?'color-mix(in srgb, var(--gl-blue-500) 14%, transparent)':'transparent',
+                boxShadow:isSel?'inset 2px 0 0 var(--gl-blue-500)':'none', color:isSel?'var(--gl-fg-1)':'var(--gl-fg-2)' }}>
+              {n.group
+                ?<span onClick={e=>{e.stopPropagation();setExpanded(s=>({...s,[n.id]:!s[n.id]}));}} style={{display:'flex',transform:open?'rotate(90deg)':'none',transition:'transform var(--gl-dur-base)',color:'var(--gl-fg-3)'}}><GLIcon name="chevR" size={13}/></span>
+                :<span style={{width:13}}/>}
+              <GLIcon name={n.group?(open?'folderOpen':'folder'):'doc'} size={14} color={isSel?'var(--gl-blue-500)':'var(--gl-fg-3)'}/>
+              {editing===n.id
+                ?<input ref={editRef} value={editVal} onChange={e=>setEditVal(e.target.value)} onBlur={commitRename}
+                    onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();commitRename();}else if(e.key==='Escape')setEditing(null);e.stopPropagation();}}
+                    onClick={e=>e.stopPropagation()}
+                    style={{flex:1,height:26,padding:'0 7px',background:'var(--gl-input-bg)',border:'1.5px solid var(--gl-blue-500)',borderRadius:5,fontSize:13,fontFamily:'var(--gl-font-body)',color:'var(--gl-fg-1)',outline:'none'}}/>
+                :<span style={{fontSize:13,fontWeight:isSel?600:500,flex:1}}>{n.label}</span>}
+              {!editing&&isSel&&(
+                <button onClick={e=>{e.stopPropagation();removeNode(n.id);}} style={{width:24,height:24,border:'none',background:'transparent',cursor:'pointer',color:'var(--gl-fg-4)',display:'flex',alignItems:'center',justifyContent:'center',borderRadius:4}}>
+                  <GLIcon name="trash" size={13}/>
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ marginTop:10, fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5 }}>
+        Toolbar + double-click rename · <Kbd>Enter</Kbd> rename · <Kbd>Delete</Kbd> remove · <Kbd>⌘Z</Kbd> undo · {nodes.length} nodes.
+        </div>
+    </div>
+  );
+}
+
 function FeatureCard({ icon, title, ar, body }) {
   return (
     <div style={{ background: 'var(--gl-surface)', border: '1px solid var(--gl-border)', borderRadius: 'var(--gl-radius-lg)', boxShadow: 'var(--gl-shadow)', padding: 18, display: 'flex', flexDirection: 'column', gap: 11 }}>
@@ -236,6 +624,18 @@ function App() {
             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, color: 'var(--gl-fg-3)' }}>{d}</p>
           </div>
         ))}
+      </Section>
+      <Section title="Phase 01 — LTR / RTL arrow-key directions" desc="Arrow keys must map to the correct visual direction in both LTR and RTL. The horizontal arrow toward the children expands and steps in — that direction swaps under RTL because the indent mirrors. Fix: resolve each arrow through horizontalStep(key, dir)." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TreeKbdDemo /></div>
+      </Section>
+      <Section title="Phase 02 — Scroll on focus" desc="When a row is focused via the keyboard in a bounded viewport, the tree scrolls it into view. This covers ↑↓, Home/End, and the → step that expands into a deep child or the ← step that exits to a far-up parent." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TreeScrollDemo /></div>
+      </Section>
+      <Section title="Phase 08 — Selection modes" desc="Tree supports three selection modes: single (one node at a time), multi (Shift-click range, Ctrl/⌘-click toggle), and checkbox (tri-state: a folder toggles its whole subtree). The active selection drives group actions." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TreeSelectDemo /></div>
+      </Section>
+      <Section title="Phase 09 — Add &amp; remove nodes" desc="First-class structural ops: add a child, rename inline (double-click or Enter), delete a node and its subtree. Every op is undoable (⌘Z). Adding under a leaf promotes it to a folder; deleting a folder cascades to all descendants." cols="1fr">
+        <div style={{ gridColumn: '1 / -1' }}><TreeAddRemoveDemo /></div>
       </Section>
     </Shell>
   );

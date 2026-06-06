@@ -135,6 +135,42 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ## [2.4.0]
 
+### 🧩 Added — `EditableTable<T>` (generic typed rows) is a real component
+
+- **The generic editable table is now a shipping widget, not a reference
+  sketch.** `EditableTable<T>` + `EditableTableController<T>` render a
+  `List<T>` of an immutable model (each `EditableColumn<T>` carries
+  `value: (T) => String` / `setValue: (T, raw) => T`), with inline editing
+  (text · number · date · dropdown · checkbox), click-to-sort, drag-to-resize +
+  long-press-to-reorder columns, TSV copy, RTL-aware keyboard nav and
+  scroll-on-focus. Typed column constructors — `NumericColumn`,
+  `DropdownColumn`, `DateColumn`, `CheckboxColumn`, `ComputedColumn` — plus
+  `mapColumn(...)` for the legacy `T = EditableRow` map rows.
+- Ships as its own barrel, `geniuslink_editable_table_generic.dart` (imported
+  **instead of** the map-backed table, since both declare the same names). New
+  files: `editable_table_generic.dart` (model + controller) and
+  `editable_table_generic_view.dart` (the widget).
+
+### 📘 Changed — example screens exercise every new capability
+
+- **All four component example screens were rebuilt to demonstrate and test the
+  new requirements with realistic, scrollable data and feature toggles:**
+  - **EditableTable** → now an `EditableTable<InvoiceRow>` (typed model, not a
+    map): 26 rows, every column kind, inline editing, resize / reorder, ⌘C +
+    copy-all-rows TSV, an RTL toggle and a live typed-row inspector.
+  - **ReadableTable** → 24 rows built from the typed `ReadableColumn`
+    factories (text · enum-badge · boolean · date · progress · number), five
+    selection modes, a Copy-selection (TSV) button with a clipboard preview,
+    and an RTL toggle.
+  - **BrowserStyleTabBar** → a live state-preservation test: each tab hosts a
+    stateful counter + text field + scroll list, with a Keep-alive ↔ Rebuild
+    toggle (`lazyPages`) that visibly preserves vs. resets state, plus an RTL
+    toggle.
+  - **Tree** → rebuilt on the real `Tree<Account>` widget: Single / Multi
+    selection segmented control, a checkbox-column toggle, Add child / Add
+    sibling / Delete-selected actions, a live **Selected nodes** panel
+    (`controller.selectedNodes`), and an RTL toggle.
+
 ### 📘 Changed — example app: one screen per component + one all-in-one
 
 - **The example launcher is consolidated to five screens.** Previously it

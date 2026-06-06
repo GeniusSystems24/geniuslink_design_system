@@ -15,15 +15,15 @@
      MOTION — durations
      Brand is a slow, deliberate interface. Keep it subtle.
      ==================================================== */
-  --gl-dur-instant:  0ms;     /* route changes — no animation */
-  --gl-dur-fast:     100ms;   /* hover tint, icon swaps */
-  --gl-dur-base:     150ms;   /* DEFAULT — color/bg transitions */
-  --gl-dur-moderate: 200ms;   /* expand / collapse, accordions */
-  --gl-dur-slow:     300ms;   /* bottom sheet, dialog enter */
-  --gl-dur-slower:   500ms;   /* skeleton shimmer sweep */
+  --gl-dur-instant:  0ms; /* @kind other */     /* route changes — no animation */
+  --gl-dur-fast:     100ms; /* @kind other */   /* hover tint, icon swaps */
+  --gl-dur-base:     150ms; /* @kind other */   /* DEFAULT — color/bg transitions */
+  --gl-dur-moderate: 200ms; /* @kind other */   /* expand / collapse, accordions */
+  --gl-dur-slow:     300ms; /* @kind other */   /* bottom sheet, dialog enter */
+  --gl-dur-slower:   500ms; /* @kind other */   /* skeleton shimmer sweep */
 
   /* Stagger step for list / message entrance */
-  --gl-stagger:      40ms;
+  --gl-stagger:      40ms; /* @kind other */
 
   /* ====================================================
      MOTION — easing curves
@@ -31,29 +31,29 @@
      plus one "emphasized" curve for sheets & dialogs.
      No springs, no bounce, no parallax.
      ==================================================== */
-  --gl-ease-standard:   cubic-bezier(0.4, 0, 0.2, 1);  /* general */
-  --gl-ease-out:        cubic-bezier(0, 0, 0.2, 1);    /* enter / decelerate */
-  --gl-ease-in:         cubic-bezier(0.4, 0, 1, 1);    /* exit / accelerate */
-  --gl-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);    /* sheets, dialogs */
+  --gl-ease-standard:   cubic-bezier(0.4, 0, 0.2, 1); /* @kind other */  /* general */
+  --gl-ease-out:        cubic-bezier(0, 0, 0.2, 1); /* @kind other */    /* enter / decelerate */
+  --gl-ease-in:         cubic-bezier(0.4, 0, 1, 1); /* @kind other */    /* exit / accelerate */
+  --gl-ease-emphasized: cubic-bezier(0.2, 0, 0, 1); /* @kind other */    /* sheets, dialogs */
 
   /* Composed defaults */
-  --gl-transition:      all var(--gl-dur-base) var(--gl-ease-standard);
+  --gl-transition:      all var(--gl-dur-base) var(--gl-ease-standard); /* @kind other */
   --gl-transition-color: color var(--gl-dur-base) var(--gl-ease-standard),
                          background-color var(--gl-dur-base) var(--gl-ease-standard),
-                         border-color var(--gl-dur-base) var(--gl-ease-standard);
+                         border-color var(--gl-dur-base) var(--gl-ease-standard); /* @kind other */
 
   /* ====================================================
      Z-INDEX / OVERLAY LAYERS
      A strict scale so overlays never fight.
      ==================================================== */
-  --gl-z-base:     0;
-  --gl-z-raised:   10;    /* cards lifted on hover */
-  --gl-z-sticky:   100;   /* sticky headers / app bars */
-  --gl-z-dropdown: 1000;  /* menus, combo-box overlay */
-  --gl-z-overlay:  2000;  /* scrim behind modals/sheets */
-  --gl-z-modal:    3000;  /* dialogs, bottom sheets */
-  --gl-z-toast:    4000;  /* snackbars / toasts */
-  --gl-z-tooltip:  5000;  /* tooltips — always on top */
+  --gl-z-base:     0; /* @kind other */
+  --gl-z-raised:   10; /* @kind other */    /* cards lifted on hover */
+  --gl-z-sticky:   100; /* @kind other */   /* sticky headers / app bars */
+  --gl-z-dropdown: 1000; /* @kind other */  /* menus, combo-box overlay */
+  --gl-z-overlay:  2000; /* @kind other */  /* scrim behind modals/sheets */
+  --gl-z-modal:    3000; /* @kind other */  /* dialogs, bottom sheets */
+  --gl-z-toast:    4000; /* @kind other */  /* snackbars / toasts */
+  --gl-z-tooltip:  5000; /* @kind other */  /* tooltips — always on top */
 
   /* ====================================================
      RESPONSIVE — breakpoints (min-width)
@@ -76,11 +76,11 @@
    ==================================================== */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --gl-dur-fast:     0ms;
-    --gl-dur-base:     0ms;
-    --gl-dur-moderate: 0ms;
-    --gl-dur-slow:     0ms;
-    --gl-stagger:      0ms;
+    --gl-dur-fast:     0ms; /* @kind other */
+    --gl-dur-base:     0ms; /* @kind other */
+    --gl-dur-moderate: 0ms; /* @kind other */
+    --gl-dur-slow:     0ms; /* @kind other */
+    --gl-stagger:      0ms; /* @kind other */
   }
   *, *::before, *::after {
     animation-duration: 0.001ms !important;

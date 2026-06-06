@@ -1,4 +1,4 @@
-<!-- This README is also presented as an interactive web page: doc/showcase.html -->
+<!-- An interactive, per-component reference is published at docs/index.html -->
 
 # GeniusLink Design System
 
@@ -11,7 +11,7 @@ A themeable, **MVC** Flutter widget kit ported from the GeniusLink web design sy
 
 Both tables now ship **resizable + reorderable columns**, **typed `ReadableTable` column kinds**, and **TSV clipboard copy** (rows / cells paste straight into a spreadsheet); the `Tree` adds a **single / multi-select** layer with add & remove; and `BrowserStyleTabBar` **preserves each tab's page state** across switches. Keyboard arrows resolve to the **visual** direction in RTL, and keyboard focus **scrolls into view** in the table + tree.
 
-> 📺 **Visual tour:** open [`doc/showcase.html`](doc/showcase.html) in a browser for a designed walkthrough of every part and feature.
+> 📺 **Interactive docs:** open [`docs/index.html`](docs/index.html) in a browser for a live, per-component reference — each page mirrors the Flutter widget and runs in light / dark and LTR / RTL.
 
 ---
 
@@ -242,7 +242,31 @@ final tsv = c.rowsAsTsv([0, 1]);   // serialize without touching the clipboard
 
 ### Generic rows — `EditableTable<T>`
 
-A typed-row variant (`EditableTable<T>` / `EditableColumn<T>`) lets each row be a strongly-typed immutable value instead of a `Map<String,String>` — every column carries `value: (T) => String` and `setValue: (T, raw) => T` accessors, mirroring the shipped `ReadableTable<T>` pattern (a null `setValue` marks a read-only / computed column; the legacy map table is simply `T = EditableRow` via `mapColumn(...)`). The reference design lives in `lib/design_system/components/data/editable_table_generic.dart`.
+A typed-row variant (`EditableTable<T>` / `EditableColumn<T>`) lets each row be a strongly-typed immutable value instead of a `Map<String,String>` — each row is a `List<T>` of your own model and every column carries `value: (T) => String` plus `setValue: (T, raw) => T` accessors (mirroring `ReadableTable<T>`; a null `setValue` marks a read-only / computed column). It ships as its own barrel — import it **instead of** the map-backed table, since both declare the same names:
+
+```dart
+import 'package:geniuslink_design_system/geniuslink_editable_table_generic.dart';
+
+@immutable
+class InvoiceRow { final String item; final int qty; final double price; /* +copyWith */ }
+
+final c = EditableTableController<InvoiceRow>(
+  columns: [
+    EditableColumn(label: 'Item',  value: (r) => r.item,  setValue: (r, v) => r.copyWith(item: v)),
+    NumericColumn (label: 'Qty',   value: (r) => '${r.qty}', setValue: (r, v) => r.copyWith(qty: int.tryParse(v) ?? r.qty), decimals: 0),
+    DropdownColumn(label: 'Unit',  options: ['ea','box'], value: (r) => r.unit, setValue: (r, v) => r.copyWith(unit: v)),
+    DateColumn    (label: 'Due',   value: (r) => iso(r.due), setValue: (r, v) => r.copyWith(due: parse(v))),
+    CheckboxColumn(label: 'Paid',  value: (r) => r.paid ? '1' : '0', setValue: (r, v) => r.copyWith(paid: v == '1')),
+    ComputedColumn(label: 'Total', compute: (r) => money(r.qty * r.price), includeInTotal: true), // read-only
+  ],
+  rows: seed,
+  newRow: () => InvoiceRow.blank(),       // enables Add-row + Tab-to-grow
+);
+
+EditableTable<InvoiceRow>(controller: c); // inline edit · sort · resize · reorder · copy · keyboard
+```
+
+Typed column constructors — `NumericColumn` (clamp + decimals), `DropdownColumn` (strict options), `DateColumn`, `CheckboxColumn`, `ComputedColumn` (read-only, derived) — declare a column's kind and editing affordance. The legacy map table is simply `T = EditableRow` via `mapColumn('key', 'Label')`. See `example/lib/editable_table_demo.dart` for a full `EditableTable<InvoiceRow>` with all kinds, resize / reorder, TSV copy and an RTL toggle.
 
 ### Options
 
