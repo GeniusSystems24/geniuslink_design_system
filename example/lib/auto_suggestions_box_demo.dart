@@ -42,6 +42,20 @@ class _AutoSuggestionsBoxDemoState extends State<AutoSuggestionsBoxDemo> {
   AutoSuggestionMatch _match = AutoSuggestionMatch.contains;
 
   String _lastPick = '—';
+  List<String> _tags = const [];
+  late final AutoSuggestionsBoxController<String> _teamCtrl = AutoSuggestionsBoxController<String>(
+    multiSelect: true,
+    source: StringSuggestions.source(const [
+      'Design', 'Engineering', 'Research', 'Marketing', 'Sales', 'Finance',
+      'Legal', 'Support', 'Operations', 'Product', 'Data', 'Security',
+    ]),
+  );
+
+  @override
+  void dispose() {
+    _teamCtrl.dispose();
+    super.dispose();
+  }
 
   // 1 ── plain strings
   static const _fruits = [
@@ -220,6 +234,47 @@ class _AutoSuggestionsBoxDemoState extends State<AutoSuggestionsBoxDemo> {
                             onSelected: (s) => _onPick(s.label),
                             onSubmitted: (raw) => _onPick('“$raw” (free text)'),
                           ),
+                        ]),
+                      ),
+
+                      // 5 · multi-select
+                      _Section(
+                        t: t,
+                        index: '05',
+                        title: 'Multi-select',
+                        note: 'Tap (or Enter) toggles rows — the overlay stays open and shows a count. Chosen tags appear below.',
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          AutoSuggestionsBox<String>(
+                            controller: _teamCtrl,
+                            multiSelect: true,
+                            hintText: 'Choose teams…',
+                            onSelectionChanged: (items) => setState(() => _tags = [for (final i in items) i.label]),
+                          ),
+                          if (_tags.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Wrap(spacing: 8, runSpacing: 8, children: [
+                              for (final tag in _tags)
+                                Container(
+                                  padding: const EdgeInsets.fromLTRB(11, 6, 7, 6),
+                                  decoration: BoxDecoration(
+                                    color: AutoSuggestionsBoxThemeData.accent.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(color: AutoSuggestionsBoxThemeData.accent.withOpacity(0.45)),
+                                  ),
+                                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                    Text(tag, style: TextStyle(fontFamily: AutoSuggestionsBoxThemeData.bodyFont, fontSize: 12.5, fontWeight: FontWeight.w600, color: t.fg1)),
+                                    const SizedBox(width: 5),
+                                    GestureDetector(
+                                      onTap: () => setState(() {
+                                        _teamCtrl.removeSelectedValue(tag);
+                                        _tags = _teamCtrl.selectedValues;
+                                      }),
+                                      child: Icon(Icons.close_rounded, size: 14, color: t.fg3),
+                                    ),
+                                  ]),
+                                ),
+                            ]),
+                          ],
                         ]),
                       ),
 

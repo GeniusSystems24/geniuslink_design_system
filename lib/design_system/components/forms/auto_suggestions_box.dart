@@ -20,6 +20,7 @@
 //   File: lib/design_system/components/forms/auto_suggestions_box.dart
 // ============================================================
 
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
@@ -40,6 +41,17 @@ class AutoSuggestionsBox<T> extends StatefulWidget {
 
   /// Fired when a row is picked (tap or Enter on a highlighted match).
   final ValueChanged<AutoSuggestion<T>>? onSelected;
+
+  /// Enable multi-select: tapping / Enter toggles a row in a set and the overlay
+  /// stays open (rows show a checkbox; a count shows in the field). Read the set
+  /// from the controller's `selectedItems`, or listen via [onSelectionChanged].
+  final bool multiSelect;
+
+  /// Pre-selected rows for [multiSelect] (ignored when a [controller] is given).
+  final List<AutoSuggestion<T>>? initialSelected;
+
+  /// Fired (multi-select) whenever the chosen set changes, with the full set.
+  final ValueChanged<List<AutoSuggestion<T>>>? onSelectionChanged;
 
   /// Fired on every text change.
   final ValueChanged<String>? onChanged;
@@ -123,6 +135,9 @@ class AutoSuggestionsBox<T> extends StatefulWidget {
     this.items,
     this.controller,
     this.onSelected,
+    this.multiSelect = false,
+    this.initialSelected,
+    this.onSelectionChanged,
     this.onChanged,
     this.onSubmitted,
     this.hintText,
@@ -168,6 +183,8 @@ class _AutoSuggestionsBoxState<T> extends State<AutoSuggestionsBox<T>> {
   // Attached to whichever overlay row is currently highlighted, so we can scroll
   // it into view using real geometry (group headers / variable heights included).
   final GlobalKey _hlRowKey = GlobalKey();
+  Timer? _blurTimer; // delays close-on-blur so a row tap can complete first
+  bool _suppressReopen = false; // skip openOnFocus once (after a pick re-focuses)
 
   @override
   void initState() {
@@ -183,16 +200,28 @@ class _AutoSuggestionsBoxState<T> extends State<AutoSuggestionsBox<T>> {
 
   AutoSuggestionsBoxController<T> _buildController() {
     final src = widget.source ?? AutoSuggestionsSource<T>.list(widget.items ?? const []);
-    return AutoSuggestionsBoxController<T>(source: src);
+    return AutoSuggestionsBoxController<T>(
+      source: src,
+      multiSelect: widget.multiSelect,
+      initialSelected: widget.initialSelected,
+    );
   }
 
   void _onFocus() {
     if (_focus.hasFocus) {
-      if (widget.openOnFocus) _c.open();
+      _blurTimer?.cancel();
+      if (_suppressReopen) {
+        _suppressReopen = false; // consume: don't reopen right after a pick
+      } else if (widget.openOnFocus) {
+        _c.open();
+      }
       if (widget.scrollOnFocus) _scrollIntoView();
     } else {
-      // Defer so a tap on a row (which steals focus) can complete first.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Delay the close so a mouse click on a row (which blurs the field on
+      // pointer-down) still lands its tap on pointer-up. A row tap calls
+      // _pick → requestFocus, which cancels this timer.
+      _blurTimer?.cancel();
+      _blurTimer = Timer(const Duration(milliseconds: 200), () {
         if (mounted && !_focus.hasFocus) _c.close();
       });
     }
@@ -291,6 +320,7 @@ class _AutoSuggestionsBoxState<T> extends State<AutoSuggestionsBox<T>> {
 
   @override
   void dispose() {
+    _blurTimer?.cancel();
     _c.removeListener(_onModel);
     if (_ownsController) _c.dispose();
     _focus.removeListener(_onFocus);
@@ -311,10 +341,10 @@ class _AutoSuggestionsBoxState<T> extends State<AutoSuggestionsBox<T>> {
         return KeyEventResult.handled;
       case LogicalKeyboardKey.enter:
       case LogicalKeyboardKey.numpadEnter:
-        final picked = _c.commitHighlighted();
-        if (picked != null) {
-          widget.onSelected?.call(picked);
-        } else if (_c.allowFreeText) {
+        final h = _c.highlighted;
+        if (h != null && h.enabled) {
+          _choose(h);
+        } else if (_c.allowFreeText && !widget.multiSelect) {
           widget.onSubmitted?.call(_c.query);
           _c.close();
         }
@@ -344,11 +374,25 @@ class _AutoSuggestionsBoxState<T> extends State<AutoSuggestionsBox<T>> {
     return KeyEventResult.ignored;
   }
 
-  void _pick(AutoSuggestion<T> s) {
+  void _pick(AutoSuggestion<T> s) => _choose(s);
+
+  /// Unified selection entry point for both tap and Enter. In multi-select it
+  /// toggles membership and keeps the overlay open; otherwise it commits the
+  /// value and closes. Always returns focus to the field.
+  void _choose(AutoSuggestion<T> s) {
     if (!s.enabled) return;
-    _c.select(s);
-    widget.onSelected?.call(s);
-    _focus.requestFocus();
+    _blurTimer?.cancel();
+    if (widget.multiSelect) {
+      _c.toggleSelected(s);
+      widget.onSelectionChanged?.call(_c.selectedItems);
+      widget.onSelected?.call(s);
+      _focus.requestFocus(); // keep searching; overlay stays open
+    } else {
+      _c.select(s); // writes the label + closes the overlay
+      widget.onSelected?.call(s);
+      if (!_focus.hasFocus) _suppressReopen = true; // a mouse pick will re-focus
+      _focus.requestFocus();
+    }
   }
 
   @override
@@ -436,6 +480,23 @@ class _AutoSuggestionsBoxState<T> extends State<AutoSuggestionsBox<T>> {
 
   Widget? _buildSuffix(AutoSuggestionsBoxThemeData t, bool hasText) {
     final children = <Widget>[];
+    // Multi-select: a count pill of how many rows are chosen.
+    if (widget.multiSelect && _c.selectedItems.isNotEmpty) {
+      children.add(Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: AutoSuggestionsBoxThemeData.accent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Text(
+            '${_c.selectedItems.length}',
+            style: const TextStyle(fontFamily: AutoSuggestionsBoxThemeData.bodyFont, fontSize: 11.5, fontWeight: FontWeight.w700, color: Colors.white),
+          ),
+        ),
+      ));
+    }
     if (_c.isLoading) {
       children.add(Padding(
         padding: const EdgeInsets.only(right: 4),
@@ -519,6 +580,7 @@ class _AutoSuggestionsBoxState<T> extends State<AutoSuggestionsBox<T>> {
             emptyBuilder: widget.emptyBuilder,
             loadingBuilder: widget.loadingBuilder,
             hlKey: _hlRowKey,
+            multiSelect: widget.multiSelect,
             onPick: _pick,
             onHover: _c.highlightAt,
           ),
@@ -546,6 +608,7 @@ class _Panel<T> extends StatelessWidget {
   final Widget Function(BuildContext, String)? emptyBuilder;
   final Widget Function(BuildContext, String)? loadingBuilder;
   final GlobalKey hlKey;
+  final bool multiSelect;
   final ValueChanged<AutoSuggestion<T>> onPick;
   final ValueChanged<int> onHover;
 
@@ -561,6 +624,7 @@ class _Panel<T> extends StatelessWidget {
     required this.emptyBuilder,
     required this.loadingBuilder,
     required this.hlKey,
+    required this.multiSelect,
     required this.onPick,
     required this.onHover,
   });
@@ -629,6 +693,8 @@ class _Panel<T> extends StatelessWidget {
                 highlightMatch: highlightMatch,
                 highlightMatches: highlightMatches,
                 custom: itemBuilder,
+                multiSelect: multiSelect,
+                selected: multiSelect && controller.isSelectedValue(s.value),
                 onTap: () => onPick(s),
                 onHover: () => onHover(i),
               );
@@ -676,6 +742,8 @@ class _Row<T> extends StatelessWidget {
   final AutoSuggestionMatch highlightMatch;
   final bool highlightMatches;
   final Widget Function(BuildContext, AutoSuggestion<T>, bool)? custom;
+  final bool multiSelect;
+  final bool selected;
   final VoidCallback onTap;
   final VoidCallback onHover;
 
@@ -688,9 +756,23 @@ class _Row<T> extends StatelessWidget {
     required this.highlightMatch,
     required this.highlightMatches,
     required this.custom,
+    required this.multiSelect,
+    required this.selected,
     required this.onTap,
     required this.onHover,
   });
+
+  Widget _checkbox(AutoSuggestionsBoxThemeData t) => Container(
+        width: 18,
+        height: 18,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? AutoSuggestionsBoxThemeData.accent : Colors.transparent,
+          border: Border.all(color: selected ? AutoSuggestionsBoxThemeData.accent : t.fg3, width: 1.6),
+          borderRadius: BorderRadius.circular(AutoSuggestionsBoxThemeData.radiusSm),
+        ),
+        child: selected ? const Icon(Icons.check_rounded, size: 13, color: Colors.white) : null,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -698,7 +780,7 @@ class _Row<T> extends StatelessWidget {
     final s = suggestion;
     final enabled = s.enabled;
 
-    final content = custom?.call(context, s, highlighted) ??
+    final inner = custom?.call(context, s, highlighted) ??
         Row(children: [
           if (s.icon != null) ...[
             Icon(s.icon, size: 17, color: highlighted ? AutoSuggestionsBoxThemeData.accent : t.fg3),
@@ -737,6 +819,15 @@ class _Row<T> extends StatelessWidget {
           ],
         ]);
 
+    // In multi-select prepend a checkbox so the chosen state is explicit.
+    final content = multiSelect
+        ? Row(children: [
+            _checkbox(t),
+            const SizedBox(width: 11),
+            Expanded(child: inner),
+          ])
+        : inner;
+
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
       onEnter: (_) => onHover(),
@@ -748,10 +839,12 @@ class _Row<T> extends StatelessWidget {
           height: AutoSuggestionsBoxThemeData.rowHeight,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: highlighted ? t.hover : Colors.transparent,
+            color: highlighted
+                ? t.hover
+                : (selected ? t.accentWash(0.06) : Colors.transparent),
             border: Border(
               left: BorderSide(
-                color: highlighted && enabled ? AutoSuggestionsBoxThemeData.accent : Colors.transparent,
+                color: (highlighted || selected) && enabled ? AutoSuggestionsBoxThemeData.accent : Colors.transparent,
                 width: 2.5,
               ),
             ),

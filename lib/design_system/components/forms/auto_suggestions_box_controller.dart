@@ -36,10 +36,13 @@ class AutoSuggestionsBoxController<T> extends ChangeNotifier {
     this.minChars = 0,
     this.maxResults = 50,
     this.allowFreeText = true,
+    this.multiSelect = false,
+    List<AutoSuggestion<T>>? initialSelected,
   })  : _source = source,
         _ownsText = textController == null,
         text = textController ?? TextEditingController(text: initialValue?.label ?? initialText ?? '') {
     _selected = initialValue;
+    if (initialSelected != null) _selectedItems.addAll(initialSelected);
     text.addListener(_onTextChanged);
     _lastText = text.text;
     // Seed the initial (empty-query) result set so opening shows everything.
@@ -64,6 +67,11 @@ class AutoSuggestionsBoxController<T> extends ChangeNotifier {
   /// Whether committing arbitrary typed text (not a suggestion) is allowed.
   bool allowFreeText;
 
+  /// When true the box keeps a *set* of chosen items: tapping / Enter toggles a
+  /// row's membership and the overlay stays open (instead of committing one
+  /// value and closing). Read the chosen rows from [selectedItems].
+  final bool multiSelect;
+
   // ── state ──────────────────────────────────────────────────
   List<AutoSuggestion<T>> _results = const [];
   int _highlighted = -1;
@@ -76,6 +84,7 @@ class AutoSuggestionsBoxController<T> extends ChangeNotifier {
   Timer? _debounceTimer;
   String _lastText = '';
   bool _muteText = false; // suppress _onTextChanged during programmatic writes
+  final List<AutoSuggestion<T>> _selectedItems = []; // multi-select set (ordered)
 
   // ── reads ──────────────────────────────────────────────────
   String get query => text.text;
@@ -95,6 +104,57 @@ class AutoSuggestionsBoxController<T> extends ChangeNotifier {
   T? get value => _selected?.value;
 
   bool isHighlighted(int i) => i == _highlighted;
+
+  // ── multi-select ───────────────────────────────────────────
+  /// The chosen rows (multi-select), in pick order.
+  List<AutoSuggestion<T>> get selectedItems => List.unmodifiable(_selectedItems);
+
+  /// The chosen values (multi-select), in pick order.
+  List<T> get selectedValues => [for (final s in _selectedItems) s.value];
+
+  /// Whether [value] is in the multi-select set.
+  bool isSelectedValue(T value) {
+    for (final s in _selectedItems) {
+      if (s.value == value) return true;
+    }
+    return false;
+  }
+
+  /// Toggle [item] in the multi-select set; keeps the overlay open and the query
+  /// untouched. Returns true if the item is now selected.
+  bool toggleSelected(AutoSuggestion<T> item) {
+    final i = _selectedItems.indexWhere((s) => s.value == item.value);
+    final nowSelected = i < 0;
+    if (nowSelected) {
+      _selectedItems.add(item);
+    } else {
+      _selectedItems.removeAt(i);
+    }
+    notifyListeners();
+    return nowSelected;
+  }
+
+  /// Remove a value from the multi-select set (e.g. a chip's ×).
+  void removeSelectedValue(T value) {
+    final before = _selectedItems.length;
+    _selectedItems.removeWhere((s) => s.value == value);
+    if (_selectedItems.length != before) notifyListeners();
+  }
+
+  /// Replace the whole multi-select set.
+  void setSelectedItems(List<AutoSuggestion<T>> items) {
+    _selectedItems
+      ..clear()
+      ..addAll(items);
+    notifyListeners();
+  }
+
+  /// Clear the multi-select set.
+  void clearSelection() {
+    if (_selectedItems.isEmpty) return;
+    _selectedItems.clear();
+    notifyListeners();
+  }
 
   /// Swap the data source at runtime (e.g. switching match strategy) and re-run.
   set source(AutoSuggestionsSource<T> s) {

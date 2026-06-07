@@ -55,6 +55,12 @@
   .row{display:flex;align-items:center;gap:10px;height:38px;padding:0 12px;cursor:pointer;
        border-left:2.5px solid transparent}
   .row.hl{background:var(--gl-hover);border-left-color:var(--gl-blue-500)}
+  .row.sel{background:color-mix(in srgb,var(--gl-blue-500) 6%,transparent);border-left-color:var(--gl-blue-500)}
+  .cbx{flex:0 0 auto;width:18px;height:18px;border:1.6px solid var(--gl-fg-3);border-radius:var(--gl-radius-sm);
+       display:flex;align-items:center;justify-content:center}
+  .cbx.on{background:var(--gl-blue-500);border-color:var(--gl-blue-500)}
+  .cnt{flex:0 0 auto;background:var(--gl-blue-500);color:#fff;font-size:11.5px;font-weight:700;
+       border-radius:999px;padding:2px 8px;margin-right:2px}
   .row .ic{color:var(--gl-fg-4)}
   .row.hl .ic{color:var(--gl-blue-500)}
   .row .lab{font-size:13.5px;font-weight:500;color:var(--gl-fg-1);line-height:1.15}
@@ -115,11 +121,12 @@ function Highlight({text,q,mode}){
 }
 
 /* ── the box ── */
-function AutoSuggestionsBox({source, placeholder, mode='contains', grouped=false, onPick}){
+function AutoSuggestionsBox({source, placeholder, mode='contains', grouped=false, multi=false, onPick}){
   const [text,setText]=useState('');
   const [open,setOpen]=useState(false);
   const [focus,setFocus]=useState(false);
   const [hl,setHl]=useState(0);
+  const [sel,setSel]=useState([]); // multi-select chosen labels
   const [results,setResults]=useState(()=>source.run('',mode));
   const [loading,setLoading]=useState(false);
   const seq=useRef(0);
@@ -139,11 +146,18 @@ function AutoSuggestionsBox({source, placeholder, mode='contains', grouped=false
 
   const onInput=e=>{const v=e.target.value;setText(v);setOpen(true);run(v);};
   const move=d=>{if(!results.length)return;setHl(h=>{let n=(h+d)%results.length;if(n<0)n+=results.length;return n;});setOpen(true);};
-  const pick=item=>{setText(item.label);setOpen(false);onPick&&onPick(item.label);inputRef.current&&inputRef.current.blur();};
+  const pick=item=>{
+    if(multi){
+      setSel(s=>{const has=s.includes(item.label);const n=has?s.filter(x=>x!==item.label):[...s,item.label];onPick&&onPick(n.join(', ')||'—');return n;});
+      inputRef.current&&inputRef.current.focus(); // keep open
+    }else{
+      setText(item.label);setOpen(false);onPick&&onPick(item.label);inputRef.current&&inputRef.current.blur();
+    }
+  };
   const onKey=e=>{
     if(e.key==='ArrowDown'){e.preventDefault();move(1);}
     else if(e.key==='ArrowUp'){e.preventDefault();move(-1);}
-    else if(e.key==='Enter'){e.preventDefault();if(hl>=0&&results[hl])pick(results[hl]);else{onPick&&onPick('“'+text+'” (free text)');setOpen(false);}}
+    else if(e.key==='Enter'){e.preventDefault();if(hl>=0&&results[hl])pick(results[hl]);else if(!multi){onPick&&onPick('“'+text+'” (free text)');setOpen(false);}}
     else if(e.key==='Escape'){setOpen(false);}
   };
 
@@ -181,6 +195,7 @@ function AutoSuggestionsBox({source, placeholder, mode='contains', grouped=false
           onFocus={()=>{clearTimeout(blurT.current);setFocus(true);setOpen(true);run(text);scrollOnFocus();}}
           onBlur={()=>{setFocus(false);blurT.current=setTimeout(()=>setOpen(false),120);}}/>
         {loading&&<div className="spin"/>}
+        {multi&&sel.length>0&&<span className="cnt">{sel.length}</span>}
         {text?<button className="iconbtn" onMouseDown={e=>{e.preventDefault();setText('');run('');inputRef.current.focus();}}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
           :<button className="iconbtn" onMouseDown={e=>{e.preventDefault();setOpen(o=>!o);}}><Chevron up={open}/></button>}
@@ -193,16 +208,18 @@ function AutoSuggestionsBox({source, placeholder, mode='contains', grouped=false
             ? <div className="empty"><NoMatch/><span>{text.trim()?'No matches for “'+text+'”':'Type to search'}</span></div>
             : results.map((item,i)=>{
                 const head=grouped&&item.group&&item.group!==lastGroup; if(head)lastGroup=item.group;
+                const isSel=multi&&sel.includes(item.label);
                 return (
                   <React.Fragment key={item.label+i}>
                     {head&&<div className="ghead">{item.group}</div>}
-                    <div className={'row'+(i===hl?' hl':'')} onMouseEnter={()=>setHl(i)} onMouseDown={e=>{e.preventDefault();pick(item);}}>
+                    <div className={'row'+(i===hl?' hl':'')+(isSel?' sel':'')} onMouseEnter={()=>setHl(i)} onMouseDown={e=>{e.preventDefault();pick(item);}}>
+                      {multi&&<span className={'cbx'+(isSel?' on':'')}>{isSel&&<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><path d="M5 12l5 5L20 6"/></svg>}</span>}
                       {item.icon&&<span className="ic">{item.icon}</span>}
                       <div>
                         <div className="lab"><Highlight text={item.label} q={text} mode={mode}/></div>
                         {item.desc&&<div className="desc">{item.desc}</div>}
                       </div>
-                      {i===hl&&<span className="ret"><Ret/></span>}
+                      {!multi&&i===hl&&<span className="ret"><Ret/></span>}
                     </div>
                   </React.Fragment>
                 );
@@ -248,6 +265,7 @@ function Demo(){
   const acctSrc=useMemo(()=>listSource(ACCOUNTS),[]);
   const asyncSrc=useMemo(()=>asyncSource(),[]);
   const hybridSrc=useMemo(()=>hybridSource(),[]);
+  const teamSrc=useMemo(()=>listSource(['Design','Engineering','Research','Marketing','Sales','Finance','Legal','Support','Operations','Product','Data','Security']),[]);
   return (
     <div className="wrap">
       <div className="eyebrow">GeniusLink Design System</div>
@@ -256,9 +274,9 @@ function Demo(){
       <kbd>↵</kbd> or click to pick. Static, grouped, async and <b>hybrid</b> (local-first, load-more) sources — with match highlighting.</p>
 
       <div className="feats">
-        <span>4 source types</span><span>4 match strategies</span><span>itemBuilder</span>
-        <span>emptyBuilder</span><span>loadingBuilder</span><span>keyboard nav</span>
-        <span>scroll-on-focus</span><span>RTL + dark</span>
+        <span>4 source types</span><span>4 match strategies</span><span>click or Enter to pick</span>
+        <span>multi-select</span><span>itemBuilder</span><span>emptyBuilder</span><span>loadingBuilder</span>
+        <span>keyboard nav</span><span>scroll-on-focus</span><span>RTL + dark</span>
       </div>
 
       <div className="grid">
@@ -290,6 +308,13 @@ function Demo(){
           </div>
           <AutoSuggestionsBox source={hybridSrc} mode={mode} placeholder="Type or pick a vendor…" onPick={setPick}/>
           <div className="pick"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gl-blue-500)" strokeWidth="1.9"><path d="M20 6L9 17l-5-5"/></svg>Last picked: <b>{pick}</b></div>
+        </div>
+
+        <div className="card">
+          <h3><span className="idx">05</span> Multi-select</h3>
+          <p>Click (or Enter) toggles rows — the overlay stays open, rows show a checkbox and the field shows a count. Choose a few teams.</p>
+          <AutoSuggestionsBox source={teamSrc} mode={mode} multi placeholder="Choose teams…" onPick={setPick}/>
+          <div className="pick"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gl-blue-500)" strokeWidth="1.9"><path d="M20 6L9 17l-5-5"/></svg>Chosen: <b>{pick}</b></div>
         </div>
       </div>
     </div>

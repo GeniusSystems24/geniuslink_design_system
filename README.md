@@ -937,7 +937,7 @@ AutoSuggestionsBox<City>(
 )
 ```
 
-**Match strategies** — `contains` · `prefix` · `words` · `fuzzy` (each with matching highlight spans). **Custom overlay** — `itemBuilder`, `emptyBuilder` and `loadingBuilder` override the row, no-match and async-loading states. **Scroll-on-focus** — focusing the field brings it into view inside the nearest scrollable ancestor (toggle with `scrollOnFocus`). **Embedding** — `bare: true` drops the border/fill so the box sits flush in a host surface (how `EditableTable` cells use it); `onEscape` / `onTabNext` / `onTabPrev` let the host wire keyboard commits. See `example/lib/auto_suggestions_box_demo.dart`.
+**Match strategies** — `contains` · `prefix` · `words` · `fuzzy` (each with matching highlight spans). **Multi-select** — `multiSelect: true` keeps a set of chosen rows (tap / Enter toggles, overlay stays open, rows show a checkbox, the field shows a count); read it via the controller's `selectedItems` or the `onSelectionChanged` callback. **Custom overlay** — `itemBuilder`, `emptyBuilder` and `loadingBuilder` override the row, no-match and async-loading states. **Scroll-on-focus** — focusing the field brings it into view inside the nearest scrollable ancestor (toggle with `scrollOnFocus`). **Embedding** — `bare: true` drops the border/fill so the box sits flush in a host surface (how `EditableTable` cells use it); `onEscape` / `onTabNext` / `onTabPrev` let the host wire keyboard commits. See `example/lib/auto_suggestions_box_demo.dart`.
 
 ---
 

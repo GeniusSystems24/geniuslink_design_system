@@ -24,6 +24,16 @@ This project adheres to [Semantic Versioning](https://semver.org).
   - **Keyboard**: `↑ ↓` move through matches — the highlighted row is kept
     scrolled into view inside the overlay (real geometry, so group headers and
     variable heights are handled); `Enter` / click picks, `Esc` dismisses.
+  - **Click-to-pick fix**: tapping a row now reliably selects it. The
+    close-on-blur is deferred (cancellable timer) so a mouse click — which blurs
+    the field on pointer-down — still lands its tap on pointer-up; a one-shot
+    guard stops the overlay reopening when focus returns after the pick.
+  - **Multi-select** (`multiSelect: true`): tapping / Enter toggles a row in a
+    set and the overlay stays open. Rows show a checkbox, the field shows a
+    count, and the chosen set is exposed via the controller's `selectedItems` /
+    `selectedValues` (with `toggleSelected` / `removeSelectedValue` /
+    `clearSelection`) and the `onSelectionChanged` callback. `initialSelected`
+    seeds it.
   - **Rich rows**: icon, description, grouped section headers, keyword haystack,
     disabled rows; custom `itemBuilder` / `emptyBuilder` / `loadingBuilder`
     (the loading builder shows in the overlay while an async source fetches and

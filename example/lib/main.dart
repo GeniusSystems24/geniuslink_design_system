@@ -23,10 +23,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
-import 'auto_suggestions_box_demo.dart';
 import 'browser_tabs_demo.dart';
 import 'editable_table_demo.dart';
 import 'editable_table/combo_demo.dart';
+import 'auto_suggestions_box_demo.dart';
 import 'readable_table_demo.dart';
 import 'readable_table/filter_demo.dart';
 import 'readable_table/filter_editing_demo.dart';
@@ -34,7 +34,6 @@ import 'tree_demo.dart';
 import 'navigation_sidebar_demo.dart';
 import 'erp_console.dart';
 import 'shell_kit.dart';
-import 'tree_demo_style01.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -83,7 +82,7 @@ class LauncherScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
               children: [
-                const Text('GENIUSLINK DESIGN SYSTEM',
+                Text('GENIUSLINK DESIGN SYSTEM',
                     style: TextStyle(
                         fontFamily: BrowserStyleTabBarThemeData.bodyFont,
                         fontSize: 11,
@@ -645,9 +644,9 @@ class _ErpConsoleThumb extends StatelessWidget {
                         Container(
                             width: 22,
                             height: 9,
-                            decoration: const BoxDecoration(
-                                color: Color(0xFFEDEFF3),
-                                borderRadius: BorderRadius.vertical(
+                            decoration: BoxDecoration(
+                                color: const Color(0xFFEDEFF3),
+                                borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(3)))),
                       ]),
                       const SizedBox(height: 5),
@@ -682,7 +681,7 @@ class _ErpConsoleThumb extends StatelessWidget {
                                 for (int i = 0; i < 4; i++)
                                   Expanded(
                                       child: Container(
-                                          decoration: const BoxDecoration(
+                                          decoration: BoxDecoration(
                                               border: Border(
                                                   bottom: BorderSide(
                                                       color: border,
@@ -1197,7 +1196,7 @@ class _FilterThumb extends StatelessWidget {
                 child: Container(
               decoration: BoxDecoration(
                   border:
-                      const Border(bottom: BorderSide(color: line, width: 0.5)),
+                      Border(bottom: const BorderSide(color: line, width: 0.5)),
                   color: r == 0 ? accent.withOpacity(0.05) : Colors.white),
               child: Row(children: [
                 for (int cIdx = 0; cIdx < 4; cIdx++)
