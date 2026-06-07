@@ -882,6 +882,7 @@ class _EditableTableState extends State<EditableTable> {
         key: ValueKey('combo-${_controller.selection.row}-${_controller.selection.col}'),
         column: col,
         textController: _text,
+        focusNode: _editFocus, // shared edit node — table-driven, deterministic focus
         theme: t,
         alignEnd: alignEnd,
         onChanged: _controller.updateDraft,

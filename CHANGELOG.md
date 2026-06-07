@@ -5,6 +5,26 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.8.1]
+
+### 🐛 Fixed — `EditableTable` combo cells: focus + suggestions on edit start
+
+- Entering a `ComboBoxColumn` cell (double-click / Enter / type) now reliably
+  **focuses the field and opens its suggestions immediately**. The bug was a
+  focus race: the grid requested focus on its shared edit node while the combo
+  cell's `AutoSuggestionsBox` autofocused a *different* internal node, so neither
+  the caret nor the overlay landed deterministically.
+- `EditableComboCellEditor` now takes the table's shared edit `FocusNode`
+  (`focusNode:`) and passes it straight to `AutoSuggestionsBox`, so the table's
+  existing focus request lands on the box's field. It also opens the overlay and
+  selects the seeded value on the first frame (so typing replaces it). The combo
+  cell passes `openOnFocus: true`.
+- Mirrored in the interactive mock (`docs/components-editable-table.html`):
+  entering a combo cell focuses + selects the value and shows the suggestions;
+  the stale `smart_auto_suggest_box` label was corrected to `AutoSuggestionsBox`.
+
+---
+
 ## [2.8.0]
 
 ### ✨ Added — `AutoSuggestionsBox` (native auto-suggest field)

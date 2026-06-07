@@ -84,19 +84,10 @@ class LauncherScreen extends StatelessWidget {
               children: [
                 Text('GENIUSLINK DESIGN SYSTEM',
                     style: TextStyle(
-                        fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.6,
-                        color: BrowserStyleTabBarThemeData.accent)),
+                        fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.6, color: BrowserStyleTabBarThemeData.accent)),
                 const SizedBox(height: 12),
                 Text('Component Examples',
-                    style: TextStyle(
-                        fontFamily: BrowserStyleTabBarThemeData.displayFont,
-                        fontSize: 36,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.8,
-                        color: s.fg1)),
+                    style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -0.8, color: s.fg1)),
                 const SizedBox(height: 10),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 620),
@@ -105,17 +96,12 @@ class LauncherScreen extends StatelessWidget {
                     'ReadableTable and the Tree — plus focused demos for the combo auto-suggest '
                     'editor and the ReadableTable filter system, and an all-in-one console that '
                     'runs them together. Open any to try it live in Light / Dark and EN / AR (RTL).',
-                    style: TextStyle(
-                        fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                        fontSize: 14.5,
-                        height: 1.55,
-                        color: s.fg3),
+                    style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14.5, height: 1.55, color: s.fg3),
                   ),
                 ),
                 const SizedBox(height: 32),
                 LayoutBuilder(builder: (context, c) {
-                  final cols =
-                      c.maxWidth > 760 ? 3 : (c.maxWidth > 460 ? 2 : 1);
+                  final cols = c.maxWidth > 760 ? 3 : (c.maxWidth > 460 ? 2 : 1);
                   return GridView.count(
                     crossAxisCount: cols,
                     crossAxisSpacing: 18,
@@ -126,85 +112,73 @@ class LauncherScreen extends StatelessWidget {
                     children: [
                       _DemoCard(
                         title: 'All Components — ERP Console',
-                        subtitle:
-                            'Tree navigator + BrowserStyleTabBar + EditableTable working together in one console · Light/Dark · EN/AR (RTL)',
+                        subtitle: 'Tree navigator + BrowserStyleTabBar + EditableTable working together in one console · Light/Dark · EN/AR (RTL)',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _ErpConsoleThumb(),
                         onTap: () => _open(context, const ErpConsole()),
                       ),
                       _DemoCard(
                         title: 'BrowserStyleTabBar',
-                        subtitle:
-                            'Tab strip · pin, drag-reorder, unsaved-close guard, overflow menu, live hover thumbnails · state-preserving pages',
+                        subtitle: 'Tab strip · pin, drag-reorder, unsaved-close guard, overflow menu, live hover thumbnails · state-preserving pages',
                         accent: BrowserStyleTabBarThemeData.accent,
                         preview: const _ErpThumb(),
                         onTap: () => _open(context, const _GalleryRoute()),
                       ),
                       _DemoCard(
                         title: 'EditableTable',
-                        subtitle:
-                            'Excel-style data-entry grid · typed generic rows · resize & reorder columns · copy as TSV · sort · undo',
+                        subtitle: 'Excel-style data-entry grid · typed generic rows · resize & reorder columns · copy as TSV · sort · undo',
                         accent: BrowserStyleTabBarThemeData.success,
                         preview: const _EditableTableThumb(),
                         onTap: () => _open(context, const EditableTableDemo()),
                       ),
                       _DemoCard(
                         title: 'EditableTable — Combo cells',
-                        subtitle:
-                            'ComboBoxColumn powered by the native AutoSuggestionsBox · type to filter, ↑ ↓ to move, Enter / click to pick, or free text',
+                        subtitle: 'ComboBoxColumn powered by the native AutoSuggestionsBox · type to filter, ↑ ↓ to move, Enter / click to pick, or free text',
                         accent: BrowserStyleTabBarThemeData.success,
                         preview: const _ComboThumb(),
                         onTap: () => _open(context, const ComboDemo()),
                       ),
                       _DemoCard(
                         title: 'AutoSuggestionsBox',
-                        subtitle:
-                            'Typed auto-suggest field · static / grouped / async / hybrid sources · match highlighting · keyboard nav · free text',
+                        subtitle: 'Typed auto-suggest field · static / grouped / async / hybrid sources · match highlighting · keyboard nav · free text',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _SuggestThumb(),
-                        onTap: () =>
-                            _open(context, const AutoSuggestionsBoxDemo()),
+                        onTap: () => _open(context, const AutoSuggestionsBoxDemo()),
                       ),
                       _DemoCard(
                         title: 'ReadableTable',
-                        subtitle:
-                            'Read-only display grid · typed column kinds · resize / reorder · multi-select & copy · keyboard nav · scroll-on-focus',
+                        subtitle: 'Read-only display grid · typed column kinds · resize / reorder · multi-select & copy · keyboard nav · scroll-on-focus',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _ReadableTableThumb(),
                         onTap: () => _open(context, const ReadableTableDemo()),
                       ),
                       _DemoCard(
                         title: 'ReadableTable — Filter system',
-                        subtitle:
-                            'Per-column filters · operators by type · live visible/total readout · combine predicates · clear all',
+                        subtitle: 'Per-column filters · operators by type · live visible/total readout · combine predicates · clear all',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _FilterThumb(),
                         onTap: () => _open(context, const ReadableFilterDemo()),
                       ),
                       _DemoCard(
                         title: 'FilterEditingView',
-                        subtitle:
-                            'Visual filter builder · grouped AND / OR conditions · per-column operators · nested groups · add / remove rules',
+                        subtitle: 'Visual filter builder · grouped AND / OR conditions · per-column operators · nested groups · add / remove rules',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _FilterEditingThumb(),
                         onTap: () => _open(context, const FilterEditingDemo()),
                       ),
                       _DemoCard(
                         title: 'Tree',
-                        subtitle:
-                            'Chart-of-accounts tree · single & multi-select · add / remove nodes · code/EN/AR search · roll-up balances',
+                        subtitle: 'Chart-of-accounts tree · single & multi-select · add / remove nodes · code/EN/AR search · roll-up balances',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _TreeThumb(),
                         onTap: () => _open(context, const TreeDemo()),
                       ),
                       _DemoCard(
                         title: 'NavigationSidebar',
-                        subtitle:
-                            'App nav rail · expanded tree + collapsed rail with flyouts + mobile drawer · badges · responsive · Light/Dark · LTR/RTL',
+                        subtitle: 'App nav rail · expanded tree + collapsed rail with flyouts + mobile drawer · badges · responsive · Light/Dark · LTR/RTL',
                         accent: const Color(0xFF4A7CFF),
                         preview: const _NavSidebarThumb(),
-                        onTap: () =>
-                            _open(context, const NavigationSidebarDemo()),
+                        onTap: () => _open(context, const NavigationSidebarDemo()),
                       ),
                     ],
                   );
@@ -218,8 +192,7 @@ class LauncherScreen extends StatelessWidget {
   }
 
   void _open(BuildContext context, Widget screen) {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => _BackScaffold(child: screen)));
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => _BackScaffold(child: screen)));
   }
 }
 
@@ -228,12 +201,7 @@ class _DemoCard extends StatefulWidget {
   final Color accent;
   final Widget preview;
   final VoidCallback onTap;
-  const _DemoCard(
-      {required this.title,
-      required this.subtitle,
-      required this.accent,
-      required this.preview,
-      required this.onTap});
+  const _DemoCard({required this.title, required this.subtitle, required this.accent, required this.preview, required this.onTap});
   @override
   State<_DemoCard> createState() => _DemoCardState();
 }
@@ -251,15 +219,11 @@ class _DemoCardState extends State<_DemoCard> {
         onTap: widget.onTap,
         child: AnimatedContainer(
           duration: BrowserStyleTabBarThemeData.durBase,
-          transform: _h
-              ? (Matrix4.identity()..translate(0.0, -3.0))
-              : Matrix4.identity(),
+          transform: _h ? (Matrix4.identity()..translate(0.0, -3.0)) : Matrix4.identity(),
           decoration: BoxDecoration(
             color: s.surface,
-            border: Border.all(
-                color: _h ? widget.accent.withOpacity(0.5) : s.border),
-            borderRadius:
-                BorderRadius.circular(BrowserStyleTabBarThemeData.radiusXl),
+            border: Border.all(color: _h ? widget.accent.withOpacity(0.5) : s.border),
+            borderRadius: BorderRadius.circular(BrowserStyleTabBarThemeData.radiusXl),
             boxShadow: _h ? BrowserStyleTabBarThemeData.cardShadow : null,
           ),
           clipBehavior: Clip.antiAlias,
@@ -275,23 +239,12 @@ class _DemoCardState extends State<_DemoCard> {
                     Row(children: [
                       Expanded(
                         child: Text(widget.title,
-                            style: TextStyle(
-                                fontFamily:
-                                    BrowserStyleTabBarThemeData.displayFont,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: s.fg1)),
+                            style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.displayFont, fontSize: 16, fontWeight: FontWeight.w700, color: s.fg1)),
                       ),
-                      Icon(Icons.arrow_outward,
-                          size: 16, color: _h ? widget.accent : s.fg3),
+                      Icon(Icons.arrow_outward, size: 16, color: _h ? widget.accent : s.fg3),
                     ]),
                     const SizedBox(height: 6),
-                    Text(widget.subtitle,
-                        style: TextStyle(
-                            fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                            fontSize: 12.5,
-                            height: 1.45,
-                            color: s.fg3)),
+                    Text(widget.subtitle, style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 12.5, height: 1.45, color: s.fg3)),
                   ],
                 ),
               ),
@@ -308,12 +261,7 @@ class _MiniTabs extends StatelessWidget {
   final Color strip, active, text;
   final List<String> labels;
   final int activeIndex;
-  const _MiniTabs(
-      {required this.strip,
-      required this.active,
-      required this.text,
-      required this.labels,
-      this.activeIndex = 0});
+  const _MiniTabs({required this.strip, required this.active, required this.text, required this.labels, this.activeIndex = 0});
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -330,15 +278,9 @@ class _MiniTabs extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: i == activeIndex ? active : Colors.transparent,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(6)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
               ),
-              child: Text(labels[i],
-                  style: TextStyle(
-                      fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w600,
-                      color: text)),
+              child: Text(labels[i], style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 9.5, fontWeight: FontWeight.w600, color: text)),
             ),
           ],
           const Spacer(),
@@ -356,38 +298,12 @@ class _ErpThumb extends StatelessWidget {
     return Container(
       color: const Color(0xFFF7F8FA),
       child: Column(children: [
-        const _MiniTabs(
-            strip: Color(0xFFF7F8FA),
-            active: Colors.white,
-            text: Color(0xFF64748B),
-            labels: ['Ledger', 'Journal', 'Store'],
-            activeIndex: 1),
-        Expanded(
-            child: Container(
-                color: Colors.white,
-                margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                          width: 80, height: 8, color: const Color(0xFF0F172A)),
-                      const SizedBox(height: 8),
-                      for (int i = 0; i < 3; i++)
-                        Padding(
-                            padding: const EdgeInsets.only(bottom: 6),
-                            child: Row(children: [
-                              Container(
-                                  width: 30,
-                                  height: 6,
-                                  color: const Color(0xFFE2E8F0)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                  child: Container(
-                                      height: 6,
-                                      color: const Color(0xFFEEF1F7)))
-                            ])),
-                    ]))),
+        const _MiniTabs(strip: Color(0xFFF7F8FA), active: Colors.white, text: Color(0xFF64748B), labels: ['Ledger', 'Journal', 'Store'], activeIndex: 1),
+        Expanded(child: Container(color: Colors.white, margin: const EdgeInsets.fromLTRB(8, 0, 8, 8), padding: const EdgeInsets.all(10), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Container(width: 80, height: 8, color: const Color(0xFF0F172A)),
+          const SizedBox(height: 8),
+          for (int i = 0; i < 3; i++) Padding(padding: const EdgeInsets.only(bottom: 6), child: Row(children: [Container(width: 30, height: 6, color: const Color(0xFFE2E8F0)), const SizedBox(width: 8), Expanded(child: Container(height: 6, color: const Color(0xFFEEF1F7)))])),
+        ]))),
       ]),
     );
   }
@@ -402,52 +318,26 @@ class _EditableTableThumb extends StatelessWidget {
       color: const Color(0xFFF7F8FA),
       padding: const EdgeInsets.all(12),
       child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFC2C6D6)),
-            borderRadius: BorderRadius.circular(5)),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
-          Container(
-              height: 16,
-              color: const Color(0xFFF7F8FA),
-              child: Row(children: [
-                for (int i = 0; i < 4; i++)
-                  Expanded(
-                      child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          height: 4,
-                          color: const Color(0xFFBDC1C6))),
-              ])),
+          Container(height: 16, color: const Color(0xFFF7F8FA), child: Row(children: [
+            for (int i = 0; i < 4; i++) Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 5), height: 4, color: const Color(0xFFBDC1C6))),
+          ])),
           Container(height: 1, color: const Color(0xFFC2C6D6)),
           for (int r = 0; r < 3; r++)
-            Expanded(
-                child: Row(children: [
+            Expanded(child: Row(children: [
               for (int cIdx = 0; cIdx < 4; cIdx++)
-                Expanded(
-                    child: Container(
+                Expanded(child: Container(
                   margin: const EdgeInsets.all(0.5),
                   decoration: BoxDecoration(
-                    color: r == 1 && cIdx == 2
-                        ? const Color(0x1A4A7CFF)
-                        : Colors.white,
-                    border: r == 1 && cIdx == 2
-                        ? Border.all(color: const Color(0xFF4A7CFF), width: 1.5)
-                        : Border.all(color: line, width: 0.5),
+                    color: r == 1 && cIdx == 2 ? const Color(0x1A4A7CFF) : Colors.white,
+                    border: r == 1 && cIdx == 2 ? Border.all(color: const Color(0xFF4A7CFF), width: 1.5) : Border.all(color: line, width: 0.5),
                   ),
-                  child: Center(
-                      child: Container(
-                          height: 4,
-                          margin: const EdgeInsets.symmetric(horizontal: 6),
-                          color: const Color(0xFFEEF1F7))),
+                  child: Center(child: Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 6), color: const Color(0xFFEEF1F7))),
                 )),
             ])),
-          Container(
-              height: 14,
-              decoration: const BoxDecoration(
-                  color: Color(0xFFF7F8FA),
-                  border: Border(
-                      top: BorderSide(color: Color(0xFFC2C6D6), width: 1.5)))),
+          Container(height: 14, decoration: const BoxDecoration(color: Color(0xFFF7F8FA), border: Border(top: BorderSide(color: Color(0xFFC2C6D6), width: 1.5)))),
         ]),
       ),
     );
@@ -465,72 +355,38 @@ class _ReadableTableThumb extends StatelessWidget {
       color: const Color(0xFFF7F8FA),
       padding: const EdgeInsets.all(12),
       child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFC2C6D6)),
-            borderRadius: BorderRadius.circular(5)),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
           // header with a sorted column arrow
-          Container(
-              height: 16,
-              color: const Color(0xFFF7F8FA),
-              child: Row(children: [
-                for (int i = 0; i < 4; i++)
-                  Expanded(
-                      child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: Row(children: [
-                      Expanded(
-                          child: Container(
-                              height: 4,
-                              color:
-                                  i == 3 ? accent : const Color(0xFFBDC1C6))),
-                      if (i == 3)
-                        const Icon(Icons.arrow_downward_rounded,
-                            size: 7, color: accent),
-                    ]),
-                  )),
-              ])),
+          Container(height: 16, color: const Color(0xFFF7F8FA), child: Row(children: [
+            for (int i = 0; i < 4; i++)
+              Expanded(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5),
+                child: Row(children: [
+                  Expanded(child: Container(height: 4, color: i == 3 ? accent : const Color(0xFFBDC1C6))),
+                  if (i == 3) const Icon(Icons.arrow_downward_rounded, size: 7, color: accent),
+                ]),
+              )),
+          ])),
           Container(height: 1, color: const Color(0xFFC2C6D6)),
           // rows — two selected (accent fill + left bar)
           for (int r = 0; r < 4; r++)
-            Expanded(
-                child: Container(
+            Expanded(child: Container(
               decoration: BoxDecoration(
                 color: (r == 1 || r == 2) ? selFill : Colors.white,
                 border: Border(
                   bottom: const BorderSide(color: line, width: 0.5),
-                  left: (r == 1 || r == 2)
-                      ? const BorderSide(color: accent, width: 2)
-                      : BorderSide.none,
+                  left: (r == 1 || r == 2) ? const BorderSide(color: accent, width: 2) : BorderSide.none,
                 ),
               ),
               child: Row(children: [
                 for (int cIdx = 0; cIdx < 4; cIdx++)
-                  Expanded(
-                      child: Center(
-                          child: cIdx == 1
-                              ? Container(
-                                  height: 5,
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 6),
-                                  decoration: BoxDecoration(
-                                      color: const Color(0xFFD7DCE6),
-                                      borderRadius: BorderRadius.circular(2)))
-                              : (cIdx == 2
-                                  ? Container(
-                                      width: 18,
-                                      height: 7,
-                                      decoration: BoxDecoration(
-                                          color: accent.withOpacity(0.18),
-                                          borderRadius:
-                                              BorderRadius.circular(999)))
-                                  : Container(
-                                      height: 4,
-                                      margin: const EdgeInsets.symmetric(
-                                          horizontal: 6),
-                                      color: const Color(0xFFEEF1F7))))),
+                  Expanded(child: Center(child: cIdx == 1
+                      ? Container(height: 5, margin: const EdgeInsets.symmetric(horizontal: 6), decoration: BoxDecoration(color: const Color(0xFFD7DCE6), borderRadius: BorderRadius.circular(2)))
+                      : (cIdx == 2
+                          ? Container(width: 18, height: 7, decoration: BoxDecoration(color: accent.withOpacity(0.18), borderRadius: BorderRadius.circular(999)))
+                          : Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 6), color: const Color(0xFFEEF1F7))))),
               ]),
             )),
         ]),
@@ -550,144 +406,61 @@ class _ErpConsoleThumb extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 4),
           child: Row(children: [
             SizedBox(width: 5.0 * indent),
-            Container(
-                width: 5,
-                height: 5,
-                decoration: BoxDecoration(
-                    color: folder
-                        ? accent.withOpacity(0.8)
-                        : const Color(0xFFBDC1C6),
-                    borderRadius: BorderRadius.circular(folder ? 1.5 : 2.5))),
+            Container(width: 5, height: 5, decoration: BoxDecoration(color: folder ? accent.withOpacity(0.8) : const Color(0xFFBDC1C6), borderRadius: BorderRadius.circular(folder ? 1.5 : 2.5))),
             const SizedBox(width: 4),
-            Expanded(
-                child: Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                        color: sel
-                            ? accent.withOpacity(0.5)
-                            : const Color(0xFFD7DCE6),
-                        borderRadius: BorderRadius.circular(2)))),
+            Expanded(child: Container(height: 3, decoration: BoxDecoration(color: sel ? accent.withOpacity(0.5) : const Color(0xFFD7DCE6), borderRadius: BorderRadius.circular(2)))),
           ]),
         );
     return Container(
       color: const Color(0xFFF7F8FA),
       padding: const EdgeInsets.all(10),
       child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFC2C6D6)),
-            borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(6)),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
           // top bar
-          Container(
-              height: 14,
-              color: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Row(children: [
-                Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                        color: accent, borderRadius: BorderRadius.circular(2))),
-                const Spacer(),
-                Container(
-                    width: 16,
-                    height: 6,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFFEEF1F7),
-                        borderRadius: BorderRadius.circular(3))),
-                const SizedBox(width: 4),
-                Container(
-                    width: 16,
-                    height: 6,
-                    decoration: BoxDecoration(
-                        color: accent.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(3))),
-              ])),
+          Container(height: 14, color: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 6), child: Row(children: [
+            Container(width: 7, height: 7, decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(2))),
+            const Spacer(),
+            Container(width: 16, height: 6, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3))),
+            const SizedBox(width: 4),
+            Container(width: 16, height: 6, decoration: BoxDecoration(color: accent.withOpacity(0.15), borderRadius: BorderRadius.circular(3))),
+          ])),
           Container(height: 1, color: border),
-          Expanded(
-              child: Row(children: [
+          Expanded(child: Row(children: [
             // tree sidebar
-            Container(
-                width: 58,
-                color: const Color(0xFFF7F8FA),
-                padding: const EdgeInsets.all(7),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      treeRow(0, true),
-                      treeRow(1, false, sel: true),
-                      treeRow(1, false),
-                      treeRow(0, true),
-                      treeRow(1, false),
-                      treeRow(0, true),
-                    ])),
+            Container(width: 58, color: const Color(0xFFF7F8FA), padding: const EdgeInsets.all(7), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              treeRow(0, true),
+              treeRow(1, false, sel: true),
+              treeRow(1, false),
+              treeRow(0, true),
+              treeRow(1, false),
+              treeRow(0, true),
+            ])),
             Container(width: 1, color: border),
             // workspace
-            Expanded(
-                child: Container(
-                    color: const Color(0xFFF7F8FA),
-                    padding: const EdgeInsets.all(7),
-                    child: Column(children: [
-                      // tabs
-                      Row(children: [
-                        Container(
-                            width: 26,
-                            height: 9,
-                            decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(3)),
-                                border: Border.all(color: border))),
-                        const SizedBox(width: 2),
-                        Container(
-                            width: 22,
-                            height: 9,
-                            decoration: BoxDecoration(
-                                color: const Color(0xFFEDEFF3),
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(3)))),
-                      ]),
-                      const SizedBox(height: 5),
-                      // KPI strip
-                      Row(children: [
-                        for (int i = 0; i < 3; i++) ...[
-                          if (i > 0) const SizedBox(width: 4),
-                          Expanded(
-                              child: Container(
-                                  height: 16,
-                                  decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(3),
-                                      border: Border.all(color: border)))),
-                        ],
-                      ]),
-                      const SizedBox(height: 5),
-                      // table
-                      Expanded(
-                          child: Container(
-                              decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(3),
-                                  border: Border.all(color: border)),
-                              child: Column(children: [
-                                Container(
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                        color: Color(0xFFF1F3F8),
-                                        borderRadius: BorderRadius.vertical(
-                                            top: Radius.circular(3)))),
-                                for (int i = 0; i < 4; i++)
-                                  Expanded(
-                                      child: Container(
-                                          decoration: BoxDecoration(
-                                              border: Border(
-                                                  bottom: BorderSide(
-                                                      color: border,
-                                                      width: 0.5))))),
-                              ]))),
-                    ]))),
+            Expanded(child: Container(color: const Color(0xFFF7F8FA), padding: const EdgeInsets.all(7), child: Column(children: [
+              // tabs
+              Row(children: [
+                Container(width: 26, height: 9, decoration: BoxDecoration(color: Colors.white, borderRadius: const BorderRadius.vertical(top: Radius.circular(3)), border: Border.all(color: border))),
+                const SizedBox(width: 2),
+                Container(width: 22, height: 9, decoration: BoxDecoration(color: const Color(0xFFEDEFF3), borderRadius: const BorderRadius.vertical(top: Radius.circular(3)))),
+              ]),
+              const SizedBox(height: 5),
+              // KPI strip
+              Row(children: [
+                for (int i = 0; i < 3; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  Expanded(child: Container(height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3), border: Border.all(color: border)))),
+                ],
+              ]),
+              const SizedBox(height: 5),
+              // table
+              Expanded(child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3), border: Border.all(color: border)), child: Column(children: [
+                Container(height: 7, decoration: const BoxDecoration(color: Color(0xFFF1F3F8), borderRadius: BorderRadius.vertical(top: Radius.circular(3)))),
+                for (int i = 0; i < 4; i++) Expanded(child: Container(decoration: BoxDecoration(border: Border(bottom: BorderSide(color: border, width: 0.5))))),
+              ]))),
+            ]))),
           ])),
         ]),
       ),
@@ -711,28 +484,17 @@ class _TreeThumb extends StatelessWidget {
           child: Row(children: [
             SizedBox(width: 8.0 * indent),
             if (indent > 0)
-              Container(
-                  width: 1,
-                  height: 13,
-                  color: guide,
-                  margin: const EdgeInsets.only(right: 5)),
+              Container(width: 1, height: 13, color: guide, margin: const EdgeInsets.only(right: 5)),
             Container(
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: isFolder
-                    ? folder.withOpacity(0.85)
-                    : const Color(0xFFBDC1C6),
+                color: isFolder ? folder.withOpacity(0.85) : const Color(0xFFBDC1C6),
                 borderRadius: BorderRadius.circular(isFolder ? 2 : 4),
               ),
             ),
             const SizedBox(width: 6),
-            Expanded(
-                child: Container(
-                    height: 4,
-                    color: isFolder
-                        ? const Color(0xFFBDC1C6)
-                        : const Color(0xFFD7DCE6))),
+            Expanded(child: Container(height: 4, color: isFolder ? const Color(0xFFBDC1C6) : const Color(0xFFD7DCE6))),
             const SizedBox(width: 8),
           ]),
         );
@@ -740,37 +502,18 @@ class _TreeThumb extends StatelessWidget {
       color: const Color(0xFFF7F8FA),
       padding: const EdgeInsets.all(12),
       child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFC2C6D6)),
-            borderRadius: BorderRadius.circular(5)),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
-          Container(
-              height: 16,
-              color: const Color(0xFFF7F8FA),
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Row(children: [
-                Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFFBDC1C6),
-                        borderRadius: BorderRadius.circular(2))),
-                const SizedBox(width: 5),
-                Expanded(
-                    child: Container(
-                        height: 5,
-                        decoration: BoxDecoration(
-                            color: const Color(0xFFEEF1F7),
-                            borderRadius: BorderRadius.circular(3)))),
-              ])),
+          Container(height: 16, color: const Color(0xFFF7F8FA), padding: const EdgeInsets.symmetric(horizontal: 6), child: Row(children: [
+            Container(width: 8, height: 8, decoration: BoxDecoration(color: const Color(0xFFBDC1C6), borderRadius: BorderRadius.circular(2))),
+            const SizedBox(width: 5),
+            Expanded(child: Container(height: 5, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3)))),
+          ])),
           Container(height: 1, color: const Color(0xFFC2C6D6)),
-          Expanded(
-              child: Padding(
+          Expanded(child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
-            child:
-                Column(mainAxisAlignment: MainAxisAlignment.start, children: [
+            child: Column(mainAxisAlignment: MainAxisAlignment.start, children: [
               row(0, true),
               row(1, true),
               row(2, false),
@@ -791,13 +534,8 @@ class _NavSidebarThumb extends StatelessWidget {
   Widget build(BuildContext context) {
     const accent = Color(0xFF4A7CFF);
     const border = Color(0xFFE2E8F0);
-    Widget eyebrow() => Container(
-        width: 22,
-        height: 3,
-        margin: const EdgeInsets.only(bottom: 5, top: 3),
-        color: const Color(0xFFC2C6D6));
-    Widget navRow({bool sel = false, bool box = false, double indent = 0}) =>
-        Container(
+    Widget eyebrow() => Container(width: 22, height: 3, margin: const EdgeInsets.only(bottom: 5, top: 3), color: const Color(0xFFC2C6D6));
+    Widget navRow({bool sel = false, bool box = false, double indent = 0}) => Container(
           height: 11,
           margin: const EdgeInsets.only(bottom: 4),
           padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -811,104 +549,53 @@ class _NavSidebarThumb extends StatelessWidget {
               width: 7,
               height: 7,
               decoration: BoxDecoration(
-                color: sel
-                    ? Colors.white
-                    : (box ? Colors.transparent : const Color(0xFFBDC1C6)),
+                color: sel ? Colors.white : (box ? Colors.transparent : const Color(0xFFBDC1C6)),
                 border: box ? Border.all(color: const Color(0xFFC2C6D6)) : null,
                 borderRadius: BorderRadius.circular(box ? 2 : 3.5),
               ),
             ),
             const SizedBox(width: 5),
-            Expanded(
-                child: Container(
-                    height: 3,
-                    color: sel ? Colors.white : const Color(0xFFD7DCE6))),
+            Expanded(child: Container(height: 3, color: sel ? Colors.white : const Color(0xFFD7DCE6))),
           ]),
         );
     return Container(
       color: const Color(0xFFF7F8FA),
       child: Column(children: [
         // app bar
-        Container(
-            height: 16,
-            color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 7),
-            child: Row(children: [
-              Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                      color: accent, borderRadius: BorderRadius.circular(2.5))),
-              const SizedBox(width: 6),
-              Expanded(
-                  child: Container(
-                      height: 6,
-                      decoration: BoxDecoration(
-                          color: const Color(0xFFEEF1F7),
-                          borderRadius: BorderRadius.circular(3)))),
-              const SizedBox(width: 6),
-              Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                      color: Color(0x294A7CFF), shape: BoxShape.circle)),
-            ])),
+        Container(height: 16, color: Colors.white, padding: const EdgeInsets.symmetric(horizontal: 7), child: Row(children: [
+          Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(2.5))),
+          const SizedBox(width: 6),
+          Expanded(child: Container(height: 6, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3)))),
+          const SizedBox(width: 6),
+          Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0x294A7CFF), shape: BoxShape.circle)),
+        ])),
         Container(height: 1, color: border),
-        Expanded(
-            child: Row(children: [
+        Expanded(child: Row(children: [
           // sidebar
-          Container(
-              width: 78,
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(8, 9, 8, 8),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    eyebrow(),
-                    navRow(),
-                    navRow(),
-                    eyebrow(),
-                    navRow(),
-                    navRow(indent: 1, sel: true),
-                    navRow(indent: 1, box: true),
-                    navRow(),
-                  ])),
+          Container(width: 78, color: Colors.white, padding: const EdgeInsets.fromLTRB(8, 9, 8, 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            eyebrow(),
+            navRow(),
+            navRow(),
+            eyebrow(),
+            navRow(),
+            navRow(indent: 1, sel: true),
+            navRow(indent: 1, box: true),
+            navRow(),
+          ])),
           Container(width: 1, color: border),
           // page
-          Expanded(
-              child: Container(
-                  color: const Color(0xFFF7F8FA),
-                  padding: const EdgeInsets.all(9),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                            width: 40,
-                            height: 8,
-                            decoration: BoxDecoration(
-                                color: const Color(0xFF0F172A),
-                                borderRadius: BorderRadius.circular(2))),
-                        const SizedBox(height: 9),
-                        Row(children: [
-                          for (int i = 0; i < 3; i++) ...[
-                            if (i > 0) const SizedBox(width: 6),
-                            Expanded(
-                                child: Container(
-                                    height: 26,
-                                    decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(color: border)))),
-                          ],
-                        ]),
-                        const SizedBox(height: 6),
-                        Expanded(
-                            child: Container(
-                                decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: border)))),
-                      ]))),
+          Expanded(child: Container(color: const Color(0xFFF7F8FA), padding: const EdgeInsets.all(9), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Container(width: 40, height: 8, decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 9),
+            Row(children: [
+              for (int i = 0; i < 3; i++) ...[
+                if (i > 0) const SizedBox(width: 6),
+                Expanded(child: Container(height: 26, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), border: Border.all(color: border)))),
+              ],
+            ]),
+            const SizedBox(height: 6),
+            Expanded(child: Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), border: Border.all(color: border)))),
+          ]))),
         ])),
       ]),
     );
@@ -930,16 +617,10 @@ class _SuggestThumb extends StatelessWidget {
           alignment: Alignment.centerLeft,
           decoration: BoxDecoration(
             color: first ? const Color(0xFFEEF3FF) : Colors.white,
-            border: Border(
-                left: BorderSide(
-                    color: first ? accent : Colors.transparent, width: 2)),
+            border: Border(left: BorderSide(color: first ? accent : Colors.transparent, width: 2)),
           ),
           child: Row(children: [
-            Container(
-                width: 5,
-                height: 5,
-                decoration: const BoxDecoration(
-                    color: Color(0xFFD7DCE6), shape: BoxShape.circle)),
+            Container(width: 5, height: 5, decoration: const BoxDecoration(color: Color(0xFFD7DCE6), shape: BoxShape.circle)),
             const SizedBox(width: 6),
             Container(width: 14, height: 4, color: const Color(0xFFD7DCE6)),
             Container(width: 9, height: 4, color: accent),
@@ -954,19 +635,12 @@ class _SuggestThumb extends StatelessWidget {
         Container(
           height: 22,
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: accent, width: 1.4),
-              borderRadius: BorderRadius.circular(5)),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: accent, width: 1.4), borderRadius: BorderRadius.circular(5)),
           child: Row(children: [
             const Icon(Icons.search_rounded, size: 11, color: accent),
             const SizedBox(width: 6),
             Container(width: 30, height: 4, color: const Color(0xFF0F172A)),
-            Container(
-                width: 1.5,
-                height: 11,
-                margin: const EdgeInsets.only(left: 1),
-                color: accent),
+            Container(width: 1.5, height: 11, margin: const EdgeInsets.only(left: 1), color: accent),
           ]),
         ),
         const SizedBox(height: 4),
@@ -976,21 +650,10 @@ class _SuggestThumb extends StatelessWidget {
             color: Colors.white,
             border: Border.all(color: line),
             borderRadius: BorderRadius.circular(6),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withOpacity(0.10),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3))
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.10), blurRadius: 8, offset: const Offset(0, 3))],
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(children: [
-            row(first: true),
-            Container(height: 0.5, color: line),
-            row(),
-            Container(height: 0.5, color: line),
-            row()
-          ]),
+          child: Column(children: [row(first: true), Container(height: 0.5, color: line), row(), Container(height: 0.5, color: line), row()]),
         ),
       ]),
     );
@@ -1004,8 +667,7 @@ class _ComboThumb extends StatelessWidget {
   Widget build(BuildContext context) {
     const accent = Color(0xFF4A7CFF);
     const line = Color(0xFFE2E8F0);
-    Widget sugg(String pre, String hit, String post, {bool first = false}) =>
-        Container(
+    Widget sugg(String pre, String hit, String post, {bool first = false}) => Container(
           height: 12,
           padding: const EdgeInsets.symmetric(horizontal: 6),
           color: first ? const Color(0xFFEEF3FF) : Colors.white,
@@ -1020,91 +682,34 @@ class _ComboThumb extends StatelessWidget {
       color: const Color(0xFFF7F8FA),
       padding: const EdgeInsets.all(12),
       child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFC2C6D6)),
-            borderRadius: BorderRadius.circular(5)),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
           // header
-          Container(
-              height: 14,
-              color: const Color(0xFFF7F8FA),
-              child: Row(children: [
-                for (int i = 0; i < 3; i++)
-                  Expanded(
-                      child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          height: 4,
-                          color: const Color(0xFFBDC1C6))),
-              ])),
+          Container(height: 14, color: const Color(0xFFF7F8FA), child: Row(children: [
+            for (int i = 0; i < 3; i++) Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 5), height: 4, color: const Color(0xFFBDC1C6))),
+          ])),
           Container(height: 1, color: const Color(0xFFC2C6D6)),
           // a normal row
-          SizedBox(
-              height: 13,
-              child: Row(children: [
-                for (int i = 0; i < 3; i++)
-                  Expanded(
-                      child: Container(
-                          decoration: const BoxDecoration(
-                              border: Border(
-                                  right: BorderSide(color: line, width: 0.5))),
-                          child: Center(
-                              child: Container(
-                                  height: 4,
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 6),
-                                  color: const Color(0xFFEEF1F7))))),
-              ])),
+          SizedBox(height: 13, child: Row(children: [
+            for (int i = 0; i < 3; i++) Expanded(child: Container(decoration: const BoxDecoration(border: Border(right: BorderSide(color: line, width: 0.5))), child: Center(child: Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 6), color: const Color(0xFFEEF1F7))))),
+          ])),
           // the editing row: middle cell is active + overlay
-          Expanded(
-              child: Stack(clipBehavior: Clip.none, children: [
+          Expanded(child: Stack(clipBehavior: Clip.none, children: [
             Row(children: [
-              Expanded(
-                  child: Container(
-                      decoration: const BoxDecoration(
-                          border: Border(
-                              right: BorderSide(color: line, width: 0.5))))),
-              Expanded(
-                  child: Container(
-                      decoration: BoxDecoration(
-                          color: const Color(0x1A4A7CFF),
-                          border: Border.all(color: accent, width: 1.5)),
-                      child: Center(
-                          child: Container(
-                              height: 4,
-                              margin: const EdgeInsets.symmetric(horizontal: 5),
-                              color: accent)))),
-              Expanded(
-                  child: Container(
-                      decoration: const BoxDecoration(
-                          border: Border(
-                              left: BorderSide(color: line, width: 0.5))))),
+              Expanded(child: Container(decoration: const BoxDecoration(border: Border(right: BorderSide(color: line, width: 0.5))))),
+              Expanded(child: Container(decoration: BoxDecoration(color: const Color(0x1A4A7CFF), border: Border.all(color: accent, width: 1.5)), child: Center(child: Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 5), color: accent)))),
+              Expanded(child: Container(decoration: const BoxDecoration(border: Border(left: BorderSide(color: line, width: 0.5))))),
             ]),
             // suggestions overlay hanging under the active cell
             Positioned(
-              left: 0,
-              right: 0,
-              top: 14,
+              left: 0, right: 0, top: 14,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Container(
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      border: Border.all(color: accent.withOpacity(0.45)),
-                      borderRadius: BorderRadius.circular(4),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.12),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2))
-                      ]),
+                  decoration: BoxDecoration(color: Colors.white, border: Border.all(color: accent.withOpacity(0.45)), borderRadius: BorderRadius.circular(4), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))]),
                   clipBehavior: Clip.antiAlias,
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    sugg('', '', '', first: true),
-                    Container(height: 0.5, color: line),
-                    sugg('', '', '')
-                  ]),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [sugg('', '', '', first: true), Container(height: 0.5, color: line), sugg('', '', '')]),
                 ),
               ),
             ),
@@ -1127,41 +732,26 @@ class _FilterThumb extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 5),
           decoration: BoxDecoration(
             color: active ? accent.withOpacity(0.14) : Colors.white,
-            border: Border.all(
-                color:
-                    active ? accent.withOpacity(0.5) : const Color(0xFFC2C6D6)),
+            border: Border.all(color: active ? accent.withOpacity(0.5) : const Color(0xFFC2C6D6)),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Row(children: [
-            Container(
-                width: 4,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: active ? accent : const Color(0xFFBDC1C6),
-                    shape: BoxShape.circle)),
+            Container(width: 4, height: 4, decoration: BoxDecoration(color: active ? accent : const Color(0xFFBDC1C6), shape: BoxShape.circle)),
             const SizedBox(width: 3),
-            Container(
-                width: active ? 16 : 12,
-                height: 3,
-                color: active ? accent : const Color(0xFFC2C6D6)),
+            Container(width: active ? 16 : 12, height: 3, color: active ? accent : const Color(0xFFC2C6D6)),
           ]),
         );
     return Container(
       color: const Color(0xFFF7F8FA),
       padding: const EdgeInsets.all(12),
       child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFC2C6D6)),
-            borderRadius: BorderRadius.circular(5)),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
           // filter bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-            decoration: const BoxDecoration(
-                color: Color(0xFFF7F8FA),
-                border: Border(bottom: BorderSide(color: Color(0xFFC2C6D6)))),
+            decoration: const BoxDecoration(color: Color(0xFFF7F8FA), border: Border(bottom: BorderSide(color: Color(0xFFC2C6D6)))),
             child: Row(children: [
               const Icon(Icons.filter_alt_outlined, size: 10, color: accent),
               const SizedBox(width: 5),
@@ -1169,45 +759,21 @@ class _FilterThumb extends StatelessWidget {
               const SizedBox(width: 4),
               chip(),
               const Spacer(),
-              Container(
-                  width: 14,
-                  height: 7,
-                  decoration: BoxDecoration(
-                      color: const Color(0xFFEEF1F7),
-                      borderRadius: BorderRadius.circular(3))),
+              Container(width: 14, height: 7, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3))),
             ]),
           ),
           // header
-          Container(
-              height: 12,
-              color: Colors.white,
-              child: Row(children: [
-                for (int i = 0; i < 4; i++)
-                  Expanded(
-                      child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          height: 3,
-                          color: const Color(0xFFBDC1C6))),
-              ])),
+          Container(height: 12, color: Colors.white, child: Row(children: [
+            for (int i = 0; i < 4; i++) Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 5), height: 3, color: const Color(0xFFBDC1C6))),
+          ])),
           Container(height: 1, color: line),
           // filtered rows (fewer, with one highlighted as match)
           for (int r = 0; r < 3; r++)
-            Expanded(
-                child: Container(
-              decoration: BoxDecoration(
-                  border:
-                      Border(bottom: const BorderSide(color: line, width: 0.5)),
-                  color: r == 0 ? accent.withOpacity(0.05) : Colors.white),
+            Expanded(child: Container(
+              decoration: BoxDecoration(border: Border(bottom: const BorderSide(color: line, width: 0.5)), color: r == 0 ? accent.withOpacity(0.05) : Colors.white),
               child: Row(children: [
                 for (int cIdx = 0; cIdx < 4; cIdx++)
-                  Expanded(
-                      child: Center(
-                          child: Container(
-                              height: 3,
-                              margin: const EdgeInsets.symmetric(horizontal: 6),
-                              color: cIdx == 1
-                                  ? const Color(0xFFD7DCE6)
-                                  : const Color(0xFFEEF1F7)))),
+                  Expanded(child: Center(child: Container(height: 3, margin: const EdgeInsets.symmetric(horizontal: 6), color: cIdx == 1 ? const Color(0xFFD7DCE6) : const Color(0xFFEEF1F7)))),
               ]),
             )),
         ]),
@@ -1223,18 +789,11 @@ class _FilterEditingThumb extends StatelessWidget {
   Widget build(BuildContext context) {
     const accent = Color(0xFF4A7CFF);
     const line = Color(0xFFE2E8F0);
-    Widget pill(Color c, double w) => Container(
-        width: w,
-        height: 7,
-        decoration:
-            BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)));
+    Widget pill(Color c, double w) => Container(width: w, height: 7, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)));
     Widget condition() => Container(
           margin: const EdgeInsets.only(bottom: 5),
           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-          decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: line),
-              borderRadius: BorderRadius.circular(4)),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: line), borderRadius: BorderRadius.circular(4)),
           child: Row(children: [
             pill(const Color(0xFFD7DCE6), 22),
             const SizedBox(width: 4),
@@ -1249,33 +808,23 @@ class _FilterEditingThumb extends StatelessWidget {
       color: const Color(0xFFF7F8FA),
       padding: const EdgeInsets.all(12),
       child: Container(
-        decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFC2C6D6)),
-            borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(6)),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
           // title bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-            decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: line))),
+            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: line))),
             child: Row(children: [
               const Icon(Icons.tune, size: 11, color: accent),
               const SizedBox(width: 5),
               pill(const Color(0xFF0F172A), 34),
               const Spacer(),
-              Container(
-                  width: 16,
-                  height: 9,
-                  decoration: BoxDecoration(
-                      color: accent.withOpacity(0.14),
-                      borderRadius: BorderRadius.circular(3))),
+              Container(width: 16, height: 9, decoration: BoxDecoration(color: accent.withOpacity(0.14), borderRadius: BorderRadius.circular(3))),
             ]),
           ),
           // grouped conditions (AND/OR group with nested rows)
-          Expanded(
-              child: Container(
+          Expanded(child: Container(
             padding: const EdgeInsets.all(8),
             child: Container(
               padding: const EdgeInsets.fromLTRB(7, 7, 7, 3),
@@ -1284,24 +833,16 @@ class _FilterEditingThumb extends StatelessWidget {
                 border: Border.all(color: accent.withOpacity(0.35)),
                 borderRadius: BorderRadius.circular(5),
               ),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: accent,
-                              borderRadius: BorderRadius.circular(3)),
-                          child: const SizedBox(width: 14, height: 4)),
-                      const SizedBox(width: 5),
-                      pill(const Color(0xFFC2C6D6), 18),
-                    ]),
-                    const SizedBox(height: 6),
-                    condition(),
-                    condition(),
-                  ]),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(3)), child: const SizedBox(width: 14, height: 4)),
+                  const SizedBox(width: 5),
+                  pill(const Color(0xFFC2C6D6), 18),
+                ]),
+                const SizedBox(height: 6),
+                condition(),
+                condition(),
+              ]),
             ),
           )),
         ]),
@@ -1309,6 +850,7 @@ class _FilterEditingThumb extends StatelessWidget {
     );
   }
 }
+
 
 // ── wraps a pushed demo with a floating "back to launcher" button ──
 class _BackScaffold extends StatelessWidget {
@@ -1334,12 +876,7 @@ class _BackScaffold extends StatelessWidget {
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.arrow_back, size: 16, color: Colors.white),
                     SizedBox(width: 7),
-                    Text('Demos',
-                        style: TextStyle(
-                            fontFamily: BrowserStyleTabBarThemeData.bodyFont,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white)),
+                    Text('Demos', style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                   ]),
                 ),
               ),
@@ -1364,11 +901,8 @@ class _GalleryRouteState extends State<_GalleryRoute> {
   Widget build(BuildContext context) {
     return themed(
       brightness: _light ? Brightness.light : Brightness.dark,
-      ext: _light
-          ? BrowserStyleTabBarThemeData.light
-          : BrowserStyleTabBarThemeData.dark,
-      child: BrowserTabsDemo(
-          light: _light, onToggleTheme: (v) => setState(() => _light = v)),
+      ext: _light ? BrowserStyleTabBarThemeData.light : BrowserStyleTabBarThemeData.dark,
+      child: BrowserTabsDemo(light: _light, onToggleTheme: (v) => setState(() => _light = v)),
     );
   }
 }

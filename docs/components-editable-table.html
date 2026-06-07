@@ -515,6 +515,15 @@ function CellEditor({ col, draft, setDraft, inputRef, commit, onOpenDate, onOpen
   React.useLayoutEffect(() => {
     if (col.kind === 'combo' && ref.current) { const r = ref.current.getBoundingClientRect(); onComboRect({ left: r.left, bottom: r.bottom, width: r.width }); }
   }, [col.kind, draft, onComboRect]);
+  // Combo: on edit start, focus the field and select the seeded value so the
+  // suggestions show immediately and typing replaces it (matches the native
+  // AutoSuggestionsBox combo cell behaviour).
+  React.useEffect(() => {
+    if (col.kind === 'combo' && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, []);
   const baseIn = { width: '100%', height: '100%', padding: '0 9px', background: 'var(--gl-surface)', border: 'none', outline: 'none', fontFamily: col.mono ? 'var(--gl-font-mono)' : 'var(--gl-font-body)', fontSize: 13, color: 'var(--gl-fg-1)', textAlign: col.align === 'right' ? 'right' : 'left', boxSizing: 'border-box' };
 
   if (col.kind === 'enum') {
@@ -644,7 +653,7 @@ function TypeRef() {
     ['NumericColumn', 'inline numeric · min / max / decimals', 'grouped number 1,234.00'],
     ['DateColumn', 'masked YYYY-MM-DD + calendar button', 'ISO date'],
     ['TimeColumn', 'masked HH:mm + clock button', '24-hour time'],
-    ['ComboBoxColumn', 'free text + smart_auto_suggest_box ▾', 'any string'],
+    ['ComboBoxColumn', 'auto-suggest field (AutoSuggestionsBox) ▾', 'any string'],
     ['DropdownColumn', 'strict popup menu', 'one of options'],
     ['ColorPickerColumn', 'swatch menu', '#RRGGBB hex'],
     ['ReadonlyColumn', '— never editable', 'display only'],
@@ -1074,7 +1083,7 @@ function EtCopyDemo() {
 
 function App() {
   return (
-    <Shell title="EditableTable" subtitle="GeniusLink Design System · v2.7.0">
+    <Shell title="EditableTable" subtitle="GeniusLink Design System · v2.8.1">
       <Section title="Spreadsheet grid — nine typed columns" desc="Click a cell and type to overwrite, or Enter / double-click to edit. Numbers clamp & group, dates and times have masked keyboard entry with a calendar / clock picker button, the Tag column is a combo (type or pick), Status is a dropdown rendered as a chip (cellBuilder), Colour opens a swatch menu, and Total is computed from Qty × Price. Validation flags red cells (Qty > 0, no negatives). Enter ↓ · Tab → (Tab past the last cell appends a row) · ⌘D duplicate · ⌘Enter add · ⌘⌫ delete (with optional confirmation) · ⌘C/X/V · ⌘Z/⇧Z · ⌘/ for the shortcut sheet. Navigating with the arrow keys / Tab auto-scrolls the selected cell into view." cols="1fr">
         <div style={{ gridColumn: '1 / -1' }}><ExcelGrid /></div>
       </Section>

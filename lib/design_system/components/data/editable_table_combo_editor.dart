@@ -50,6 +50,12 @@ class EditableComboCellEditor extends StatefulWidget {
   /// The current table theme, for a matching field + overlay look.
   final EditableTableThemeData theme;
 
+  /// The table's shared edit FocusNode. Passing it here (instead of letting the
+  /// box make its own) is what makes focus deterministic: the table requests
+  /// focus on this node when editing starts, so the box's field receives it and
+  /// opens its suggestions — no race between two competing focus nodes.
+  final FocusNode? focusNode;
+
   /// Called on every text change → forward to `controller.updateDraft`.
   final ValueChanged<String> onChanged;
 
@@ -67,6 +73,7 @@ class EditableComboCellEditor extends StatefulWidget {
     required this.onChanged,
     required this.onCommit,
     required this.onCancel,
+    this.focusNode,
     this.alignEnd = false,
   });
 
@@ -85,6 +92,20 @@ class _EditableComboCellEditorState extends State<EditableComboCellEditor> {
       textController: widget.textController, // share the table's draft text
       allowFreeText: true,
     );
+    // The moment the cell enters edit mode, put the caret in the field and show
+    // the suggestions. We drive this explicitly (after the first frame, when the
+    // field is laid out) so it doesn't depend on autofocus timing inside the
+    // grid — the previous source of the "focus / suggestions don't appear" bug.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.focusNode?.requestFocus();
+      // Select the whole seeded value so typing replaces it, then open.
+      final text = widget.textController;
+      if (text.text.isNotEmpty) {
+        text.selection = TextSelection(baseOffset: 0, extentOffset: text.text.length);
+      }
+      _box.open();
+    });
   }
 
   AutoSuggestionsSource<String> _buildSource() {
@@ -140,8 +161,10 @@ class _EditableComboCellEditorState extends State<EditableComboCellEditor> {
       data: Theme.of(context).copyWith(extensions: [_boxTheme()]),
       child: AutoSuggestionsBox<String>(
         controller: _box,
+        focusNode: widget.focusNode, // share the table's edit node (deterministic focus)
         bare: true,
         autofocus: true,
+        openOnFocus: true, // suggestions appear as soon as the cell is focused
         scrollOnFocus: false, // the table owns cell scrolling
         fieldHeight: EditableTableThemeData.rowHeight,
         maxVisibleRows: 7,
