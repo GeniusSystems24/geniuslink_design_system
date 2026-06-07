@@ -1,32 +1,40 @@
 // ============================================================
 // GeniusLink Design System — component examples app.
-// A launcher with ONE example screen per component, plus one all-in-one:
-//   • All Components  — the ERP Console: Tree + BrowserStyleTabBar + EditableTable together
-//   • BrowserStyleTabBar — the tab-strip showcase (pin, drag-reorder, overflow, hover thumbnails)
-//   • EditableTable   — the Excel-style data-entry grid
-//   • ReadableTable   — the read-only display grid
-//   • Tree            — the chart-of-accounts tree
+// A launcher with ONE example screen per component, plus focused sub-demos:
+//   • All Components       — the ERP Console: Tree + BrowserStyleTabBar + EditableTable
+//   • BrowserStyleTabBar   — the tab-strip showcase (pin, drag-reorder, overflow, thumbnails)
+//   • EditableTable        — the Excel-style data-entry grid
+//   • EditableTable Combo  — ComboBoxColumn cells powered by smart_auto_suggest_box
+//   • ReadableTable        — the read-only display grid
+//   • ReadableTable Filter — the per-column filter system
+//   • FilterEditingView    — the grouped AND/OR visual filter builder
+//   • Tree                 — the chart-of-accounts tree
+//   • NavigationSidebar    — the app nav rail (expanded / collapsed / drawer)
 //
 // Every screen registers its own ThemeExtension; each component reads it via
 // <Component>ThemeData.of(context). All screens run live in Light/Dark and
-// EN / AR (RTL).
+// EN / AR (RTL). The top-level MaterialApp registers the smart_auto_suggest_box
+// + global localization delegates so combo cells work from any pushed demo.
 //
 //   Run:  cd geniuslink_design_system_flutter/example && flutter pub get && flutter run -d chrome
 // ============================================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:smart_auto_suggest_box/smart_auto_suggest_box.dart';
 import 'package:geniuslink_design_system/geniuslink_browser_tabs.dart';
-import 'package:geniuslink_design_system_example/readable_table/filter_editing_demo.dart';
+import 'auto_suggestions_box_demo.dart';
 import 'browser_tabs_demo.dart';
 import 'editable_table_demo.dart';
+import 'editable_table/combo_demo.dart';
 import 'readable_table_demo.dart';
+import 'readable_table/filter_demo.dart';
+import 'readable_table/filter_editing_demo.dart';
 import 'tree_demo.dart';
 import 'navigation_sidebar_demo.dart';
 import 'erp_console.dart';
 import 'shell_kit.dart';
 import 'tree_demo_style01.dart';
-import 'readable_table/filter_demo.dart';
-import 'editable_table/combo_demo.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -37,6 +45,14 @@ class ExampleApp extends StatelessWidget {
     return MaterialApp(
       title: 'GeniusLink · Component Examples',
       debugShowCheckedModeBanner: false,
+      // Registered app-wide so EditableTable combo cells (smart_auto_suggest_box)
+      // have a localized overlay no matter which demo is pushed from the launcher.
+      localizationsDelegates: const [
+        SmartAutoSuggestBoxLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         brightness: Brightness.light,
         useMaterial3: true,
@@ -79,8 +95,9 @@ class LauncherScreen extends StatelessWidget {
                   constraints: const BoxConstraints(maxWidth: 620),
                   child: Text(
                     'One example screen per component — BrowserStyleTabBar, EditableTable, '
-                    'ReadableTable and the Tree — plus an all-in-one console that runs them '
-                    'together. Open any to try it live in Light / Dark and EN / AR (RTL).',
+                    'ReadableTable and the Tree — plus focused demos for the combo auto-suggest '
+                    'editor and the ReadableTable filter system, and an all-in-one console that '
+                    'runs them together. Open any to try it live in Light / Dark and EN / AR (RTL).',
                     style: TextStyle(fontFamily: BrowserStyleTabBarThemeData.bodyFont, fontSize: 14.5, height: 1.55, color: s.fg3),
                   ),
                 ),
@@ -117,10 +134,10 @@ class LauncherScreen extends StatelessWidget {
                         onTap: () => _open(context, const EditableTableDemo()),
                       ),
                       _DemoCard(
-                        title: 'EditableTable - comboBox',
-                        subtitle: 'Excel-style data-entry grid · typed generic rows · resize & reorder columns · copy as TSV · sort · undo',
+                        title: 'EditableTable — Combo cells',
+                        subtitle: 'ComboBoxColumn powered by smart_auto_suggest_box · type to filter, ↑ ↓ to move, Enter / click to pick, or free text',
                         accent: BrowserStyleTabBarThemeData.success,
-                        preview: const _EditableTableThumb(),
+                        preview: const _ComboThumb(),
                         onTap: () => _open(context, const ComboDemo()),
                       ),
                       _DemoCard(
@@ -131,17 +148,17 @@ class LauncherScreen extends StatelessWidget {
                         onTap: () => _open(context, const ReadableTableDemo()),
                       ),
                       _DemoCard(
-                        title: 'ReadableTable - Filters',
-                        subtitle: 'Read-only display grid · typed column kinds · resize / reorder · multi-select & copy · keyboard nav · scroll-on-focus',
+                        title: 'ReadableTable — Filter system',
+                        subtitle: 'Per-column filters · operators by type · live visible/total readout · combine predicates · clear all',
                         accent: const Color(0xFF4A7CFF),
-                        preview: const _ReadableTableThumb(),
+                        preview: const _FilterThumb(),
                         onTap: () => _open(context, const ReadableFilterDemo()),
                       ),
                       _DemoCard(
-                        title: 'ReadableTable - Editing Filters',
-                        subtitle: 'Read-only display grid · typed column kinds · resize / reorder · multi-select & copy · keyboard nav · scroll-on-focus',
+                        title: 'FilterEditingView',
+                        subtitle: 'Visual filter builder · grouped AND / OR conditions · per-column operators · nested groups · add / remove rules',
                         accent: const Color(0xFF4A7CFF),
-                        preview: const _ReadableTableThumb(),
+                        preview: const _FilterEditingThumb(),
                         onTap: () => _open(context, const FilterEditingDemo()),
                       ),
                       _DemoCard(
@@ -164,6 +181,13 @@ class LauncherScreen extends StatelessWidget {
                         accent: const Color(0xFF4A7CFF),
                         preview: const _NavSidebarThumb(),
                         onTap: () => _open(context, const NavigationSidebarDemo()),
+                      ),
+                      _DemoCard(
+                        title: 'Auto suggetions Box',
+                        subtitle: 'App nav rail · expanded tree + collapsed rail with flyouts + mobile drawer · badges · responsive · Light/Dark · LTR/RTL',
+                        accent: const Color(0xFF4A7CFF),
+                        preview: const _NavSidebarThumb(),
+                        onTap: () => _open(context, const AutoSuggestionsBoxDemo()),
                       ),
                     ],
                   );
@@ -588,6 +612,197 @@ class _NavSidebarThumb extends StatelessWidget {
 }
 
 // (removed unused launcher thumbnails: _FigmaThumb, _ChromeThumb, _DocsThumb, _Box)
+
+// ── EditableTable combo cell: a cell in edit mode with an auto-suggest overlay ──
+class _ComboThumb extends StatelessWidget {
+  const _ComboThumb();
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF4A7CFF);
+    const line = Color(0xFFE2E8F0);
+    Widget sugg(String pre, String hit, String post, {bool first = false}) => Container(
+          height: 12,
+          padding: const EdgeInsets.symmetric(horizontal: 6),
+          color: first ? const Color(0xFFEEF3FF) : Colors.white,
+          alignment: Alignment.centerLeft,
+          child: Row(children: [
+            Container(width: 10, height: 4, color: const Color(0xFFD7DCE6)),
+            Container(width: 6, height: 4, color: accent),
+            Container(width: 8, height: 4, color: const Color(0xFFD7DCE6)),
+          ]),
+        );
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          // header
+          Container(height: 14, color: const Color(0xFFF7F8FA), child: Row(children: [
+            for (int i = 0; i < 3; i++) Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 5), height: 4, color: const Color(0xFFBDC1C6))),
+          ])),
+          Container(height: 1, color: const Color(0xFFC2C6D6)),
+          // a normal row
+          SizedBox(height: 13, child: Row(children: [
+            for (int i = 0; i < 3; i++) Expanded(child: Container(decoration: const BoxDecoration(border: Border(right: BorderSide(color: line, width: 0.5))), child: Center(child: Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 6), color: const Color(0xFFEEF1F7))))),
+          ])),
+          // the editing row: middle cell is active + overlay
+          Expanded(child: Stack(clipBehavior: Clip.none, children: [
+            Row(children: [
+              Expanded(child: Container(decoration: const BoxDecoration(border: Border(right: BorderSide(color: line, width: 0.5))))),
+              Expanded(child: Container(decoration: BoxDecoration(color: const Color(0x1A4A7CFF), border: Border.all(color: accent, width: 1.5)), child: Center(child: Container(height: 4, margin: const EdgeInsets.symmetric(horizontal: 5), color: accent)))),
+              Expanded(child: Container(decoration: const BoxDecoration(border: Border(left: BorderSide(color: line, width: 0.5))))),
+            ]),
+            // suggestions overlay hanging under the active cell
+            Positioned(
+              left: 0, right: 0, top: 14,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Container(
+                  decoration: BoxDecoration(color: Colors.white, border: Border.all(color: accent.withOpacity(0.45)), borderRadius: BorderRadius.circular(4), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 6, offset: const Offset(0, 2))]),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [sugg('', '', '', first: true), Container(height: 0.5, color: line), sugg('', '', '')]),
+                ),
+              ),
+            ),
+          ])),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── ReadableTable filter system: a filter chip bar above a filtered grid ──
+class _FilterThumb extends StatelessWidget {
+  const _FilterThumb();
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF4A7CFF);
+    const line = Color(0xFFE2E8F0);
+    Widget chip({bool active = false}) => Container(
+          height: 11,
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          decoration: BoxDecoration(
+            color: active ? accent.withOpacity(0.14) : Colors.white,
+            border: Border.all(color: active ? accent.withOpacity(0.5) : const Color(0xFFC2C6D6)),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(children: [
+            Container(width: 4, height: 4, decoration: BoxDecoration(color: active ? accent : const Color(0xFFBDC1C6), shape: BoxShape.circle)),
+            const SizedBox(width: 3),
+            Container(width: active ? 16 : 12, height: 3, color: active ? accent : const Color(0xFFC2C6D6)),
+          ]),
+        );
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(5)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          // filter bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+            decoration: const BoxDecoration(color: Color(0xFFF7F8FA), border: Border(bottom: BorderSide(color: Color(0xFFC2C6D6)))),
+            child: Row(children: [
+              const Icon(Icons.filter_alt_outlined, size: 10, color: accent),
+              const SizedBox(width: 5),
+              chip(active: true),
+              const SizedBox(width: 4),
+              chip(),
+              const Spacer(),
+              Container(width: 14, height: 7, decoration: BoxDecoration(color: const Color(0xFFEEF1F7), borderRadius: BorderRadius.circular(3))),
+            ]),
+          ),
+          // header
+          Container(height: 12, color: Colors.white, child: Row(children: [
+            for (int i = 0; i < 4; i++) Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 5), height: 3, color: const Color(0xFFBDC1C6))),
+          ])),
+          Container(height: 1, color: line),
+          // filtered rows (fewer, with one highlighted as match)
+          for (int r = 0; r < 3; r++)
+            Expanded(child: Container(
+              decoration: BoxDecoration(border: Border(bottom: const BorderSide(color: line, width: 0.5)), color: r == 0 ? accent.withOpacity(0.05) : Colors.white),
+              child: Row(children: [
+                for (int cIdx = 0; cIdx < 4; cIdx++)
+                  Expanded(child: Center(child: Container(height: 3, margin: const EdgeInsets.symmetric(horizontal: 6), color: cIdx == 1 ? const Color(0xFFD7DCE6) : const Color(0xFFEEF1F7)))),
+              ]),
+            )),
+        ]),
+      ),
+    );
+  }
+}
+
+// ── FilterEditingView: the grouped condition builder card ──
+class _FilterEditingThumb extends StatelessWidget {
+  const _FilterEditingThumb();
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF4A7CFF);
+    const line = Color(0xFFE2E8F0);
+    Widget pill(Color c, double w) => Container(width: w, height: 7, decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)));
+    Widget condition() => Container(
+          margin: const EdgeInsets.only(bottom: 5),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          decoration: BoxDecoration(color: Colors.white, border: Border.all(color: line), borderRadius: BorderRadius.circular(4)),
+          child: Row(children: [
+            pill(const Color(0xFFD7DCE6), 22),
+            const SizedBox(width: 4),
+            pill(accent.withOpacity(0.18), 16),
+            const SizedBox(width: 4),
+            Expanded(child: pill(const Color(0xFFEEF1F7), 0)),
+            const SizedBox(width: 4),
+            const Icon(Icons.close, size: 8, color: Color(0xFFBDC1C6)),
+          ]),
+        );
+    return Container(
+      color: const Color(0xFFF7F8FA),
+      padding: const EdgeInsets.all(12),
+      child: Container(
+        decoration: BoxDecoration(color: Colors.white, border: Border.all(color: const Color(0xFFC2C6D6)), borderRadius: BorderRadius.circular(6)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          // title bar
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: line))),
+            child: Row(children: [
+              const Icon(Icons.tune, size: 11, color: accent),
+              const SizedBox(width: 5),
+              pill(const Color(0xFF0F172A), 34),
+              const Spacer(),
+              Container(width: 16, height: 9, decoration: BoxDecoration(color: accent.withOpacity(0.14), borderRadius: BorderRadius.circular(3))),
+            ]),
+          ),
+          // grouped conditions (AND/OR group with nested rows)
+          Expanded(child: Container(
+            padding: const EdgeInsets.all(8),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(7, 7, 7, 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7F8FA),
+                border: Border.all(color: accent.withOpacity(0.35)),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Container(padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2), decoration: BoxDecoration(color: accent, borderRadius: BorderRadius.circular(3)), child: const SizedBox(width: 14, height: 4)),
+                  const SizedBox(width: 5),
+                  pill(const Color(0xFFC2C6D6), 18),
+                ]),
+                const SizedBox(height: 6),
+                condition(),
+                condition(),
+              ]),
+            ),
+          )),
+        ]),
+      ),
+    );
+  }
+}
 
 
 // ── wraps a pushed demo with a floating "back to launcher" button ──

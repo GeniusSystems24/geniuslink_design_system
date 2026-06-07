@@ -10,8 +10,9 @@
 //   • geniuslink_readable_table.dart     — ReadableTable (read-only display grid)
 //   • geniuslink_tree.dart               — Tree
 //   • geniuslink_navigation_sidebar.dart — NavigationSidebar (rail · drawer · tree nav)
+//   • geniuslink_auto_suggestions_box.dart — AutoSuggestionsBox (typed auto-suggest field)
 //
-// v2.7.0
+// v2.8.0
 // ============================================================
 //
 // NOTE: the generic `EditableTable<T>` lives in its own barrel
@@ -23,3 +24,4 @@ export 'geniuslink_editable_table.dart';
 export 'geniuslink_readable_table.dart' hide EditableTableThemeData;
 export 'geniuslink_tree.dart';
 export 'geniuslink_navigation_sidebar.dart';
+export 'geniuslink_auto_suggestions_box.dart';

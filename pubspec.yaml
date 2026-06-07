@@ -1,7 +1,7 @@
 name: geniuslink_design_system
 description: GeniusLink Design System for Flutter — a themeable, MVC widget kit (BrowserStyleTabBar, EditableTable with typed columns, ReadableTable, Tree, NavigationSidebar) with light/dark + LTR/RTL support.
 # publish_to: "none"
-version: 2.7.0
+version: 2.8.0
 
 repository: https://github.com/GeniusSystems24/geniuslink_design_system
 issue_tracker: https://github.com/GeniusSystems24/geniuslink_design_system/issues
