@@ -10,6 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  smart_auto_suggest_box: ^0.15.3
   geniuslink_design_system:
     path: ../
 

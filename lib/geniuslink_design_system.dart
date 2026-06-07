@@ -11,7 +11,7 @@
 //   • geniuslink_tree.dart               — Tree
 //   • geniuslink_navigation_sidebar.dart — NavigationSidebar (rail · drawer · tree nav)
 //
-// v2.6.0
+// v2.7.0
 // ============================================================
 //
 // NOTE: the generic `EditableTable<T>` lives in its own barrel

@@ -5,6 +5,68 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.7.0]
+
+### ✨ Changed — `EditableTable` combo cells now use `smart_auto_suggest_box`
+
+- **`ComboBoxColumn` cells are now edited with the first-party
+  [`smart_auto_suggest_box`](https://pub.dev/packages/smart_auto_suggest_box)
+  package** (publisher: GeniusSystems24 — the same org as this design system),
+  replacing the old text-field + popup-menu suffix. Click a combo cell and type:
+  the overlay filters as you type with the matched substring highlighted, ↑ ↓
+  moves through matches, Enter / click picks one — or type a free value and
+  Tab / Enter commits it as-is.
+- **New** `editable_table_combo_editor.dart` → `EditableComboCellEditor`: a thin
+  bridge widget that wraps `SmartAutoSuggestBox<String>`. The table keeps owning
+  the edit session — the editor binds the controller's existing draft
+  `TextEditingController` to the suggest box (so the seeded value shows, every
+  keystroke flows back to `updateDraft`, picking commits + steps down, and
+  Esc / Tab fall through to cancel / commit). The grid's commit / cancel /
+  navigation logic is unchanged; only combo cells route here.
+- The suggest overlay is themed from `EditableTableThemeData`
+  (`SmartAutoSuggestTheme` light/dark + DS radius + selection colour) and is
+  RTL-aware.
+- **Dependency** — `smart_auto_suggest_box: ^0.15.3` added to the package. Apps
+  hosting combo columns should register `SmartAutoSuggestBoxLocalizations.delegate`
+  (+ the Material/Widgets/Cupertino globals) on their `MaterialApp` for a fully
+  localized overlay — see the new `example/lib/editable_table/combo_demo.dart`.
+- Exported from the `geniuslink_editable_table.dart` barrel. The old internal
+  `_openComboMenu` popup was removed. Interactive reference updated in
+  `docs/components-editable-table.html`.
+
+> **Note** — the editor uses the package's supported (deprecated) `controller:`
+> parameter to bind the table's draft text, because that is the only documented
+> way to read the raw typed value the grid commits; `smartController` exposes
+> only the selected item. Pinned to `^0.15.x` where the parameter is present.
+
+---
+
+## [2.6.1]
+
+### 🐛 Fixed
+- **`ReadableFilterEditingView`** — deleting the last condition inside a nested
+  subgroup now removes the empty group card too, instead of leaving an empty
+  shell. A subgroup that loses its last child collapses out of its parent.
+
+### ✨ Added — inline column filters (header filter row)
+- **`ReadableTable(showColumnFilters: true)`** renders a filter row directly
+  beneath the column headers — one small control per column that filters on
+  that column's value: a **contains-search** field for text / number / date
+  columns, and a **value dropdown** (All · …) for enum / colour columns. Each
+  cell aligns with its column (same width / flex), and an active control shows
+  the accent border + a clear affordance.
+- **Controller** — new inline-filter API: `setColumnFilter(ci, filter)` (pass
+  null / an incomplete filter to clear), `setColumnSearch(ci, text)` (the
+  common contains case), `columnFilter(ci)`, `columnFilters`, `hasColumnFilters`
+  and `clearColumnFilters`. Inline column filters **AND together and AND on top
+  of** the quick-search and the structured filters (flat list or nested tree),
+  so the header row narrows whatever is already shown. `clearFilters`,
+  `isFiltered` and `hasFilters` all account for them.
+- The `filter_editing_demo.dart` example now sets `showColumnFilters: true`;
+  the `docs/components-filter-editing.html` reference gains a live preview.
+
+---
+
 ## [2.6.0]
 
 ### ✨ Added — `ReadableFilterEditingView` (nested And/Or query builder)

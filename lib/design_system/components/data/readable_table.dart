@@ -37,6 +37,7 @@ import '../key_directions.dart';
 import 'editable_table_theme.dart';
 import 'readable_table_models.dart';
 import 'readable_table_controller.dart';
+import 'readable_table_filter.dart';
 import 'readable_table_filter_bar.dart';
 
 class ReadableTable<T> extends StatefulWidget {
@@ -82,6 +83,13 @@ class ReadableTable<T> extends StatefulWidget {
   /// Gap between the built-in filter bar and the grid.
   final double filterBarGap;
 
+  /// Show an inline filter row directly beneath the column headers — one small
+  /// control per column that filters on that column's value (a contains-search
+  /// for text / number / date columns, a value dropdown for enum / colour
+  /// columns). Drives the controller's [ReadableTableController.setColumnFilter],
+  /// so it ANDs on top of any other active filtering.
+  final bool showColumnFilters;
+
   // ── seeds (controller-less convenience) ─────────────────────
   final Set<int>? initialSelectedRows;
   final Set<ReadableCell>? initialSelectedCells;
@@ -119,6 +127,7 @@ class ReadableTable<T> extends StatefulWidget {
     this.filterItemNoun = 'row',
     this.filterItemNounPlural = 'rows',
     this.filterBarGap = 10,
+    this.showColumnFilters = false,
     this.initialSelectedRows,
     this.initialSelectedCells,
     this.initialSortColumn,
@@ -355,6 +364,7 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (widget.showHeader) _header(t),
+          if (widget.showColumnFilters) _ColumnFilterRow<T>(controller: c, cellPadding: widget.cellPadding),
           if (c.rowCount == 0)
             _empty(t)
           else
@@ -768,5 +778,202 @@ class _ReadableTableState<T> extends State<ReadableTable<T>> {
   String _modLabel() {
     final isApple = defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.iOS;
     return isApple ? '⌘' : 'Ctrl';
+  }
+}
+
+// ============================================================
+// INLINE COLUMN-FILTER ROW — one control per column, beneath the headers.
+// ------------------------------------------------------------
+// A thin render of the controller's inline column filters. Each cell aligns
+// with its column (same width / flex as the header + body), and drives
+// `setColumnFilter` / `setColumnSearch`:
+//   • enum / colour columns → a value dropdown (All · value · value …)
+//   • every other filterable column → a compact contains-search field
+//   • non-filterable columns → an empty spacer cell
+// It listens to the controller so an external `clearFilters` empties the inputs.
+// ============================================================
+class _ColumnFilterRow<T> extends StatefulWidget {
+  final ReadableTableController<T> controller;
+  final EdgeInsets cellPadding;
+  const _ColumnFilterRow({required this.controller, required this.cellPadding});
+
+  @override
+  State<_ColumnFilterRow<T>> createState() => _ColumnFilterRowState<T>();
+}
+
+class _ColumnFilterRowState<T> extends State<_ColumnFilterRow<T>> {
+  final Map<int, TextEditingController> _text = {}; // logical index → field
+
+  ReadableTableController<T> get _c => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _c.addListener(_onController);
+  }
+
+  @override
+  void dispose() {
+    _c.removeListener(_onController);
+    for (final c in _text.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onController() {
+    // keep text fields in sync when filters are cleared externally
+    var dirty = false;
+    for (final entry in _text.entries) {
+      final active = _c.columnFilter(entry.key) != null;
+      if (!active && entry.value.text.isNotEmpty) {
+        entry.value.clear();
+        dirty = true;
+      }
+    }
+    if (mounted) setState(() {});
+    if (dirty) {/* text cleared above */}
+  }
+
+  TextEditingController _fieldFor(int li) {
+    return _text.putIfAbsent(li, () {
+      final existing = _c.columnFilter(li);
+      final seed = (existing != null && existing.op == ReadableFilterOp.contains) ? (existing.value?.toString() ?? '') : '';
+      return TextEditingController(text: seed);
+    });
+  }
+
+  bool _isEnumLike(ReadableColumnType type) => type == ReadableColumnType.enumBadge || type == ReadableColumnType.color;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = EditableTableThemeData.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: t.bg,
+        border: Border(bottom: BorderSide(color: t.borderStrong)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          for (var v = 0; v < _c.colCount; v++) _cell(t, v),
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(EditableTableThemeData t, int v) {
+    final li = _c.logicalColumnAt(v);
+    final col = _c.columns[li];
+    final pad = EdgeInsets.symmetric(horizontal: widget.cellPadding.horizontal / 2, vertical: 7);
+
+    Widget child;
+    if (!_c.isColumnFilterable(li)) {
+      child = const SizedBox(height: 32);
+    } else if (_isEnumLike(col.type)) {
+      child = _enumDropdown(t, li, col);
+    } else {
+      child = _searchField(t, li, col);
+    }
+
+    final content = Padding(padding: pad, child: child);
+    final w = _c.widthOf(v);
+    if (w != null) return SizedBox(width: w, child: content);
+    return Expanded(flex: col.flex, child: content);
+  }
+
+  // ── compact contains-search field ──
+  Widget _searchField(EditableTableThemeData t, int li, ReadableColumn<T> col) {
+    final ctrl = _fieldFor(li);
+    final active = ctrl.text.isNotEmpty;
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: t.inputBg,
+        borderRadius: BorderRadius.circular(EditableTableThemeData.radiusSm),
+        border: Border.all(color: active ? EditableTableThemeData.accent.withOpacity(0.55) : t.border),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.search_rounded, size: 14, color: active ? EditableTableThemeData.accent : t.fg4),
+          const SizedBox(width: 6),
+          Expanded(
+            child: TextField(
+              controller: ctrl,
+              onChanged: (s) => _c.setColumnSearch(li, s),
+              cursorColor: EditableTableThemeData.accent,
+              style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 12.5, color: t.fg1),
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.zero,
+                hintText: 'Filter',
+                hintStyle: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 12.5, color: t.fg4),
+              ),
+            ),
+          ),
+          if (active)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                ctrl.clear();
+                _c.setColumnFilter(li, null);
+              },
+              child: Padding(
+                padding: const EdgeInsets.only(left: 2),
+                child: Icon(Icons.close_rounded, size: 14, color: t.fg3),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ── value dropdown for enum / colour columns ──
+  Widget _enumDropdown(EditableTableThemeData t, int li, ReadableColumn<T> col) {
+    const allSentinel = '\u0000__all__';
+    final values = _c.distinctValues(li);
+    final existing = _c.columnFilter(li);
+    final current = (existing != null && existing.op == ReadableFilterOp.equals && existing.value != null)
+        ? existing.value.toString()
+        : allSentinel;
+    final value = (current == allSentinel || values.contains(current)) ? current : allSentinel;
+    final active = value != allSentinel;
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: t.inputBg,
+        borderRadius: BorderRadius.circular(EditableTableThemeData.radiusSm),
+        border: Border.all(color: active ? EditableTableThemeData.accent.withOpacity(0.55) : t.border),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          isDense: true,
+          icon: Icon(Icons.expand_more_rounded, size: 15, color: active ? EditableTableThemeData.accent : t.fg3),
+          dropdownColor: t.surface,
+          borderRadius: BorderRadius.circular(EditableTableThemeData.radiusSm),
+          style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 12.5, color: t.fg1),
+          items: [
+            DropdownMenuItem(
+              value: allSentinel,
+              child: Text('All', style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 12.5, color: t.fg4)),
+            ),
+            for (final s in values)
+              DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis)),
+          ],
+          onChanged: (s) {
+            if (s == null || s == allSentinel) {
+              _c.setColumnFilter(li, null);
+            } else {
+              _c.setColumnFilter(li, ReadableFilter(columnIndex: li, op: ReadableFilterOp.equals, value: s));
+            }
+          },
+        ),
+      ),
+    );
   }
 }

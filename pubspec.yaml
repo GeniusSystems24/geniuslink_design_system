@@ -1,7 +1,7 @@
 name: geniuslink_design_system
 description: GeniusLink Design System for Flutter — a themeable, MVC widget kit (BrowserStyleTabBar, EditableTable with typed columns, ReadableTable, Tree, NavigationSidebar) with light/dark + LTR/RTL support.
 # publish_to: "none"
-version: 2.3.0
+version: 2.7.0
 
 repository: https://github.com/GeniusSystems24/geniuslink_design_system
 issue_tracker: https://github.com/GeniusSystems24/geniuslink_design_system/issues
@@ -23,6 +23,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  # Auto-suggest field powering ComboBoxColumn cells (free-text + suggestions).
+  # First-party (GeniusSystems24) — same publisher as this design system.
+  smart_auto_suggest_box: ^0.15.3
 
 dev_dependencies:
   flutter_lints: ^3.0.0

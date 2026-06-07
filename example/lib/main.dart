@@ -26,6 +26,7 @@ import 'erp_console.dart';
 import 'shell_kit.dart';
 import 'tree_demo_style01.dart';
 import 'readable_table/filter_demo.dart';
+import 'editable_table/combo_demo.dart';
 
 void main() => runApp(const ExampleApp());
 
@@ -114,6 +115,13 @@ class LauncherScreen extends StatelessWidget {
                         accent: BrowserStyleTabBarThemeData.success,
                         preview: const _EditableTableThumb(),
                         onTap: () => _open(context, const EditableTableDemo()),
+                      ),
+                      _DemoCard(
+                        title: 'EditableTable - comboBox',
+                        subtitle: 'Excel-style data-entry grid · typed generic rows · resize & reorder columns · copy as TSV · sort · undo',
+                        accent: BrowserStyleTabBarThemeData.success,
+                        preview: const _EditableTableThumb(),
+                        onTap: () => _open(context, const ComboDemo()),
                       ),
                       _DemoCard(
                         title: 'ReadableTable',

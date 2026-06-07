@@ -26,7 +26,7 @@ Both tables now ship **resizable + reorderable columns**, **typed `ReadableTable
 - ✅ **Tree single / multi-select** — Shift-range, Ctrl/⌘-toggle, tri-state checkboxes; group add / remove.
 - ♻️ **State-preserving tabs** — every tab page is built once and kept alive, so scroll / input / controllers survive switching.
 - 🌍 **RTL + dark** everywhere — mirrors via `Directionality` + `EdgeInsetsDirectional`, and arrow keys follow the **visual** direction.
-- 🔌 **Zero third-party dependencies** — pure Flutter + Material.
+- 🔌 **Lean dependencies** — pure Flutter + Material, plus the first-party [`smart_auto_suggest_box`](https://pub.dev/packages/smart_auto_suggest_box) (GeniusSystems24) powering `EditableTable` combo cells.
 
 ## Install
 
@@ -122,7 +122,7 @@ Each kind is an ergonomic subclass of `EditableColumn` — pass the right one; t
 | `NumericColumn` | inline numeric (min/max/decimals) | grouped number `1,234.00` |
 | `DateColumn` | masked `YYYY-MM-DD` + 📅 calendar button | ISO date |
 | `TimeColumn` | masked `HH:mm` + 🕑 clock button | 24h time |
-| `ComboBoxColumn` | free text **+** suggestions ▾ | any string |
+| `ComboBoxColumn` | auto-suggest field (`smart_auto_suggest_box`) — type to filter, or free text | any string |
 | `DropdownColumn` | popup menu (strict) | one of `options` |
 | `ColorPickerColumn` | swatch menu | `#RRGGBB` hex |
 | `ReadonlyColumn` | — (never editable) | display only |
@@ -159,6 +159,34 @@ final columns = <EditableColumn>[
   const ColorPickerColumn(key: 'color', label: 'Colour'),
 ];
 ```
+
+#### Combo cells (auto-suggest)
+
+`ComboBoxColumn` cells are edited with the first-party
+[`smart_auto_suggest_box`](https://pub.dev/packages/smart_auto_suggest_box)
+package (publisher: GeniusSystems24): click a cell and type to filter the
+`options` (matched text is highlighted, ↑ ↓ to move, Enter / click to pick), or
+type any free value and Tab / Enter to commit it. The overlay is themed from
+`EditableTableThemeData` and is RTL-aware. The grid still owns the edit
+session — `EditableComboCellEditor` just bridges the suggest box to the
+controller's draft.
+
+For a fully-localized overlay, register the package delegate on your `MaterialApp`:
+
+```dart
+MaterialApp(
+  localizationsDelegates: const [
+    SmartAutoSuggestBoxLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  supportedLocales: const [Locale('en'), Locale('ar')],
+  // …
+);
+```
+
+See `example/lib/editable_table/combo_demo.dart` for a runnable demo.
 
 ### Validation
 
@@ -424,6 +452,16 @@ c.setFilterGroup(ReadableFilterGroup(join: ReadableFilterJoin.all, children: [
 ```
 
 A non-empty tree **supersedes** the flat `filters` list for structured filtering; the quick-search still applies on top. Every group shows an **And / Or rail pill** (toggles all ⇄ any); every condition is column → operator → typed value, the value control adapting to the column kind (text · number · date-picker · enum dropdown · multi-select). **Add condition / Add subgroup / Clear all** and per-row delete round it out — all themed and RTL-aware (the rail mirrors). Pass `applyLive: false` to defer and call `state.apply()` yourself.
+
+#### Inline column filters (header filter row)
+
+Set `showColumnFilters: true` for a filter row directly beneath the headers — one control per column that filters on that column's value:
+
+```dart
+ReadableTable<Deal>(controller: c, showColumnFilters: true);
+```
+
+Text / number / date columns get a **contains-search** field; enum / colour columns get a **value dropdown** (All · …). They AND together and AND on top of the quick-search and any structured filters. Drive them programmatically with `c.setColumnSearch(ci, 'cash')` / `c.setColumnFilter(ci, ReadableFilter…)`, read `c.columnFilter(ci)` / `c.hasColumnFilters`, and clear with `c.clearColumnFilters()`.
 
 ### Keyboard
 
@@ -895,6 +933,7 @@ lib/
     │   ├── editable_table_controller.dart    Controller — ChangeNotifier + scope
     │   ├── editable_table_theme.dart         Theme  — ThemeExtension (Editable + Readable)
     │   ├── editable_table.dart               View   — EditableTable widget
+    │   ├── editable_table_combo_editor.dart  View   — ComboBoxColumn editor (smart_auto_suggest_box)
     │   ├── readable_table_models.dart          Model  — ReadableColumn<T>, cell, enums
     │   ├── readable_table_filter.dart          Model  — ReadableFilter, group tree, ops, catalog
     │   ├── readable_table_controller.dart      Controller — ChangeNotifier + scope (+ filtering)

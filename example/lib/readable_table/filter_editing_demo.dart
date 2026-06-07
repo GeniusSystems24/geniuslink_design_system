@@ -187,8 +187,8 @@ class _FilterEditingDemoState extends State<FilterEditingDemo> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          // the live grid
-                          ReadableTable<Deal>(controller: _controller, hoverHighlight: true, rowMinHeight: 50),
+                          // the live grid — with the inline column-filter row
+                          ReadableTable<Deal>(controller: _controller, hoverHighlight: true, rowMinHeight: 50, showColumnFilters: true),
                         ],
                       ),
                     ),

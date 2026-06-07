@@ -237,7 +237,10 @@ function JoinPill({ join, onToggle }) {
 function GroupView({ node, onChange, onRemove, depth }) {
   const isRoot = depth === 0;
   const setJoin = () => onChange({ ...node, join: node.join === 'and' ? 'or' : 'and' });
-  const changeChild = (child) => onChange({ ...node, children: node.children.map(c => c.id === child.id ? child : c) });
+  const changeChild = (child) => onChange({ ...node, children:
+    (child.kind === 'group' && child.children.length === 0)
+      ? node.children.filter(c => c.id !== child.id)           // empty subgroup removes its own card
+      : node.children.map(c => c.id === child.id ? child : c) });
   const removeChild = (id) => onChange({ ...node, children: node.children.filter(c => c.id !== id) });
   const addCondition = () => onChange({ ...node, children: [...node.children, mkCond()] });
   const addGroup = () => onChange({ ...node, children: [...node.children, mkGroup('or')] });
@@ -306,6 +309,102 @@ function GroupView({ node, onChange, onRemove, depth }) {
   );
 }
 
+/* ── inline column-filter row preview (ReadableTable showColumnFilters) ─── */
+const CF_COLS = [
+  { key:'company', label:'Company', w:'2fr', kind:'text' },
+  { key:'owner',   label:'Owner',   w:'150px', kind:'text' },
+  { key:'stage',   label:'Stage',   w:'132px', kind:'enum' },
+  { key:'health',  label:'Health',  w:'116px', kind:'enum', tone:{ Critical:'danger', 'At risk':'warning', Healthy:'success' } },
+  { key:'region',  label:'Region',  w:'112px', kind:'text' },
+];
+const CF_ROWS = [
+  { company:'Najd Logistics', owner:'Davon Larson', stage:'Negotiation', health:'Critical', region:'Riyadh' },
+  { company:'Tihama Foods',    owner:'Davon Larson', stage:'Review',      health:'At risk',  region:'Jeddah' },
+  { company:'Rua Real Estate', owner:'Davon Larson', stage:'Review',      health:'Healthy',  region:'Riyadh' },
+  { company:'Abuilk Cloud',    owner:'Mira Haddad',  stage:'Won',         health:'Healthy',  region:'Riyadh' },
+  { company:'Qarya Telecom',   owner:'Mira Haddad',  stage:'Negotiation', health:'At risk',  region:'Jeddah' },
+  { company:'Wadi Pharma',     owner:'Yousef Rahimi',stage:'Review',      health:'Critical', region:'Riyadh' },
+  { company:'Manar Energy',    owner:'Yousef Rahimi',stage:'Lost',        health:'Critical', region:'Dammam' },
+];
+const stageTone = { Won:'success', Lost:'danger', Negotiation:'blue', Review:'#8B5CF6' };
+function ColumnFilterTable() {
+  const [f, setF] = useState({});                      // key → string (contains) | enum value
+  const distinct = (key) => [...new Set(CF_ROWS.map(r => r[key]))];
+  const rows = CF_ROWS.filter(r => CF_COLS.every(c => {
+    const q = f[c.key]; if (!q) return true;
+    return c.kind === 'enum' ? r[c.key] === q : String(r[c.key]).toLowerCase().includes(q.toLowerCase());
+  }));
+  const GT = CF_COLS.map(c => c.w).join(' ');
+  const set = (k, v) => setF(s => { const n = { ...s }; v ? n[k] = v : delete n[k]; return n; });
+  const active = Object.keys(f).length > 0;
+  return (
+    <div style={{ width:920 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+        <div style={{ fontFamily:'var(--gl-font-display)', fontSize:17, fontWeight:700, color:'var(--gl-fg-1)' }}>Inline column filters</div>
+        <div style={{ fontFamily:'var(--gl-font-mono)', fontSize:12, color: active ? 'var(--gl-blue-500)' : 'var(--gl-fg-3)' }}>
+          {active ? rows.length + ' of ' + CF_ROWS.length + ' deals' : CF_ROWS.length + ' deals'}
+        </div>
+        {active && <button type="button" onClick={() => setF({})} style={{ marginLeft:'auto', background:'none', border:'1px solid var(--gl-border)', borderRadius:'var(--gl-radius-md)', cursor:'pointer', padding:'6px 11px', fontFamily:'var(--gl-font-body)', fontSize:12.5, fontWeight:600, color:'var(--gl-fg-2)' }}>Clear filters</button>}
+      </div>
+      <div style={{ border:'1px solid var(--gl-border-strong)', borderRadius:'var(--gl-radius-md)', overflow:'hidden', background:'var(--gl-surface)' }}>
+        {/* header */}
+        <div style={{ display:'grid', gridTemplateColumns:GT, background:'var(--gl-bg)', borderBottom:'1px solid var(--gl-border-strong)' }}>
+          {CF_COLS.map(c => <div key={c.key} style={{ padding:'10px 12px', fontSize:10, fontWeight:700, letterSpacing:'.05em', textTransform:'uppercase', color:'var(--gl-fg-3)' }}>{c.label}</div>)}
+        </div>
+        {/* the inline filter row */}
+        <div style={{ display:'grid', gridTemplateColumns:GT, background:'var(--gl-bg)', borderBottom:'1px solid var(--gl-border-strong)' }}>
+          {CF_COLS.map(c => (
+            <div key={c.key} style={{ padding:'7px 6px' }}>
+              {c.kind === 'enum' ? (
+                <div style={{ display:'flex', alignItems:'center', height:32, padding:'0 8px', background:'var(--gl-input-bg)', borderRadius:'var(--gl-radius-sm)',
+                  border:'1px solid ' + (f[c.key] ? 'color-mix(in srgb,var(--gl-blue-500) 55%,transparent)' : 'var(--gl-border)') }}>
+                  <select className="fld" value={f[c.key] || ''} onChange={e => set(c.key, e.target.value)} style={{ fontSize:12.5, color: f[c.key] ? 'var(--gl-fg-1)' : 'var(--gl-fg-4)' }}>
+                    <option value="">All</option>
+                    {distinct(c.key).map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                  <Icon name="chevD" size={14} color={f[c.key] ? 'var(--gl-blue-500)' : 'var(--gl-fg-3)'} />
+                </div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', gap:6, height:32, padding:'0 8px', background:'var(--gl-input-bg)', borderRadius:'var(--gl-radius-sm)',
+                  border:'1px solid ' + (f[c.key] ? 'color-mix(in srgb,var(--gl-blue-500) 55%,transparent)' : 'var(--gl-border)') }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={f[c.key] ? 'var(--gl-blue-500)' : 'var(--gl-fg-4)'} strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+                  <input value={f[c.key] || ''} onChange={e => set(c.key, e.target.value)} placeholder="Filter"
+                    style={{ flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontFamily:'var(--gl-font-body)', fontSize:12.5, color:'var(--gl-fg-1)' }} />
+                  {f[c.key] && <button type="button" onClick={() => set(c.key, '')} style={{ background:'none', border:'none', cursor:'pointer', padding:0, display:'flex' }}><Icon name="close" size={13} color="var(--gl-fg-3)" /></button>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        {/* body */}
+        {rows.length === 0
+          ? <div style={{ padding:'30px 0', textAlign:'center', color:'var(--gl-fg-3)', fontSize:13 }}>No rows match</div>
+          : rows.map((r, ri) => (
+          <div key={r.company} style={{ display:'grid', gridTemplateColumns:GT, background: ri % 2 ? 'color-mix(in srgb,var(--gl-fg-1) 2%,transparent)' : 'transparent', borderBottom:'1px solid var(--gl-border)' }}>
+            {CF_COLS.map(c => {
+              const v = r[c.key];
+              const tone = c.tone && c.tone[v];
+              const stColor = c.key === 'stage' ? (stageTone[v]||'').startsWith('#') ? stageTone[v] : 'var(--gl-' + (stageTone[v]==='blue'?'blue':stageTone[v]) + '-500)' : null;
+              return (
+                <div key={c.key} style={{ minHeight:42, padding:'0 12px', display:'flex', alignItems:'center', fontFamily:'var(--gl-font-body)', fontSize:13, color:'var(--gl-fg-1)' }}>
+                  {c.key === 'health'
+                    ? <span style={{ display:'inline-flex', alignItems:'center', gap:6 }}><span style={{ width:8, height:8, borderRadius:2.5, background: tone?'var(--gl-'+tone+'-500)':'var(--gl-fg-4)' }} />{v}</span>
+                    : c.key === 'stage'
+                      ? <span style={{ fontSize:11, fontWeight:700, padding:'2px 9px', borderRadius:999, color:stColor, background:'color-mix(in srgb,'+stColor+' 15%,transparent)' }}>{v}</span>
+                      : v}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize:12.5, color:'var(--gl-fg-3)', lineHeight:1.5, marginTop:10 }}>
+        A control under each column header filters on that column's value — a <strong>contains-search</strong> for text columns, a <strong>value dropdown</strong> for enum columns. They AND together (and on top of any other active filter). In Flutter: <code style={{fontFamily:'var(--gl-font-mono)',fontSize:12}}>ReadableTable(showColumnFilters: true)</code>.
+      </div>
+    </div>
+  );
+}
+
 /* ── the FilterEditingView card ────────────────────────────────── */
 function FilterEditingView() {
   const [tree, setTree] = useState(seed);
@@ -338,6 +437,8 @@ function App() {
         </button>
       </div>
       <FilterEditingView />
+      <div style={{ height:8 }} />
+      <ColumnFilterTable />
     </div>
   );
 }

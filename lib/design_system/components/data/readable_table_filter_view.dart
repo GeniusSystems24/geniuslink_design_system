@@ -172,7 +172,9 @@ class _GroupView<T> extends StatelessWidget {
                 ? _GroupView<T>(
                     controller: controller,
                     group: child,
-                    onChanged: (g) => onChanged(group.withChildAt(i, g)),
+                    // A subgroup that loses its last child removes itself from
+                    // this parent — no empty group cards left dangling.
+                    onChanged: (g) => onChanged(g.isEmpty ? group.withoutChildAt(i) : group.withChildAt(i, g)),
                     depth: depth + 1,
                     filterable: filterable,
                     valueWidth: valueWidth,

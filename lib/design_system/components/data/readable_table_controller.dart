@@ -99,6 +99,7 @@ class ReadableTableController<T> extends ChangeNotifier {
   String _query = '';
   Set<int>? _quickCols; // null = search every column
   ReadableFilterGroup? _filterGroup; // nested tree (FilterEditingView); supersedes _filters when set
+  final Map<int, ReadableFilter> _columnFilters = {}; // inline per-column header filters (ANDed on top)
 
   // Column layout: a visual→logical order list (drag-to-reorder) and per-column
   // width overrides (drag-to-resize), both keyed so selection / sort logic can
@@ -182,10 +183,12 @@ class ReadableTableController<T> extends ChangeNotifier {
   bool get isFiltered =>
       _query.trim().isNotEmpty ||
       (_filterGroup?.isActive ?? false) ||
-      _filters.any((f) => f.enabled && f.isComplete);
+      _filters.any((f) => f.enabled && f.isComplete) ||
+      _columnFilters.values.any((f) => f.isActive);
 
   /// Whether any filter chip or query exists (even if disabled / incomplete).
-  bool get hasFilters => _filters.isNotEmpty || _query.isNotEmpty || (_filterGroup?.isNotEmpty ?? false);
+  bool get hasFilters =>
+      _filters.isNotEmpty || _query.isNotEmpty || (_filterGroup?.isNotEmpty ?? false) || _columnFilters.isNotEmpty;
 
   /// Whether a column can be filtered (we can read a value from it).
   bool isColumnFilterable(int ci) =>
@@ -279,12 +282,56 @@ class ReadableTableController<T> extends ChangeNotifier {
     _recompute();
   }
 
-  /// Drop every filter (flat list + nested tree) and the quick-search.
+  /// Drop every filter (flat list + nested tree + inline column filters) and
+  /// the quick-search.
   void clearFilters() {
-    if (_filters.isEmpty && _query.isEmpty && _filterGroup == null) return;
+    if (_filters.isEmpty && _query.isEmpty && _filterGroup == null && _columnFilters.isEmpty) return;
     _filters.clear();
     _filterGroup = null;
+    _columnFilters.clear();
     _query = '';
+    _recompute();
+  }
+
+  // ── inline per-column filters (the header filter row) ──────────────────────
+  /// The inline filter active on logical column [ci], or null.
+  ReadableFilter? columnFilter(int ci) => _columnFilters[ci];
+
+  /// An unmodifiable view of every inline column filter, keyed by logical index.
+  Map<int, ReadableFilter> get columnFilters => Map.unmodifiable(_columnFilters);
+
+  /// Whether any inline column filter is currently narrowing the rows.
+  bool get hasColumnFilters => _columnFilters.values.any((f) => f.isActive);
+
+  /// Set (or clear) the inline filter on logical column [ci]. Pass null, or a
+  /// filter that isn't [ReadableFilter.isComplete], to clear it. Inline column
+  /// filters AND together and AND on top of the quick-search and the structured
+  /// filters, so the header row narrows whatever is already shown.
+  void setColumnFilter(int ci, ReadableFilter? filter) {
+    if (ci < 0 || ci >= columns.length) return;
+    final existing = _columnFilters[ci];
+    if (filter == null || !filter.isComplete) {
+      if (existing == null) return;
+      _columnFilters.remove(ci);
+    } else {
+      final next = filter.columnIndex == ci ? filter : filter.copyWith(columnIndex: ci);
+      if (existing == next) return;
+      _columnFilters[ci] = next;
+    }
+    _recompute();
+  }
+
+  /// A convenience for the most common header filter: a case-insensitive
+  /// `contains` on column [ci]. Empty [text] clears it.
+  void setColumnSearch(int ci, String text) {
+    final t = text.trim();
+    setColumnFilter(ci, t.isEmpty ? null : ReadableFilter.text(ci, ReadableFilterOp.contains, t));
+  }
+
+  /// Drop every inline column filter (keeps the structured filters + search).
+  void clearColumnFilters() {
+    if (_columnFilters.isEmpty) return;
+    _columnFilters.clear();
     _recompute();
   }
 
@@ -303,6 +350,16 @@ class ReadableTableController<T> extends ChangeNotifier {
         }
       }
       if (!any) return false;
+    }
+    // inline per-column filters — ANDed on top of everything else.
+    if (_columnFilters.isNotEmpty) {
+      for (final entry in _columnFilters.entries) {
+        final ci = entry.key;
+        final f = entry.value;
+        if (!f.isActive) continue;
+        if (ci < 0 || ci >= columns.length) continue;
+        if (!f.test(columns[ci], value)) return false;
+      }
     }
     // structured filtering: the nested tree wins when present, else flat list.
     if (_filterGroup != null && _filterGroup!.isActive) {

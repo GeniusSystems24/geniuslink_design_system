@@ -17,7 +17,8 @@
 // ============================================================
 
 import 'package:flutter/widgets.dart';
-import 'package:geniuslink_design_system/design_system/components/data/readable_table_cells.dart';
+
+import 'readable_table_cells.dart';
 
 /// Horizontal placement of a column's header + cell content.
 enum ReadableAlign { start, center, end }

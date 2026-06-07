@@ -22,6 +22,7 @@ import '../key_directions.dart';
 import 'editable_table_models.dart';
 import 'editable_table_columns.dart';
 import 'editable_table_controller.dart';
+import 'editable_table_combo_editor.dart';
 import 'editable_table_theme.dart';
 
 class EditableTable extends StatefulWidget {
@@ -407,33 +408,6 @@ class _EditableTableState extends State<EditableTable> {
     if (picked != null) {
       c.select(r, col);
       c.writeCell(r, col, picked.toUpperCase());
-    }
-    _gridFocus.requestFocus();
-  }
-
-  // ── combo suggestions (free text + pick) ───────────────────
-  Future<void> _openComboMenu(EditableColumn col) async {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
-    final box = context.findRenderObject() as RenderBox?;
-    if (overlay == null || box == null) return;
-    final origin = box.localToGlobal(const Offset(80, 80), ancestor: overlay);
-    final t = _t;
-    final picked = await showMenu<String>(
-      context: context,
-      color: t.surface,
-      position: RelativeRect.fromLTRB(origin.dx, origin.dy, origin.dx + 1, origin.dy + 1),
-      items: [
-        for (final opt in col.options)
-          PopupMenuItem<String>(
-            value: opt,
-            height: 38,
-            child: Text(opt, style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 13, color: t.fg1)),
-          ),
-      ],
-    );
-    if (picked != null) {
-      _controller.updateDraft(picked);
-      _controller.commit(); // write in place, end edit
     }
     _gridFocus.requestFocus();
   }
@@ -900,6 +874,22 @@ class _EditableTableState extends State<EditableTable> {
   }
 
   Widget _editor(EditableTableThemeData t, EditableColumn col, bool alignEnd) {
+    // Combo columns use the first-party auto-suggest field instead of the plain
+    // text editor + popup menu. It binds to the same draft controller, so the
+    // grid's commit / cancel / navigation flow is unchanged.
+    if (col.type == EditableColumnType.combo) {
+      return EditableComboCellEditor(
+        key: ValueKey('combo-${_controller.selection.row}-${_controller.selection.col}'),
+        column: col,
+        textController: _text,
+        theme: t,
+        alignEnd: alignEnd,
+        onChanged: _controller.updateDraft,
+        onCommit: (dr, dc) => _commitMove(dr, dc),
+        onCancel: _cancel,
+      );
+    }
+
     // Per-kind keyboard + masking.
     final isNumber = col.type == EditableColumnType.number;
     final isDate = col.type == EditableColumnType.date;
@@ -914,14 +904,12 @@ class _EditableTableState extends State<EditableTable> {
         ? const TextInputType.numberWithOptions(decimal: true, signed: true)
         : TextInputType.text;
 
-    // Suffix picker button for date / time / combo.
+    // Suffix picker button for date / time.
     Widget? suffix;
     if (isDate) {
       suffix = _editorSuffix(t, Icons.calendar_today_outlined, 'Pick a date', () => _pickDate(col));
     } else if (isTime) {
       suffix = _editorSuffix(t, Icons.schedule_outlined, 'Pick a time', _pickTime);
-    } else if (col.type == EditableColumnType.combo) {
-      suffix = _editorSuffix(t, Icons.arrow_drop_down_rounded, 'Suggestions', () => _openComboMenu(col));
     }
 
     return CallbackShortcuts(
