@@ -6,7 +6,7 @@
 //   • Model      — editable_table_models.dart      (columns, cell ref, format)
 //   • Controller — editable_table_controller.dart  (ChangeNotifier + scope)
 //   • View       — editable_table.dart             (EditableTable widget)
-//   • Combo      — editable_table_combo_editor.dart (smart_auto_suggest_box cell)
+//   • Combo      — editable_table_combo_editor.dart (native AutoSuggestionsBox cell)
 //   • Theme      — editable_table_theme.dart        (ThemeExtension, dark/light)
 // ============================================================
 

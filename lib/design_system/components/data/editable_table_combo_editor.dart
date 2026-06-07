@@ -2,41 +2,46 @@
 // EditableTable — COMBO CELL EDITOR.
 // ------------------------------------------------------------
 // The inline editor for [EditableColumnType.combo] columns (built by
-// `ComboBoxColumn`). It replaces the plain text field + popup-menu suffix with
-// the first-party **smart_auto_suggest_box** package (publisher: GeniusSystems24,
-// same as this design system), giving combo cells a real auto-suggest field:
+// `ComboBoxColumn`). It embeds the design-system-native **AutoSuggestionsBox**
+// (no third-party dependency) in "bare" mode so it sits flush in the cell:
 // type to filter, ↑ ↓ to move through matches, Enter / click to pick, or just
 // type a free value and commit.
 //
+// When the column supplies `fetchOptions`, the editor uses a *hybrid* source —
+// the local `options` show instantly and, when the query has no (or too few)
+// local matches, more are loaded asynchronously and merged in. Otherwise it's a
+// plain static list.
+//
 // It is a *thin bridge*, not a new editing model: the table still owns the edit
-// session (draft + commit + cursor) on its `EditableTableController`. This
-// widget binds the table's existing draft [TextEditingController] to the
-// suggest box (via the package's supported `controller:` parameter) so:
+// session (draft + commit + cursor) on its `EditableTableController`. The box's
+// controller is bound to the table's existing draft [TextEditingController] so:
 //   • the seeded draft shows immediately,
 //   • every keystroke flows back through [onChanged] → controller.updateDraft,
 //   • picking a suggestion calls [onChanged] + [onCommit] (move down, like Enter),
-//   • Esc / Tab / Enter fall through to [onCancel] / [onCommit].
+//   • free-text Enter commits + moves down; Esc cancels; Tab moves sideways.
 // The grid's commit / cancel / navigation logic is untouched.
 //
 //   File: lib/design_system/components/data/editable_table_combo_editor.dart
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:smart_auto_suggest_box/smart_auto_suggest_box.dart';
+import '../forms/auto_suggestions_box.dart';
+import '../forms/auto_suggestions_box_controller.dart';
+import '../forms/auto_suggestions_box_models.dart';
+import '../forms/auto_suggestions_box_theme.dart';
+import 'editable_table_columns.dart';
 import 'editable_table_models.dart';
 import 'editable_table_theme.dart';
 
-/// Inline auto-suggest editor for a combo cell. Stateless-feeling from the
-/// table's perspective: it reads/writes the shared draft controller and reports
-/// intent through callbacks.
+/// Inline auto-suggest editor for a combo cell. Reads/writes the shared draft
+/// controller and reports intent through callbacks.
 class EditableComboCellEditor extends StatefulWidget {
-  /// The combo column being edited (its `options` seed the suggestions).
+  /// The combo column being edited (its `options` / `fetchOptions` drive the box).
   final EditableColumn column;
 
   /// The table's live draft controller — already seeded with the cell's value
-  /// by the time this editor mounts. Bound to the suggest box so typed text and
-  /// picked suggestions both land here; never disposed by this widget.
+  /// by the time this editor mounts. Bound to the box so typed text and picked
+  /// suggestions both land here; never disposed by this widget.
   final TextEditingController textController;
 
   /// Right-align the field (numeric-ish combos); start-aligned by default.
@@ -70,94 +75,94 @@ class EditableComboCellEditor extends StatefulWidget {
 }
 
 class _EditableComboCellEditorState extends State<EditableComboCellEditor> {
-  late final SmartAutoSuggestDataSource<String> _dataSource;
-  String _lastEmitted = '';
+  late final AutoSuggestionsBoxController<String> _box;
 
   @override
   void initState() {
     super.initState();
-    _lastEmitted = widget.textController.text;
-    _dataSource = SmartAutoSuggestDataSource<String>(
-      itemBuilder: (context, value) => SmartAutoSuggestItem<String>(value: value, label: value),
-      initialList: (context) => widget.column.options,
+    _box = AutoSuggestionsBoxController<String>(
+      source: _buildSource(),
+      textController: widget.textController, // share the table's draft text
+      allowFreeText: true,
     );
-    // Mirror every text change back into the table's draft.
-    widget.textController.addListener(_emit);
+  }
+
+  AutoSuggestionsSource<String> _buildSource() {
+    final col = widget.column;
+    final options = col.options;
+    final items = [for (final o in options) AutoSuggestion<String>(value: o, label: o)];
+    if (col is ComboBoxColumn && col.fetchOptions != null) {
+      // Hybrid: local first, then load more from the column's async loader.
+      return AutoSuggestionsSource<String>.hybrid(
+        initialItems: items,
+        remoteThreshold: col.remoteThreshold,
+        remoteMinChars: col.remoteMinChars,
+        fetch: (q) async {
+          final more = await col.fetchOptions!(q);
+          return [for (final o in more) AutoSuggestion<String>(value: o, label: o)];
+        },
+      );
+    }
+    return AutoSuggestionsSource<String>.list(items);
   }
 
   @override
   void dispose() {
-    widget.textController.removeListener(_emit);
-    _dataSource.dispose();
+    // The text controller is owned by the table — only dispose our controller's
+    // own machinery (it won't dispose the shared text controller).
+    _box.dispose();
     super.dispose();
   }
 
-  void _emit() {
-    final v = widget.textController.text;
-    if (v == _lastEmitted) return;
-    _lastEmitted = v;
-    widget.onChanged(v);
-  }
-
-  // Build a package theme that matches our cell editor / overlay surfaces.
-  SmartAutoSuggestTheme _suggestTheme() {
+  /// Map the table theme onto the box's ThemeExtension so the overlay matches.
+  AutoSuggestionsBoxThemeData _boxTheme() {
     final t = widget.theme;
     final dark = t.bg.computeLuminance() < 0.5;
-    final base = dark ? SmartAutoSuggestTheme.dark() : SmartAutoSuggestTheme.light();
+    final base = dark ? AutoSuggestionsBoxThemeData.dark : AutoSuggestionsBoxThemeData.light;
     return base.copyWith(
-      overlayBorderRadius: BorderRadius.circular(EditableTableThemeData.radiusMd),
-      selectedTileColor: t.selectionFill(0.14),
-    );
-  }
-
-  InputDecoration _decoration() {
-    final t = widget.theme;
-    return InputDecoration(
-      isDense: true,
-      filled: true,
-      fillColor: t.surface,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 9, vertical: 9),
-      border: InputBorder.none,
-      enabledBorder: InputBorder.none,
-      focusedBorder: InputBorder.none,
-      hintText: widget.column.options.isEmpty ? null : 'Type or pick…',
-      hintStyle: TextStyle(color: t.fg4, fontSize: 12.5),
+      overlayBg: t.surface,
+      fieldBg: t.surface,
+      fieldBgFocus: t.surface,
+      hover: t.selectionFill(0.14),
+      border: t.border,
+      borderFocus: EditableTableThemeData.accent,
+      fg1: t.fg1,
+      fg2: t.fg3,
+      fg3: t.fg4,
+      groupFg: t.fg4,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final t = widget.theme;
-    // Keyboard fallbacks: the box handles ↑↓ + Enter/Esc for its overlay; these
-    // catch the cases where the overlay is closed so the grid still feels native.
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): widget.onCancel,
-        const SingleActivator(LogicalKeyboardKey.tab): () => widget.onCommit(0, 1),
-        const SingleActivator(LogicalKeyboardKey.tab, shift: true): () => widget.onCommit(0, -1),
-      },
-      child: DefaultTextStyle.merge(
-        style: TextStyle(
+    return Theme(
+      data: Theme.of(context).copyWith(extensions: [_boxTheme()]),
+      child: AutoSuggestionsBox<String>(
+        controller: _box,
+        bare: true,
+        autofocus: true,
+        scrollOnFocus: false, // the table owns cell scrolling
+        fieldHeight: EditableTableThemeData.rowHeight,
+        maxVisibleRows: 7,
+        clearButton: false,
+        hintText: widget.column.options.isEmpty ? null : 'Type or pick…',
+        textStyle: TextStyle(
           fontFamily: widget.column.mono ? EditableTableThemeData.monoFont : EditableTableThemeData.bodyFont,
           fontSize: 13,
+          height: 1.2,
           color: t.fg1,
         ),
-        // ignore: deprecated_member_use — `controller:` is the supported bridge to
-        // the table's draft text; `smartController` only exposes selection, not
-        // the raw typed value the grid commits.
-        child: SmartAutoSuggestBox<String>(
-          dataSource: _dataSource,
-          controller: widget.textController,
-          theme: _suggestTheme(),
-          decoration: _decoration(),
-          onSelected: (item) {
-            if (item == null) return;
-            widget.onChanged(item.value);
-            _lastEmitted = item.value;
-            // Pick behaves like Enter: commit and step down to the next row.
-            widget.onCommit(1, 0);
-          },
-        ),
+        onChanged: widget.onChanged,
+        onSelected: (s) {
+          widget.onChanged(s.value);
+          // Pick behaves like Enter: commit and step down to the next row.
+          widget.onCommit(1, 0);
+        },
+        onSubmitted: (_) => widget.onCommit(1, 0), // free-text Enter
+        onEscape: widget.onCancel,
+        onTabNext: () => widget.onCommit(0, 1),
+        onTabPrev: () => widget.onCommit(0, -1),
       ),
     );
   }

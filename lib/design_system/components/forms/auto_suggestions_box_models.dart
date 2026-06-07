@@ -135,6 +135,24 @@ abstract class AutoSuggestionsSource<T> {
   factory AutoSuggestionsSource.async(
     Future<List<AutoSuggestion<T>>> Function(String query) fetch,
   ) = _AsyncSource<T>;
+
+  /// Hybrid source: filter the in-memory [initialItems] first and, when the
+  /// local matches are insufficient, fall back to an async [fetch] (remote
+  /// search) — merging the two, de-duplicated by value.
+  ///
+  /// `fetch` only fires when the local match count is below [remoteThreshold]
+  /// (default 1 → fetch whenever nothing matches locally) AND the query is at
+  /// least [remoteMinChars] long. Remote results are appended after the local
+  /// ones. This is the "start with what we have, load more when we need it"
+  /// behaviour: instant for known values, network-backed for the long tail.
+  factory AutoSuggestionsSource.hybrid({
+    required List<AutoSuggestion<T>> initialItems,
+    required Future<List<AutoSuggestion<T>>> Function(String query) fetch,
+    AutoSuggestionMatch match,
+    int remoteThreshold,
+    int remoteMinChars,
+    bool caseSensitive,
+  }) = _HybridSource<T>;
 }
 
 /// Convenience builder for a plain `List<String>` (value == label).
@@ -187,6 +205,59 @@ class _AsyncSource<T> extends AutoSuggestionsSource<T> {
   bool get isAsync => true;
   @override
   Future<List<AutoSuggestion<T>>> query(String query) => fetch(query);
+}
+
+/// Local-first source that loads more from [fetch] only when the in-memory set
+/// can't satisfy the query (see [AutoSuggestionsSource.hybrid]).
+class _HybridSource<T> extends AutoSuggestionsSource<T> {
+  final List<AutoSuggestion<T>> initialItems;
+  final Future<List<AutoSuggestion<T>>> Function(String query) fetch;
+  final AutoSuggestionMatch match;
+  final int remoteThreshold;
+  final int remoteMinChars;
+  final bool caseSensitive;
+
+  const _HybridSource({
+    required this.initialItems,
+    required this.fetch,
+    this.match = AutoSuggestionMatch.contains,
+    this.remoteThreshold = 1,
+    this.remoteMinChars = 1,
+    this.caseSensitive = false,
+  });
+
+  @override
+  bool get isAsync => true;
+
+  List<AutoSuggestion<T>> _local(String query) {
+    final q = caseSensitive ? query.trim() : query.trim().toLowerCase();
+    if (q.isEmpty) return List<AutoSuggestion<T>>.of(initialItems);
+    final out = <AutoSuggestion<T>>[];
+    for (final s in initialItems) {
+      final hay = caseSensitive ? ([s.label, ...s.keywords].join(' ')) : s.haystack;
+      if (AutoSuggestionMatching.test(hay, q, match)) out.add(s);
+    }
+    return out;
+  }
+
+  @override
+  FutureOr<List<AutoSuggestion<T>>> query(String query) {
+    final local = _local(query);
+    final q = query.trim();
+    // Enough local hits, or query too short to bother the network → stay local.
+    if (local.length >= remoteThreshold || q.length < remoteMinChars) {
+      return local;
+    }
+    // Otherwise load more and merge (local first, de-duped by value).
+    return fetch(query).then((remote) {
+      final seen = <T>{for (final s in local) s.value};
+      final merged = <AutoSuggestion<T>>[...local];
+      for (final r in remote) {
+        if (seen.add(r.value)) merged.add(r);
+      }
+      return merged;
+    }).catchError((Object _) => local); // network failed → degrade to local
+  }
 }
 
 /// Pure matching + highlight helpers (shared by sources and the view).

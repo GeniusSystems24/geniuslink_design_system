@@ -113,11 +113,31 @@ class TimeColumn extends EditableColumn {
 
 /// A combo box — a free-text field with an attached suggestions dropdown.
 /// The user may type any value OR pick one of [options].
+///
+/// When [fetchOptions] is supplied, the cell editor uses a *hybrid* source: it
+/// shows the local [options] instantly and, when the query has no (or too few)
+/// local matches, loads more from [fetchOptions] (a remote/db search). Use
+/// [remoteThreshold] to tune when the network is consulted (default: only when
+/// nothing matches locally) and [remoteMinChars] to require a few characters
+/// first.
 class ComboBoxColumn extends EditableColumn {
+  /// Optional async loader. Receives the current query, returns matching values.
+  /// Triggers the hybrid (local-first, load-more) behaviour when set.
+  final Future<List<String>> Function(String query)? fetchOptions;
+
+  /// Consult [fetchOptions] only when local matches are fewer than this.
+  final int remoteThreshold;
+
+  /// Require at least this many typed characters before hitting [fetchOptions].
+  final int remoteMinChars;
+
   const ComboBoxColumn({
     required super.key,
     required super.label,
-    required List<String> options,
+    List<String> options = const [],
+    this.fetchOptions,
+    this.remoteThreshold = 1,
+    this.remoteMinChars = 1,
     super.width = 180,
     super.align,
     super.mono = false,
@@ -126,6 +146,9 @@ class ComboBoxColumn extends EditableColumn {
     super.cellValidator,
     super.cellBuilder,
   }) : super(type: EditableColumnType.combo, options: options);
+
+  /// Whether this combo loads extra options asynchronously.
+  bool get isAsync => fetchOptions != null;
 }
 
 /// A strict dropdown — the value must be one of [options] (no free typing).

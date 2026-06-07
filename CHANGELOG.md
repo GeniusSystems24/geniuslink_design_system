@@ -5,6 +5,61 @@ This project adheres to [Semantic Versioning](https://semver.org).
 
 ---
 
+## [2.8.0]
+
+### ✨ Added — `AutoSuggestionsBox` (native auto-suggest field)
+
+- **New component** `AutoSuggestionsBox<T>` — a typed, themeable auto-suggest /
+  combo text field, built MVC on the GeniusLink tokens (no third-party
+  dependency). Type to filter, ↑ ↓ to move, Enter / click to pick, Esc to
+  dismiss; free text commits as-is when allowed. The matched substring of each
+  row is highlighted (`AutoSuggestionsHighlight`). Import via
+  `geniuslink_auto_suggestions_box.dart`.
+  - **Sources**: `AutoSuggestionsSource.list` (static, local), `.async`
+    (debounced, race-safe remote), and **`.hybrid`** — local-first with an
+    async *load-more* fallback. `StringSuggestions.source(['a','b'])` for plain
+    strings.
+  - **Match strategies**: `contains` · `prefix` · `words` · `fuzzy`, each with
+    matching highlight spans.
+  - **Keyboard**: `↑ ↓` move through matches — the highlighted row is kept
+    scrolled into view inside the overlay (real geometry, so group headers and
+    variable heights are handled); `Enter` / click picks, `Esc` dismisses.
+  - **Rich rows**: icon, description, grouped section headers, keyword haystack,
+    disabled rows; custom `itemBuilder` / `emptyBuilder` / `loadingBuilder`
+    (the loading builder shows in the overlay while an async source fetches and
+    has no results yet).
+  - **MVC**: `AutoSuggestionsBoxController<T>` (query / results / highlight /
+    select), `AutoSuggestionsBoxThemeData` (ThemeExtension, dark/light), view
+    `AutoSuggestionsBox`. Files under `lib/design_system/components/forms/`.
+  - **Scroll-on-focus**: focusing the field scrolls it into view inside the
+    nearest scrollable ancestor (`Scrollable.ensureVisible`) so a box low in a
+    long form isn't left under the fold / keyboard. Opt out with
+    `scrollOnFocus: false` (the EditableTable cell editor does, since the grid
+    manages its own scrolling).
+  - New demo `example/lib/auto_suggestions_box_demo.dart` (static / grouped /
+    async / hybrid + match-strategy switcher) and a launcher card.
+
+### 🔄 Changed — `EditableTable` combo cells now use the native `AutoSuggestionsBox`
+
+- **`ComboBoxColumn` cells are now edited with `AutoSuggestionsBox`** instead of
+  the `smart_auto_suggest_box` package. `EditableComboCellEditor` was rewritten
+  to embed the box in `bare` mode and bind it to the table's draft controller —
+  the grid's commit / cancel / navigation flow is unchanged.
+- **Hybrid options** — `ComboBoxColumn` gains `fetchOptions` (async loader) plus
+  `remoteThreshold` / `remoteMinChars`: the local `options` show instantly and,
+  when the query has no (or too few) local matches, more are loaded and merged.
+- **Dependency dropped** — `smart_auto_suggest_box` is removed from the package
+  and example. No localization delegates are required for combo cells anymore.
+- The `bare`, `fieldHeight`, `textStyle`, `onEscape`, `onTabNext` / `onTabPrev`
+  knobs were added to `AutoSuggestionsBox` to support embedding in a cell.
+
+> **Migration** — no API change to `ComboBoxColumn` for existing call sites
+> (`options:` still works). `smart_auto_suggest_box` can be removed from any app
+> that only used it for these cells. The 2.7.0 package-based combo editor is
+> superseded by this native one.
+
+---
+
 ## [2.7.0]
 
 ### ✨ Changed — `EditableTable` combo cells now use `smart_auto_suggest_box`

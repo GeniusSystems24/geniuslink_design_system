@@ -17,7 +17,7 @@ Both tables now ship **resizable + reorderable columns**, **typed `ReadableTable
 
 ## Features
 
-- 🧩 **Five components, one kit** — `BrowserStyleTabBar`, `EditableTable`, `ReadableTable`, `Tree`, `NavigationSidebar`.
+- 🧩 **Six components, one kit** — `BrowserStyleTabBar`, `EditableTable`, `ReadableTable`, `Tree`, `NavigationSidebar`, `AutoSuggestionsBox`.
 - 🎨 **Self-contained theming** — each component carries its own `ThemeExtension` with ready-made `.light` / `.dark` presets. No global token file required.
 - 🏛️ **Strict MVC** — immutable models, a `ChangeNotifier` controller as the single source of truth, and a thin view. Drive any component from outside, or from its own page content via an `InheritedNotifier` scope.
 - ⌨️ **Full keyboard control** — spreadsheet navigation, inline editing, copy/cut/paste, undo/redo, and an in-widget shortcuts reference.
@@ -26,7 +26,7 @@ Both tables now ship **resizable + reorderable columns**, **typed `ReadableTable
 - ✅ **Tree single / multi-select** — Shift-range, Ctrl/⌘-toggle, tri-state checkboxes; group add / remove.
 - ♻️ **State-preserving tabs** — every tab page is built once and kept alive, so scroll / input / controllers survive switching.
 - 🌍 **RTL + dark** everywhere — mirrors via `Directionality` + `EdgeInsetsDirectional`, and arrow keys follow the **visual** direction.
-- 🔌 **Lean dependencies** — pure Flutter + Material, plus the first-party [`smart_auto_suggest_box`](https://pub.dev/packages/smart_auto_suggest_box) (GeniusSystems24) powering `EditableTable` combo cells.
+- 🔌 **Zero third-party dependencies** — pure Flutter + Material.
 
 ## Install
 
@@ -49,6 +49,7 @@ import 'package:geniuslink_design_system/geniuslink_editable_table.dart';
 import 'package:geniuslink_design_system/geniuslink_readable_table.dart';
 import 'package:geniuslink_design_system/geniuslink_tree.dart';
 import 'package:geniuslink_design_system/geniuslink_navigation_sidebar.dart';
+import 'package:geniuslink_design_system/geniuslink_auto_suggestions_box.dart';
 ```
 
 Register the theme extensions you use (each falls back to its `.dark` preset if absent):
@@ -122,7 +123,7 @@ Each kind is an ergonomic subclass of `EditableColumn` — pass the right one; t
 | `NumericColumn` | inline numeric (min/max/decimals) | grouped number `1,234.00` |
 | `DateColumn` | masked `YYYY-MM-DD` + 📅 calendar button | ISO date |
 | `TimeColumn` | masked `HH:mm` + 🕑 clock button | 24h time |
-| `ComboBoxColumn` | auto-suggest field (`smart_auto_suggest_box`) — type to filter, or free text | any string |
+| `ComboBoxColumn` | auto-suggest field (native `AutoSuggestionsBox`) — type to filter, or free text | any string |
 | `DropdownColumn` | popup menu (strict) | one of `options` |
 | `ColorPickerColumn` | swatch menu | `#RRGGBB` hex |
 | `ReadonlyColumn` | — (never editable) | display only |
@@ -162,28 +163,27 @@ final columns = <EditableColumn>[
 
 #### Combo cells (auto-suggest)
 
-`ComboBoxColumn` cells are edited with the first-party
-[`smart_auto_suggest_box`](https://pub.dev/packages/smart_auto_suggest_box)
-package (publisher: GeniusSystems24): click a cell and type to filter the
-`options` (matched text is highlighted, ↑ ↓ to move, Enter / click to pick), or
-type any free value and Tab / Enter to commit it. The overlay is themed from
-`EditableTableThemeData` and is RTL-aware. The grid still owns the edit
-session — `EditableComboCellEditor` just bridges the suggest box to the
-controller's draft.
+`ComboBoxColumn` cells are edited with the design-system-native
+[`AutoSuggestionsBox`](#autosuggestionsbox) (no third-party dependency): click a
+cell and type to filter the `options` (matched text is highlighted, ↑ ↓ to move,
+Enter / click to pick), or type any free value and Tab / Enter to commit it. The
+overlay is themed from `EditableTableThemeData` and is RTL-aware. The grid still
+owns the edit session — `EditableComboCellEditor` just binds `AutoSuggestionsBox`
+to the controller's draft.
 
-For a fully-localized overlay, register the package delegate on your `MaterialApp`:
+**Hybrid (local + async) options.** Pass `fetchOptions` to load more values on
+demand: the local `options` show instantly and, when the query has no (or too
+few) local matches, the async loader is consulted and its results merged in.
 
 ```dart
-MaterialApp(
-  localizationsDelegates: const [
-    SmartAutoSuggestBoxLocalizations.delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-  ],
-  supportedLocales: const [Locale('en'), Locale('ar')],
-  // …
-);
+ComboBoxColumn(
+  key: 'vendor',
+  label: 'Vendor',
+  options: ['Acme Corp', 'Globex', 'Initech'],   // shown instantly
+  fetchOptions: (q) => api.searchVendors(q),       // loaded when needed
+  remoteMinChars: 1,                               // wait for ≥ 1 char
+  remoteThreshold: 1,                              // fetch only when 0 local hits
+)
 ```
 
 See `example/lib/editable_table/combo_demo.dart` for a runnable demo.
@@ -898,6 +898,49 @@ Badges carry a tone — `NavBadge('Live', tone: NavBadgeTone.success)` — drawn
 
 ---
 
+## 6 · AutoSuggestionsBox
+
+A typed, themeable **auto-suggest / combo field** — type to filter, `↑ ↓` to move, `Enter` / click to pick, `Esc` to dismiss; free text commits as-is when allowed. The matched substring of every row is highlighted. Built MVC (`AutoSuggestionsBoxController` · `AutoSuggestionsBoxThemeData` · `AutoSuggestionsBox`) with no third-party dependency. It also powers `EditableTable`'s combo cells.
+
+```dart
+// 1 · static list of plain strings
+AutoSuggestionsBox<String>(
+  source: StringSuggestions.source(['Apple', 'Banana', 'Cherry']),
+  hintText: 'Search a fruit…',
+  onSelected: (s) => print(s.value),
+)
+
+// 2 · rich, grouped suggestions (icon + description + section headers)
+AutoSuggestionsBox<String>(
+  items: [
+    AutoSuggestion(value: '1000', label: 'Cash on hand',
+        description: '1000 · Asset', icon: Icons.payments_outlined, group: 'Assets'),
+    AutoSuggestion(value: '4000', label: 'Sales revenue',
+        description: '4000 · Income', icon: Icons.trending_up_rounded, group: 'Income',
+        keywords: ['turnover']),
+  ],
+  onSelected: (s) => print(s.value),
+)
+```
+
+**Sources.** `AutoSuggestionsSource.list(items, match: …)` (static, local), `.async(fetch)` (debounced, race-safe remote), and **`.hybrid(initialItems:, fetch:)`** — local-first with an async *load-more* fallback (the local set shows instantly; the network is consulted only when local matches fall below `remoteThreshold`).
+
+```dart
+AutoSuggestionsBox<City>(
+  source: AutoSuggestionsSource.hybrid(
+    initialItems: recentCities,                 // instant
+    fetch: (q) => api.searchCities(q),           // loaded on demand, merged in
+    remoteMinChars: 2,
+  ),
+  hintText: 'Search a city…',
+  onSelected: (s) => select(s.value),
+)
+```
+
+**Match strategies** — `contains` · `prefix` · `words` · `fuzzy` (each with matching highlight spans). **Custom overlay** — `itemBuilder`, `emptyBuilder` and `loadingBuilder` override the row, no-match and async-loading states. **Scroll-on-focus** — focusing the field brings it into view inside the nearest scrollable ancestor (toggle with `scrollOnFocus`). **Embedding** — `bare: true` drops the border/fill so the box sits flush in a host surface (how `EditableTable` cells use it); `onEscape` / `onTabNext` / `onTabPrev` let the host wire keyboard commits. See `example/lib/auto_suggestions_box_demo.dart`.
+
+---
+
 ## Theming
 
 Every component is self-contained: all of its surfaces live in one `ThemeExtension` with `.light` / `.dark` presets (lerped on theme change). Instance fields are the swappable surfaces (`bg / surface / hover / border / fg1..fg4`); static consts are the brand constants (`accent` + semantic palette, font families `Manrope` / `Inter` / `JetBrainsMono`, radii, shadows, motion).
@@ -926,6 +969,7 @@ lib/
 ├── geniuslink_readable_table.dart       · ReadableTable barrel (shares the editable theme)
 ├── geniuslink_tree.dart                 · Tree barrel
 ├── geniuslink_navigation_sidebar.dart   · NavigationSidebar barrel
+├── geniuslink_auto_suggestions_box.dart · AutoSuggestionsBox barrel
 └── design_system/components/
     ├── data/
     │   ├── editable_table_models.dart        Model — columns, cell ref, formatters
@@ -933,7 +977,7 @@ lib/
     │   ├── editable_table_controller.dart    Controller — ChangeNotifier + scope
     │   ├── editable_table_theme.dart         Theme  — ThemeExtension (Editable + Readable)
     │   ├── editable_table.dart               View   — EditableTable widget
-    │   ├── editable_table_combo_editor.dart  View   — ComboBoxColumn editor (smart_auto_suggest_box)
+    │   ├── editable_table_combo_editor.dart  View   — ComboBoxColumn editor (native AutoSuggestionsBox)
     │   ├── readable_table_models.dart          Model  — ReadableColumn<T>, cell, enums
     │   ├── readable_table_filter.dart          Model  — ReadableFilter, group tree, ops, catalog
     │   ├── readable_table_controller.dart      Controller — ChangeNotifier + scope (+ filtering)
@@ -941,9 +985,14 @@ lib/
     │   ├── readable_table_filter_bar.dart      View   — ReadableFilterBar<T> (flat chips)
     │   ├── readable_table_filter_view.dart     View   — ReadableFilterEditingView<T> (nested)
     │   └── tree_*.dart                        Tree — model · controller · theme · view
-    └── navigation/
-        ├── browser_style_tab_bar*.dart        BrowserStyleTabBar — MVC + overlays + pages
-        └── navigation_sidebar_*.dart          NavigationSidebar — model · controller · theme · view
+    ├── navigation/
+    │   ├── browser_style_tab_bar*.dart        BrowserStyleTabBar — MVC + overlays + pages
+    │   └── navigation_sidebar_*.dart          NavigationSidebar — model · controller · theme · view
+    └── forms/
+        ├── auto_suggestions_box_models.dart    Model — AutoSuggestion<T>, source (list/async/hybrid), match
+        ├── auto_suggestions_box_theme.dart     Theme — ThemeExtension (dark/light)
+        ├── auto_suggestions_box_controller.dart Controller — query · results · highlight · select
+        └── auto_suggestions_box.dart           View  — AutoSuggestionsBox<T> + highlight
 ```
 
 Each component follows **Model → Controller → View → Theme**: immutable data, a `ChangeNotifier` as the single source of truth, a thin view that forwards every gesture/keystroke, and a `ThemeExtension`. Controllers are exposed to descendant page content via an `InheritedNotifier` scope, so any child can drive the component.

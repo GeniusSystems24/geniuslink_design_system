@@ -1,14 +1,13 @@
 // ============================================================
 // EditableTable — COMBO column demo (standalone).
-// Shows ComboBoxColumn cells backed by the first-party
-// `smart_auto_suggest_box` package: click a Category / Unit / Tag cell, then
-// type to filter the suggestions, ↑ ↓ to move, Enter / click to pick — or type
-// a free value and press Tab / Enter to commit it as-is.
+// Shows ComboBoxColumn cells backed by the design-system-native
+// AutoSuggestionsBox (no third-party dependency): click a Category / Unit / Tag
+// cell, then type to filter, ↑ ↓ to move, Enter / click to pick — or type a free
+// value and press Tab / Enter to commit it as-is.
 //
-// Note the MaterialApp wiring: `SmartAutoSuggestBoxLocalizations.delegate` +
-// `GlobalMaterialLocalizations.delegate` are added so the suggest overlay is
-// fully localized (EN / AR). This is the recommended setup for any app that
-// hosts EditableTable combo columns.
+// The Vendor column is a HYBRID combo: it shows a few local vendors instantly
+// and, when the typed query has no local match, loads more from an async
+// `fetchOptions` (a fake remote search) and merges them in.
 //
 //   Run standalone:
 //     cd geniuslink_design_system_flutter/example
@@ -18,8 +17,6 @@
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:smart_auto_suggest_box/smart_auto_suggest_box.dart';
 import 'package:geniuslink_design_system/geniuslink_editable_table.dart';
 
 void main() => runApp(const ComboDemoApp());
@@ -28,20 +25,10 @@ class ComboDemoApp extends StatelessWidget {
   const ComboDemoApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'EditableTable · Combo columns',
       debugShowCheckedModeBanner: false,
-      // The suggest box ships its own localizations — register the delegate
-      // (plus the Material/Widgets globals) so the overlay reads correctly in
-      // every supported locale.
-      localizationsDelegates: const [
-        SmartAutoSuggestBoxLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('en'), Locale('ar')],
-      home: const ComboDemo(),
+      home: ComboDemo(),
     );
   }
 }
@@ -64,20 +51,43 @@ class _ComboDemoState extends State<ComboDemo> {
   static const _units = ['each', 'box', 'kg', 'litre', 'hour', 'day', 'month', 'service'];
   static const _tags = ['urgent', 'recurring', 'capex', 'opex', 'billable', 'internal', 'review'];
 
+  // Hybrid Vendor column: a few known vendors are local; everything else is
+  // "loaded" from this fake remote directory when the query has no local hit.
+  static const _localVendors = ['Acme Corp', 'Globex', 'Initech'];
+  static const _remoteVendors = [
+    'Soylent Industries', 'Umbrella Logistics', 'Stark Supplies', 'Wayne Enterprises',
+    'Wonka Foods', 'Cyberdyne Systems', 'Tyrell Corp', 'Hooli', 'Pied Piper',
+    'Massive Dynamic', 'Oscorp', 'Nakatomi Trading', 'Gekko & Co', 'Vandelay Imports',
+  ];
+
+  Future<List<String>> _fetchVendors(String query) async {
+    await Future<void>.delayed(const Duration(milliseconds: 450)); // pretend network
+    final q = query.trim().toLowerCase();
+    return _remoteVendors.where((v) => v.toLowerCase().contains(q)).toList();
+  }
+
   late final List<EditableColumn> _columns = [
-    const EditableColumn(key: 'item', label: 'Item', width: 200, required: true),
-    ComboBoxColumn(key: 'category', label: 'Category', options: _categories, width: 190),
-    ComboBoxColumn(key: 'unit', label: 'Unit', options: _units, width: 150),
-    NumericColumn(key: 'qty', label: 'Qty', decimals: 0, width: 100),
-    ComboBoxColumn(key: 'tag', label: 'Tag', options: _tags, width: 160),
+    const EditableColumn(key: 'item', label: 'Item', width: 180, required: true),
+    ComboBoxColumn(key: 'category', label: 'Category', options: _categories, width: 170),
+    ComboBoxColumn(key: 'unit', label: 'Unit', options: _units, width: 130),
+    NumericColumn(key: 'qty', label: 'Qty', decimals: 0, width: 90),
+    ComboBoxColumn(key: 'tag', label: 'Tag', options: _tags, width: 140),
+    ComboBoxColumn(
+      key: 'vendor',
+      label: 'Vendor (hybrid)',
+      options: _localVendors,
+      fetchOptions: _fetchVendors,
+      remoteMinChars: 1,
+      width: 200,
+    ),
   ];
 
   late final List<EditableRow> _rows = [
-    {'item': 'Cloud hosting', 'category': 'Operating expense', 'unit': 'month', 'qty': '12', 'tag': 'recurring'},
-    {'item': 'Steel sheets', 'category': 'Cost of sales', 'unit': 'kg', 'qty': '480', 'tag': 'capex'},
-    {'item': 'Consultancy', 'category': '', 'unit': 'hour', 'qty': '40', 'tag': 'billable'},
-    {'item': 'Office rent', 'category': 'Operating expense', 'unit': 'month', 'qty': '1', 'tag': ''},
-    {'item': 'Ad campaign', 'category': 'Marketing', 'unit': 'service', 'qty': '3', 'tag': 'review'},
+    {'item': 'Cloud hosting', 'category': 'Operating expense', 'unit': 'month', 'qty': '12', 'tag': 'recurring', 'vendor': 'Globex'},
+    {'item': 'Steel sheets', 'category': 'Cost of sales', 'unit': 'kg', 'qty': '480', 'tag': 'capex', 'vendor': 'Acme Corp'},
+    {'item': 'Consultancy', 'category': '', 'unit': 'hour', 'qty': '40', 'tag': 'billable', 'vendor': ''},
+    {'item': 'Office rent', 'category': 'Operating expense', 'unit': 'month', 'qty': '1', 'tag': '', 'vendor': ''},
+    {'item': 'Ad campaign', 'category': 'Marketing', 'unit': 'service', 'qty': '3', 'tag': 'review', 'vendor': 'Initech'},
   ];
 
   @override
@@ -116,9 +126,10 @@ class _ComboDemoState extends State<ComboDemo> {
                                   style: TextStyle(fontFamily: EditableTableThemeData.displayFont, fontSize: 30, fontWeight: FontWeight.w800, letterSpacing: -0.5, color: t.fg1)),
                               const SizedBox(height: 8),
                               Text(
-                                'The Category, Unit and Tag columns are ComboBoxColumn cells. Click one and start '
-                                'typing: the smart_auto_suggest_box overlay filters as you type — ↑ ↓ to move, Enter or '
-                                'click to pick, or type a free value and Tab / Enter to commit it.',
+                                'Category, Unit, Tag and Vendor are ComboBoxColumn cells backed by the native '
+                                'AutoSuggestionsBox. Click one and type: matches filter live — ↑ ↓ to move, Enter or '
+                                'click to pick, or a free value + Tab / Enter to commit. The Vendor column is hybrid: '
+                                'a few vendors are local, the rest load on demand.',
                                 style: TextStyle(fontFamily: EditableTableThemeData.bodyFont, fontSize: 14, height: 1.5, color: t.fg3),
                               ),
                             ],

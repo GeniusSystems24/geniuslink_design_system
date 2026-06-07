@@ -166,12 +166,34 @@ class _AutoSuggestionsBoxDemoState extends State<AutoSuggestionsBoxDemo> {
                       _Section(
                         t: t,
                         index: '03',
-                        title: 'Async source',
-                        note: 'Debounced “network” search with a loading spinner and race-safe results.',
+                        title: 'Async source · custom builders',
+                        note: 'Debounced “network” search with custom loadingBuilder, emptyBuilder and itemBuilder.',
                         child: AutoSuggestionsBox<String>(
                           source: _asyncSource,
                           hintText: 'Search a country…',
                           onSelected: (s) => _onPick(s.label),
+                          loadingBuilder: (context, q) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                            child: Row(children: [
+                              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AutoSuggestionsBoxThemeData.accent)),
+                              const SizedBox(width: 10),
+                              Text('Looking up “$q”…', style: TextStyle(fontFamily: AutoSuggestionsBoxThemeData.bodyFont, fontSize: 13, color: t.fg2)),
+                            ]),
+                          ),
+                          emptyBuilder: (context, q) => Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                            child: Row(children: [
+                              Icon(Icons.public_off_rounded, size: 16, color: t.fg3),
+                              const SizedBox(width: 8),
+                              Text('No country matches “$q”', style: TextStyle(fontFamily: AutoSuggestionsBoxThemeData.bodyFont, fontSize: 13, color: t.fg2)),
+                            ]),
+                          ),
+                          itemBuilder: (context, s, highlighted) => Row(children: [
+                            Icon(Icons.public_rounded, size: 17, color: highlighted ? AutoSuggestionsBoxThemeData.accent : t.fg3),
+                            const SizedBox(width: 10),
+                            Expanded(child: Text(s.label, style: TextStyle(fontFamily: AutoSuggestionsBoxThemeData.bodyFont, fontSize: 13.5, fontWeight: FontWeight.w500, color: t.fg1))),
+                            Icon(Icons.north_west_rounded, size: 13, color: t.fg3),
+                          ]),
                         ),
                       ),
 
